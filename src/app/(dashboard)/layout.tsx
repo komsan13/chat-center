@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import RouteGuard from "@/components/RouteGuard";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 
@@ -94,7 +95,9 @@ export default function DashboardLayout({
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <DashboardContent>{children}</DashboardContent>
+        <RouteGuard>
+          <DashboardContent>{children}</DashboardContent>
+        </RouteGuard>
       </LanguageProvider>
     </ThemeProvider>
   );
