@@ -27,6 +27,7 @@ const permissionRouteMap: { permission: keyof Permissions; route: string }[] = [
 export default function NoAccessPage() {
   const router = useRouter();
   const [language, setLanguage] = useState<'en' | 'th'>('en');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Get language from localStorage
@@ -41,7 +42,7 @@ export default function NoAccessPage() {
       .then(data => {
         if (data.authenticated && data.user.permissions) {
           const permissions = data.user.permissions as Permissions;
-          
+
           // Find first accessible route
           for (const item of permissionRouteMap) {
             if (permissions[item.permission]) {
@@ -49,9 +50,9 @@ export default function NoAccessPage() {
               return;
             }
           }
-          
-          // Fallback to data-chat if no permissions match
-          router.replace('/data-chat');
+
+          // No permissions granted, stay on no-access page
+          setIsLoading(false);
         } else {
           // Not authenticated, redirect to login
           router.replace('/login');
@@ -63,6 +64,43 @@ export default function NoAccessPage() {
   }, [router]);
 
   // Show loading while redirecting
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '100vh',
+        background: '#1A1D21',
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '16px',
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '3px solid rgba(34, 197, 94, 0.2)',
+            borderTopColor: '#22c55e',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+          <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '14px' }}>
+            {language === 'th' ? 'กำลังเปลี่ยนหน้า...' : 'Redirecting...'}
+          </p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <div style={{ 
       display: 'flex', 
@@ -77,24 +115,27 @@ export default function NoAccessPage() {
         alignItems: 'center',
         gap: '16px',
       }}>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          border: '3px solid rgba(34, 197, 94, 0.2)',
-          borderTopColor: '#22c55e',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-        }} />
-        <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '14px' }}>
-          {language === 'th' ? 'กำลังเปลี่ยนหน้า...' : 'Redirecting...'}
+        <p style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '16px', fontWeight: 600 }}>
+          {language === 'th' ? 'คุณไม่มีสิทธิ์เข้าถึงหน้านี้' : 'You do not have access to this page'}
         </p>
+        <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '13px' }}>
+          {language === 'th' ? 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์' : 'Please contact an administrator to request access'}
+        </p>
+        <button
+          onClick={() => router.replace('/login')}
+          style={{
+            marginTop: '8px',
+            padding: '10px 18px',
+            borderRadius: '10px',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            background: 'rgba(255, 255, 255, 0.06)',
+            color: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          {language === 'th' ? 'กลับไปหน้าเข้าสู่ระบบ' : 'Back to login'}
+        </button>
       </div>
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
