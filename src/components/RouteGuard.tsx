@@ -20,6 +20,16 @@ const getRequiredPermission = (pathname: string): keyof Permissions | null => {
   return null;
 };
 
+const permissionRouteMap: { permission: keyof Permissions; route: string }[] = [
+  { permission: 'viewDashboard', route: '/' },
+  { permission: 'manageChat', route: '/data-chat' },
+  { permission: 'viewReports', route: '/reports' },
+  { permission: 'manageData', route: '/data-management' },
+  { permission: 'manageUsers', route: '/users' },
+  { permission: 'managePermissions', route: '/permissions' },
+  { permission: 'manageSettings', route: '/settings' },
+];
+
 export default function RouteGuard({ children }: RouteGuardProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -31,7 +41,12 @@ export default function RouteGuard({ children }: RouteGuardProps) {
     if (isLoading) return;
 
     if (requiredPermission && !permissions?.[requiredPermission]) {
-      router.replace('/no-access');
+      const firstAllowed = permissionRouteMap.find(item => permissions?.[item.permission])?.route;
+      if (firstAllowed) {
+        router.replace(firstAllowed);
+      } else {
+        router.replace('/no-access');
+      }
     }
   }, [isLoading, permissions, requiredPermission, router]);
 
