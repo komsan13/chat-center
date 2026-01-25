@@ -89,6 +89,43 @@ export async function GET() {
       permissions = derivePermissions(null);
     }
 
+    const isEmptyPermissions = Object.values(permissions).every(value => value === false);
+    if (isEmptyPermissions) {
+      const roleDefaults: Record<string, typeof basePermissions> = {
+        admin: {
+          viewDashboard: true,
+          manageUsers: true,
+          managePermissions: true,
+          viewReports: true,
+          manageData: true,
+          manageChat: true,
+          manageSettings: true,
+        },
+        manager: {
+          viewDashboard: true,
+          manageUsers: false,
+          managePermissions: false,
+          viewReports: true,
+          manageData: true,
+          manageChat: true,
+          manageSettings: false,
+        },
+        user: {
+          viewDashboard: true,
+          manageUsers: false,
+          managePermissions: false,
+          viewReports: true,
+          manageData: false,
+          manageChat: true,
+          manageSettings: false,
+        },
+      };
+
+      if (roleDefaults[session.role]) {
+        permissions = roleDefaults[session.role];
+      }
+    }
+
     if (session.role === 'admin') {
       permissions = {
         viewDashboard: true,
