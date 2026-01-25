@@ -246,6 +246,8 @@ export default function SalariesPage() {
       overtime: 0,
       bonus: 0,
       status: 'unpaid',
+      bankName: '',
+      accountNumber: '',
     });
     setModalMode('add');
     setShowModal(true);
@@ -269,6 +271,8 @@ export default function SalariesPage() {
       overtime: salary.overtime,
       bonus: salary.bonus,
       status: salary.status,
+      bankName: salary.bankName || '',
+      accountNumber: salary.accountNumber || '',
     });
     setModalMode('edit');
     setShowModal(true);
