@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { decrypt } from '@/lib/auth';
 
 // Routes ที่ไม่ต้อง authentication
-const publicRoutes = ['/login', '/api/auth/login', '/api/auth/logout', '/api/seed', '/api/line/webhook'];
+const publicRoutes = ['/login', '/api/auth/login', '/api/auth/logout', '/api/line/webhook'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

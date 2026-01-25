@@ -25,8 +25,6 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/server.js ./server.js
-COPY --from=builder /app/seed-dashboard.js ./seed-dashboard.js
-COPY --from=builder /app/seed-salary-base.js ./seed-salary-base.js
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 
