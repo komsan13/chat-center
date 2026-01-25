@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
-import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
@@ -15,8 +14,7 @@ if (fs.existsSync(rootDbPath) && !fs.existsSync(prismaDbPath)) {
 
 console.log('Using database at:', dbPath);
 
-const sqlite = new Database(dbPath);
-const adapter = new PrismaBetterSqlite3(sqlite);
+const adapter = new PrismaBetterSqlite3({ url: dbPath });
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
