@@ -51,8 +51,8 @@ export default function NoAccessPage() {
             }
           }
 
-          // No permissions granted, stay on no-access page
-          setIsLoading(false);
+          // No permissions granted, redirect to login
+          router.replace('/login');
         } else {
           // Not authenticated, redirect to login
           router.replace('/login');
@@ -63,7 +63,6 @@ export default function NoAccessPage() {
       });
   }, [router]);
 
-  // Show loading while redirecting
   if (isLoading) {
     return (
       <div style={{ 
@@ -101,41 +100,5 @@ export default function NoAccessPage() {
     );
   }
 
-  return (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      minHeight: '100vh',
-      background: '#1A1D21',
-    }}>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '16px',
-      }}>
-        <p style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '16px', fontWeight: 600 }}>
-          {language === 'th' ? 'คุณไม่มีสิทธิ์เข้าถึงหน้านี้' : 'You do not have access to this page'}
-        </p>
-        <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '13px' }}>
-          {language === 'th' ? 'กรุณาติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์' : 'Please contact an administrator to request access'}
-        </p>
-        <button
-          onClick={() => router.replace('/login')}
-          style={{
-            marginTop: '8px',
-            padding: '10px 18px',
-            borderRadius: '10px',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            background: 'rgba(255, 255, 255, 0.06)',
-            color: '#fff',
-            cursor: 'pointer',
-          }}
-        >
-          {language === 'th' ? 'กลับไปหน้าเข้าสู่ระบบ' : 'Back to login'}
-        </button>
-      </div>
-    </div>
-  );
+  return null;
 }
