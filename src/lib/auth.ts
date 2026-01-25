@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
 const secretKey = process.env.JWT_SECRET || 'aurix-dashboard-secret-key-2026';
+const secureCookie = process.env.COOKIE_SECURE === 'true';
 const key = new TextEncoder().encode(secretKey);
 
 export interface SessionPayload {
@@ -51,7 +52,7 @@ export async function createSession(user: {
   const cookieStore = await cookies();
   cookieStore.set('session', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: secureCookie,
     expires: expiresAt,
     sameSite: 'lax',
     path: '/',

@@ -9,6 +9,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - COOKIE_SECURE=false
     volumes:
       # Persist SQLite database
       - ./data:/app/data

@@ -7,7 +7,7 @@ export async function POST() {
     // Delete session cookie
     response.cookies.set('session', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true',
       expires: new Date(0),
       sameSite: 'lax',
       path: '/',
