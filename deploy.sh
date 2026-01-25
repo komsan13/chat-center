@@ -33,7 +33,7 @@ if [ -d "$APP_DIR" ]; then
     git pull origin main
 else
     echo "Cloning repository..."
-    git clone https://github.com/komsan13/data-center.git $APP_DIR
+    git clone https://github.com/komsan13/chat-center.git $APP_DIR
     cd $APP_DIR
 fi
 
@@ -57,7 +57,7 @@ echo "  Deployment Complete! ✓"
 echo "=========================================="
 echo ""
 echo "  Access your dashboard at:"
-echo "  http://$(hostname -I | awk '{print $1}'):3000"
+echo "  http://$(hostname -I | awk '{print $1}'):3001"
 echo ""
 echo "  Useful commands:"
 echo "  - View logs:    docker compose logs -f"
