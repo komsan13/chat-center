@@ -18,7 +18,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3001
 
 # Copy necessary files
 COPY --from=builder /app/.next ./.next
@@ -31,6 +31,6 @@ COPY --from=builder /app/node_modules ./node_modules
 # Create data directory for SQLite
 RUN mkdir -p /app/data
 
-EXPOSE 3000
+EXPOSE 3001
 
 CMD ["node", "server.js"]
