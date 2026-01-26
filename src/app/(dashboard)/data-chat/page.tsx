@@ -462,8 +462,29 @@ export default function DataChatPage() {
     });
   }, []);
 
+  // Handle new room from socket (when a new customer starts chatting)
+  const handleNewRoom = useCallback((room: ChatRoom) => {
+    console.log('[Chat] New room received:', room.id, room.displayName);
+    
+    // Don't add spam rooms to the list immediately
+    if (room.status === 'spam') return;
+    
+    setRooms(prev => {
+      // Check if room already exists
+      if (prev.some(r => r.id === room.id)) {
+        return prev;
+      }
+      // Add new room to the top
+      return [room, ...prev];
+    });
+    
+    // Play sound for new customer
+    playSound();
+  }, [playSound]);
+
   const { isConnected, connectionState, reconnect, sendTyping, markAsRead, emitRoomRead } = useSocket({
     onNewMessage: handleNewMessage,
+    onNewRoom: handleNewRoom,
     onUserTyping: handleTypingEvent,
     onRoomReadUpdate: handleRoomReadSync,
     onRoomUpdate: handleRoomUpdate,
