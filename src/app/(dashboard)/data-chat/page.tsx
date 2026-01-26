@@ -41,7 +41,7 @@ interface ChatRoom {
   isPinned: boolean;
   isMuted: boolean;
   tags: string[];
-  status: 'active' | 'archived' | 'blocked';
+  status: 'active' | 'archived' | 'blocked' | 'spam';
   createdAt: string;
   updatedAt: string;
   recentMessages?: Message[];
@@ -61,7 +61,7 @@ export default function DataChatPage() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null); // Start with no room selected
   const [message, setMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'pinned'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'pinned' | 'spam'>('all');
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -71,6 +71,8 @@ export default function DataChatPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [chatSearchTerm, setChatSearchTerm] = useState('');
+  const [showChatSearch, setShowChatSearch] = useState(false);
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -357,16 +359,20 @@ export default function DataChatPage() {
       room.lastMessageAt = msg.createdAt;
       
       // Only increment unread and play sound for incoming user messages
-      // Note: The actual unreadCount from server will come via room-update event
-      if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user') {
+      // Skip notification for spam rooms
+      if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user' && room.status !== 'spam') {
         // Increment locally for immediate UI feedback
         room.unreadCount = (room.unreadCount || 0) + 1;
         playSound();
       }
       
-      // Move room to top
+      // Move room to top (but not spam rooms)
       updatedRooms.splice(roomIndex, 1);
-      updatedRooms.unshift(room);
+      if (room.status !== 'spam') {
+        updatedRooms.unshift(room);
+      } else {
+        updatedRooms.push(room); // Keep spam at the end
+      }
       return updatedRooms;
     });
   }, [playSound]);
@@ -513,9 +519,9 @@ export default function DataChatPage() {
     }
   }, [selectedRoom, fetchMessages, markAsRead, emitRoomRead]);
 
-  // Auto-scroll
+  // Auto-scroll - instant for initial load
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
   }, [messages]);
 
   // ═══════════════════════════════════════════════════════════════════
@@ -611,13 +617,13 @@ export default function DataChatPage() {
   };
 
   // ═══════════════════════════════════════════════════════════════════
-  // CHAT ROOM ACTIONS (Pin, Mute, Archive, Block, Delete)
+  // CHAT ROOM ACTIONS (Pin, Mute, Archive, Spam, Delete)
   // ═══════════════════════════════════════════════════════════════════
   const updateRoom = async (roomId: string, updates: {
     isPinned?: boolean;
     isMuted?: boolean;
     tags?: string[];
-    status?: 'active' | 'archived' | 'blocked';
+    status?: 'active' | 'archived' | 'blocked' | 'spam';
   }) => {
     try {
       const response = await fetch(`/api/chat/rooms/${roomId}`, {
@@ -659,10 +665,18 @@ export default function DataChatPage() {
     }
   };
 
-  const blockRoom = async (roomId: string) => {
-    const success = await updateRoom(roomId, { status: 'blocked' });
+  const markAsSpam = async (roomId: string) => {
+    const success = await updateRoom(roomId, { status: 'spam' });
     if (success && selectedRoom === roomId) {
       setSelectedRoom(null);
+    }
+  };
+
+  const unmarkSpam = async (roomId: string) => {
+    const success = await updateRoom(roomId, { status: 'active' });
+    if (success) {
+      // Refresh rooms list
+      fetchRooms();
     }
   };
 
@@ -969,7 +983,7 @@ export default function DataChatPage() {
                 }}
               >
                 <Filter size={isMobile ? 14 : 15} style={{ color: colors.accent }} />
-                <span>{filterStatus === 'all' ? 'All' : filterStatus === 'unread' ? 'Unread' : 'Pinned'}</span>
+                <span>{filterStatus === 'all' ? 'All' : filterStatus === 'unread' ? 'Unread' : filterStatus === 'pinned' ? 'Pinned' : 'Spam'}</span>
                 <ChevronDown size={isMobile ? 12 : 14} style={{ color: colors.textMuted }} />
               </button>
               
@@ -980,14 +994,14 @@ export default function DataChatPage() {
                   borderRadius: 8, boxShadow: colors.shadowMd, zIndex: 100,
                   minWidth: 120, overflow: 'hidden',
                 }}>
-                  {['all', 'unread', 'pinned'].map((status) => (
+                  {['all', 'unread', 'pinned', 'spam'].map((status) => (
                     <button
                       key={status}
-                      onClick={() => { setFilterStatus(status as 'all' | 'unread' | 'pinned'); setShowFilterDropdown(false); }}
+                      onClick={() => { setFilterStatus(status as 'all' | 'unread' | 'pinned' | 'spam'); setShowFilterDropdown(false); }}
                       style={{
                         display: 'block', width: '100%', padding: '10px 14px',
                         background: filterStatus === status ? colors.accentLight : 'transparent',
-                        border: 'none', color: filterStatus === status ? colors.accent : colors.textPrimary,
+                        border: 'none', color: filterStatus === status ? colors.accent : status === 'spam' ? colors.warning : colors.textPrimary,
                         fontSize: 13, textAlign: 'left', cursor: 'pointer',
                       }}
                     >
@@ -1051,13 +1065,17 @@ export default function DataChatPage() {
             <div style={{ padding: 40, textAlign: 'center' }}>
               <Loader2 size={24} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
             </div>
-          ) : rooms.length === 0 ? (
+          ) : rooms.filter(r => filterStatus === 'spam' ? r.status === 'spam' : r.status !== 'spam').length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center' }}>
               <MessageCircle size={32} style={{ color: colors.textMuted, marginBottom: 12 }} />
-              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>No conversations</p>
+              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>
+                {filterStatus === 'spam' ? 'No spam messages' : 'No conversations'}
+              </p>
             </div>
           ) : (
-            rooms.map((room) => (
+            rooms
+              .filter(room => filterStatus === 'spam' ? room.status === 'spam' : room.status !== 'spam')
+              .map((room) => (
               <div
                 key={room.id}
                 onClick={() => {
@@ -1067,15 +1085,15 @@ export default function DataChatPage() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '14px 20px', cursor: 'pointer',
-                  background: selectedRoom === room.id ? colors.bgActive : 'transparent',
-                  borderLeft: selectedRoom === room.id ? `3px solid ${colors.accent}` : '3px solid transparent',
+                  background: selectedRoom === room.id ? colors.bgActive : room.status === 'spam' ? colors.warning + '08' : 'transparent',
+                  borderLeft: selectedRoom === room.id ? `3px solid ${colors.accent}` : room.status === 'spam' ? `3px solid ${colors.warning}` : '3px solid transparent',
                   transition: 'all 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
                   if (selectedRoom !== room.id) e.currentTarget.style.background = colors.bgHover;
                 }}
                 onMouseLeave={(e) => {
-                  if (selectedRoom !== room.id) e.currentTarget.style.background = 'transparent';
+                  if (selectedRoom !== room.id) e.currentTarget.style.background = room.status === 'spam' ? colors.warning + '08' : 'transparent';
                 }}
               >
                 {/* Avatar */}
@@ -1088,7 +1106,9 @@ export default function DataChatPage() {
                   ) : (
                     <div style={{
                       width: 48, height: 48, borderRadius: '50%',
-                      background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+                      background: room.status === 'spam' 
+                        ? `linear-gradient(135deg, ${colors.warning} 0%, #d97706 100%)`
+                        : `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: '#fff', fontSize: 18, fontWeight: 600,
                     }}>
@@ -1098,7 +1118,7 @@ export default function DataChatPage() {
                   <div style={{
                     position: 'absolute', bottom: 0, right: 0,
                     width: 12, height: 12, borderRadius: '50%',
-                    background: colors.online,
+                    background: room.status === 'spam' ? colors.warning : colors.online,
                     border: `2px solid ${colors.bgSecondary}`,
                   }} />
                 </div>
@@ -1246,48 +1266,23 @@ export default function DataChatPage() {
               </div>
               
               <div style={{ display: 'flex', gap: isMobile ? 4 : 8 }}>
-                {!isMobile && (
-                  <>
-                    <button style={{
-                      padding: '8px 14px', borderRadius: 6,
-                      background: colors.bgTertiary, border: `1px solid ${colors.border}`,
-                      color: colors.info, fontSize: 12, fontWeight: 500,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                      transition: 'all 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
-                    onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
-                    >
-                      <Clock size={14} /> Follow up
-                    </button>
-                  </>
-                )}
-                <button style={{
-                  padding: isMobile ? 8 : '8px 14px', borderRadius: 6,
-                  background: colors.bgTertiary, border: `1px solid ${colors.border}`,
-                  color: colors.accent, fontSize: 12, fontWeight: 500,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 6,
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = colors.accentLight}
-                onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
-                >
-                  <Check size={14} /> {!isMobile && 'Resolve'}
-                </button>
-                {!isMobile && (
-                  <button style={{
-                    padding: '8px 14px', borderRadius: 6,
-                    background: colors.bgTertiary, border: `1px solid ${colors.border}`,
-                    color: colors.textSecondary, fontSize: 12, fontWeight: 500,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                {/* Search Button */}
+                <button 
+                  onClick={() => setShowChatSearch(!showChatSearch)}
+                  style={{
+                    padding: isMobile ? 8 : '8px 14px', borderRadius: 6,
+                    background: showChatSearch ? colors.accentLight : colors.bgTertiary, 
+                    border: `1px solid ${colors.border}`,
+                    color: showChatSearch ? colors.accent : colors.textSecondary, 
+                    fontSize: 12, fontWeight: 500,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 6,
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
-                  onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
-                  >
-                    <Search size={14} /> Search
-                  </button>
-                )}
+                  onMouseLeave={(e) => e.currentTarget.style.background = showChatSearch ? colors.accentLight : colors.bgTertiary}
+                >
+                  <Search size={14} /> {!isMobile && 'Search'}
+                </button>
                 {!isMobile && !isTablet && !isSmallDesktop && (
                   <button
                     onClick={() => setShowRightPanel(!showRightPanel)}
@@ -1307,6 +1302,44 @@ export default function DataChatPage() {
               </div>
             </div>
 
+            {/* Search Bar - Shown when search is active */}
+            {showChatSearch && (
+              <div style={{
+                padding: '10px 20px',
+                background: colors.bgSecondary,
+                borderBottom: `1px solid ${colors.border}`,
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <Search size={16} style={{ color: colors.textMuted }} />
+                <input
+                  type="text"
+                  placeholder="Search in this conversation..."
+                  value={chatSearchTerm}
+                  onChange={(e) => setChatSearchTerm(e.target.value)}
+                  autoFocus
+                  style={{
+                    flex: 1, border: 'none', background: 'transparent',
+                    color: colors.textPrimary, fontSize: 14, outline: 'none',
+                  }}
+                />
+                {chatSearchTerm && (
+                  <span style={{ fontSize: 12, color: colors.textMuted }}>
+                    {messages.filter(m => m.content?.toLowerCase().includes(chatSearchTerm.toLowerCase())).length} found
+                  </span>
+                )}
+                <button
+                  onClick={() => { setShowChatSearch(false); setChatSearchTerm(''); }}
+                  style={{
+                    width: 24, height: 24, borderRadius: 4, border: 'none',
+                    background: 'transparent', color: colors.textMuted,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
             {/* Messages */}
             <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '20px 24px', background: colors.bgPrimary }}>
               {isLoadingMessages ? (
@@ -1319,12 +1352,14 @@ export default function DataChatPage() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {messages.map((msg, idx) => {
+                  {messages
+                    .filter(msg => !chatSearchTerm || msg.content?.toLowerCase().includes(chatSearchTerm.toLowerCase()))
+                    .map((msg, idx, filteredMsgs) => {
                     const isAgent = msg.sender === 'agent';
-                    const showAvatar = !isAgent && (idx === 0 || messages[idx - 1]?.sender !== 'user');
-                    const showTime = idx === messages.length - 1 || 
-                      messages[idx + 1]?.sender !== msg.sender ||
-                      new Date(messages[idx + 1]?.createdAt).getTime() - new Date(msg.createdAt).getTime() > 300000;
+                    const showAvatar = !isAgent && (idx === 0 || filteredMsgs[idx - 1]?.sender !== 'user');
+                    const showTime = idx === filteredMsgs.length - 1 || 
+                      filteredMsgs[idx + 1]?.sender !== msg.sender ||
+                      new Date(filteredMsgs[idx + 1]?.createdAt).getTime() - new Date(msg.createdAt).getTime() > 300000;
                     
                     return (
                       <div key={msg.id} style={{ marginBottom: showTime ? 12 : 2 }}>
@@ -1611,13 +1646,13 @@ export default function DataChatPage() {
                 <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Customer Info</span>
                 <button
                   onClick={() => setSelectedRoom(null)}
+                  title="Close Chat"
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '6px 12px', borderRadius: 6,
+                    width: 32, height: 32, borderRadius: 6,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: colors.danger + '15',
                     border: `1px solid ${colors.danger}30`,
                     color: colors.danger,
-                    fontSize: 12, fontWeight: 500,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                   }}
@@ -1628,7 +1663,7 @@ export default function DataChatPage() {
                     e.currentTarget.style.background = colors.danger + '15';
                   }}
                 >
-                  <XCircle size={14} /> Close Chat
+                  <X size={16} />
                 </button>
               </div>
 
@@ -1974,23 +2009,43 @@ export default function DataChatPage() {
                     Archive Chat
                   </button>
                   
-                  <button
-                    onClick={() => blockRoom(selectedRoom)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '10px 12px', borderRadius: 8,
-                      background: colors.bgPrimary,
-                      border: `1px solid ${colors.border}`,
-                      color: colors.warning,
-                      fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                      transition: 'all 0.15s ease', textAlign: 'left',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = colors.warning + '10'; e.currentTarget.style.borderColor = colors.warning + '30'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgPrimary; e.currentTarget.style.borderColor = colors.border; }}
-                  >
-                    <AlertTriangle size={16} />
-                    Block User
-                  </button>
+                  {selectedRoomData.status === 'spam' ? (
+                    <button
+                      onClick={() => unmarkSpam(selectedRoom)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 12px', borderRadius: 8,
+                        background: colors.accent + '15',
+                        border: `1px solid ${colors.accent}50`,
+                        color: colors.accent,
+                        fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                        transition: 'all 0.15s ease', textAlign: 'left',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = colors.accent + '25'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = colors.accent + '15'; }}
+                    >
+                      <Check size={16} />
+                      Not Spam
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => markAsSpam(selectedRoom)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 12px', borderRadius: 8,
+                        background: colors.bgPrimary,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.warning,
+                        fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                        transition: 'all 0.15s ease', textAlign: 'left',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = colors.warning + '15'; e.currentTarget.style.borderColor = colors.warning + '50'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgPrimary; e.currentTarget.style.borderColor = colors.border; }}
+                    >
+                      <AlertTriangle size={16} />
+                      Mark as Spam
+                    </button>
+                  )}
                   
                   <button
                     onClick={() => {
