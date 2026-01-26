@@ -1071,16 +1071,7 @@ export default function DataChatPage() {
   const renderMessageContent = (msg: Message) => {
     const content = msg.content || '';
     
-    // Check for sticker pattern first (like "[sticker]" or "(crying Cony)(sick Moon)")
-    if (content.startsWith('[sticker') || (content && /^\([a-zA-Z\s]+\)(\([a-zA-Z\s]+\))*$/.test(content.trim()))) {
-      return (
-        <p style={{ fontSize: 40, margin: 0, textAlign: 'center' }}>
-          {convertStickerText(content)}
-        </p>
-      );
-    }
-    
-    // If message has LINE emojis, render them as images
+    // If message has LINE emojis, render them as images (check this FIRST)
     if (msg.emojis && msg.emojis.length > 0) {
       const elements: React.ReactNode[] = [];
       let lastIndex = 0;
@@ -1123,7 +1114,7 @@ export default function DataChatPage() {
         lastIndex = emoji.index + emoji.length;
       }
       
-      // Add remaining text
+      // Add remaining text after last emoji
       if (lastIndex < content.length) {
         elements.push(
           <span key={`text-end`}>{content.slice(lastIndex)}</span>
@@ -1133,6 +1124,15 @@ export default function DataChatPage() {
       return (
         <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
           {elements}
+        </p>
+      );
+    }
+    
+    // Check for sticker pattern (like "[sticker]" or "(crying Cony)(sick Moon)") - only if no emojis data
+    if (content.startsWith('[sticker') || (content && /^\([a-zA-Z\s]+\)(\([a-zA-Z\s]+\))*$/.test(content.trim()))) {
+      return (
+        <p style={{ fontSize: 40, margin: 0, textAlign: 'center' }}>
+          {convertStickerText(content)}
         </p>
       );
     }
@@ -1418,9 +1418,11 @@ export default function DataChatPage() {
                       ) : (
                         <>
                           {room.lastMessage?.sender === 'agent' && <span style={{ color: colors.accent }}>You: </span>}
-                          {room.lastMessage?.content 
-                            ? convertStickerText(room.lastMessage.content).substring(0, 30)
-                            : 'Start conversation'}
+                          {room.lastMessage?.emojis && room.lastMessage.emojis.length > 0
+                            ? '😊' // Show emoji icon for LINE emoji messages
+                            : room.lastMessage?.content 
+                              ? convertStickerText(room.lastMessage.content).substring(0, 30)
+                              : 'Start conversation'}
                         </>
                       )}
                     </span>
