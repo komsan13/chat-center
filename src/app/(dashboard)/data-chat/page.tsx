@@ -73,24 +73,24 @@ export default function DataChatPage() {
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
 
-  // Theme Colors - LINE OA inspired, aligned with main theme
+  // Theme Colors - aligned with main website theme
   const colors = useMemo(() => ({
-    bgPrimary: isDark ? '#0f1216' : '#f5f6f7',
-    bgSecondary: isDark ? '#14181d' : '#ffffff',
-    bgTertiary: isDark ? '#1b2026' : '#f2f4f7',
-    bgCard: isDark ? '#171c22' : '#ffffff',
-    bgHover: isDark ? '#1f2530' : '#f7f8fa',
-    bgActive: isDark ? 'rgba(6, 199, 85, 0.12)' : 'rgba(6, 199, 85, 0.1)',
-    border: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-    borderLight: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-    textPrimary: isDark ? '#f3f4f6' : '#111827',
-    textSecondary: isDark ? '#cbd5e1' : '#6b7280',
-    textMuted: isDark ? '#94a3b8' : '#9ca3af',
-    accent: '#06C755',
-    accentLight: isDark ? 'rgba(6, 199, 85, 0.16)' : 'rgba(6, 199, 85, 0.12)',
-    bubbleAgent: isDark ? '#1fae5b' : '#06C755',
-    bubbleUser: isDark ? '#1b2026' : '#ffffff',
-    online: '#06C755',
+    bgPrimary: isDark ? '#1D1E24' : '#f8fafc',
+    bgSecondary: isDark ? '#23262B' : '#ffffff',
+    bgTertiary: isDark ? '#2A313C' : '#f1f5f9',
+    bgCard: isDark ? '#23262B' : '#ffffff',
+    bgHover: isDark ? '#2A313C' : '#f1f5f9',
+    bgActive: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+    border: isDark ? '#2A313C' : '#e2e8f0',
+    borderLight: isDark ? '#3A4553' : '#e2e8f0',
+    textPrimary: isDark ? '#ffffff' : '#1e293b',
+    textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b',
+    textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#94a3b8',
+    accent: '#22c55e',
+    accentLight: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
+    bubbleAgent: '#22c55e',
+    bubbleUser: isDark ? '#2A313C' : '#f1f5f9',
+    online: '#22c55e',
     warning: '#f59e0b',
   }), [isDark]);
 
@@ -430,7 +430,7 @@ export default function DataChatPage() {
             {/* Messages */}
             <div style={{ 
               flex: 1, overflowY: 'auto', padding: 20,
-              background: isDark ? '#0f1216' : '#edf1f5',
+              background: isDark ? '#1D1E24' : '#f1f5f9',
             }}>
               {isLoadingMessages ? (
                 <div style={{ textAlign: 'center', padding: 40 }}>
@@ -658,7 +658,7 @@ export default function DataChatPage() {
         /* Empty State */
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: isDark ? '#0f1216' : '#edf1f5',
+          background: isDark ? '#1D1E24' : '#f1f5f9',
           padding: 40,
         }}>
           <div style={{ width: 120, height: 120, borderRadius: 32, background: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, position: 'relative' }}>
