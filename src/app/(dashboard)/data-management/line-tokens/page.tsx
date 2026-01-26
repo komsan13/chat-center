@@ -35,6 +35,7 @@ export default function LineTokensPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [websiteFilter, setWebsiteFilter] = useState('all');
   const [showToken, setShowToken] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
@@ -231,6 +232,10 @@ export default function LineTokensPage() {
 
   const filteredTokens = tokens.filter(token => {
     if (statusFilter !== 'all' && token.status !== statusFilter) return false;
+    if (websiteFilter !== 'all') {
+      if (websiteFilter === 'none' && token.websiteId) return false;
+      if (websiteFilter !== 'none' && token.websiteId !== websiteFilter) return false;
+    }
     if (searchTerm && !token.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
         !token.channelId.includes(searchTerm) &&
         !(token.websiteName || '').toLowerCase().includes(searchTerm.toLowerCase())) return false;
@@ -311,11 +316,22 @@ export default function LineTokensPage() {
             />
           </div>
           <select
+            value={websiteFilter}
+            onChange={(e) => setWebsiteFilter(e.target.value)}
+            style={{ padding: '12px 16px', background: colors.inputBg, border: `1px solid ${colors.border}`, borderRadius: '12px', color: colors.text, fontSize: '14px', cursor: 'pointer', outline: 'none' }}
+          >
+            <option value="all">{language === 'th' ? 'ทุกเว็บไซต์' : 'All Websites'}</option>
+            <option value="none">{language === 'th' ? 'ไม่ระบุเว็บ' : 'No Website'}</option>
+            {websites.map(w => (
+              <option key={w.id} value={w.id}>{w.name}</option>
+            ))}
+          </select>
+          <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             style={{ padding: '12px 16px', background: colors.inputBg, border: `1px solid ${colors.border}`, borderRadius: '12px', color: colors.text, fontSize: '14px', cursor: 'pointer', outline: 'none' }}
           >
-            <option value="all">{language === 'th' ? 'ทั้งหมด' : 'All Status'}</option>
+            <option value="all">{language === 'th' ? 'ทุกสถานะ' : 'All Status'}</option>
             <option value="active">{language === 'th' ? 'ใช้งาน' : 'Active'}</option>
             <option value="inactive">{language === 'th' ? 'ไม่ใช้งาน' : 'Inactive'}</option>
             <option value="expired">{language === 'th' ? 'หมดอายุ' : 'Expired'}</option>
