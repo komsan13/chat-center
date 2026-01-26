@@ -1001,7 +1001,13 @@ export default function DataChatPage() {
       <img 
         src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/iPhone/sticker.png`}
         alt="Sticker"
-        style={{ width: 120, height: 120 }}
+        style={{ 
+          maxWidth: 150, 
+          maxHeight: 150, 
+          width: 'auto', 
+          height: 'auto',
+          objectFit: 'contain',
+        }}
         onError={(e) => { e.currentTarget.src = `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/android/sticker.png`; }}
       />
     );
