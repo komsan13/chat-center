@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { 
-  Search, Send, Smile, MoreVertical, Filter,
+  Search, Send, Smile, Filter,
   Plus, Check, CheckCheck, Pin, X,
   MessageCircle, Settings, Clock,
   Loader2, Paperclip, Image as ImageIcon, FileText, 
   Phone, Video, Bookmark, VolumeX, Volume2, Trash2, AlertTriangle,
-  ChevronDown, User, Tag, FileEdit, Bell, BellOff
+  ChevronDown, ChevronLeft, ChevronRight, User, Tag, FileEdit, Bell, BellOff, XCircle
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSocket } from '@/hooks/useSocket';
@@ -853,8 +853,9 @@ export default function DataChatPage() {
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'all 0.15s ease',
                   }}
+                  title={showRightPanel ? 'Hide panel' : 'Show panel'}
                 >
-                  <MoreVertical size={18} />
+                  {showRightPanel ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                 </button>
               </div>
             </div>
@@ -1079,6 +1080,38 @@ export default function DataChatPage() {
               display: 'flex', flexDirection: 'column', 
               overflowY: 'auto',
             }}>
+              {/* Panel Header with Close Button */}
+              <div style={{ 
+                padding: '12px 16px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                borderBottom: `1px solid ${colors.border}`,
+              }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Customer Info</span>
+                <button
+                  onClick={() => setSelectedRoom(null)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 12px', borderRadius: 6,
+                    background: colors.danger + '15',
+                    border: `1px solid ${colors.danger}30`,
+                    color: colors.danger,
+                    fontSize: 12, fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = colors.danger + '25';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = colors.danger + '15';
+                  }}
+                >
+                  <XCircle size={14} /> Close Chat
+                </button>
+              </div>
+
               {/* Profile Section */}
               <div style={{ padding: '28px 20px', textAlign: 'center', borderBottom: `1px solid ${colors.border}` }}>
                 {selectedRoomData.pictureUrl ? (
