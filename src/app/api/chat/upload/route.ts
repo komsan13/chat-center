@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     const room = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(roomId) as RoomRecord | undefined;
 
     // Send to LINE if it's an image and we have room info
-    let lineResult = { success: false, error: 'Not sent to LINE' };
+    let lineResult: { success: boolean; error?: string } = { success: false, error: 'Not sent to LINE' };
     
     if (room && messageType === 'image') {
       // Get LINE token
@@ -107,7 +107,8 @@ export async function POST(request: NextRequest) {
       if (lineToken) {
         try {
           const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
-          lineResult = await botService.sendImage(room.lineUserId, publicMediaUrl);
+          const sendResult = await botService.sendImage(room.lineUserId, publicMediaUrl);
+          lineResult = sendResult;
           console.log('[Upload API] LINE send result:', lineResult);
         } catch (error) {
           console.error('[Upload API] LINE send error:', error);
