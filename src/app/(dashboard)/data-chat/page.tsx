@@ -454,6 +454,9 @@ export default function DataChatPage() {
       selectedRoomRef.current = selectedRoom;
       fetchMessages(selectedRoom);
       
+      // Clear message input when changing rooms
+      setMessage('');
+      
       // Mark as read locally
       if (markAsRead) markAsRead(selectedRoom, []);
       
@@ -856,7 +859,9 @@ export default function DataChatPage() {
                       flex: 1,
                     }}>
                       {typingUsers[room.id] ? (
-                        <span style={{ color: colors.accent, fontStyle: 'italic' }}>typing...</span>
+                        <span style={{ color: colors.accent, fontStyle: 'italic' }}>
+                          {typingUsers[room.id].userName} กำลังพิมพ์...
+                        </span>
                       ) : (
                         <>
                           {room.lastMessage?.sender === 'agent' && <span style={{ color: colors.accent }}>You: </span>}
