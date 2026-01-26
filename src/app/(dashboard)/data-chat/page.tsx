@@ -1420,18 +1420,26 @@ export default function DataChatPage() {
                           {room.lastMessage?.sender === 'agent' && <span style={{ color: colors.accent }}>You: </span>}
                           {room.lastMessage?.messageType === 'sticker'
                             ? 'Sticker'
-                            : room.lastMessage?.emojis && room.lastMessage.emojis.length > 0
-                              ? room.lastMessage.emojis.slice(0, 3).map((emoji, i) => (
-                                  <img 
-                                    key={i}
-                                    src={emoji.url}
-                                    alt="emoji"
-                                    style={{ width: 16, height: 16, verticalAlign: 'middle', marginRight: 2 }}
-                                  />
-                                ))
-                              : room.lastMessage?.content 
-                                ? convertStickerText(room.lastMessage.content).substring(0, 30)
-                                : 'Start conversation'}
+                            : room.lastMessage?.messageType === 'image'
+                              ? '📷 Image'
+                              : room.lastMessage?.messageType === 'video'
+                                ? '🎥 Video'
+                                : room.lastMessage?.messageType === 'audio'
+                                  ? '🎵 Audio'
+                                  : room.lastMessage?.messageType === 'file'
+                                    ? '📎 File'
+                                    : room.lastMessage?.emojis && room.lastMessage.emojis.length > 0
+                                      ? room.lastMessage.emojis.slice(0, 3).map((emoji, i) => (
+                                          <img 
+                                            key={i}
+                                            src={emoji.url}
+                                            alt="emoji"
+                                            style={{ width: 16, height: 16, verticalAlign: 'middle', marginRight: 2 }}
+                                          />
+                                        ))
+                                      : room.lastMessage?.content 
+                                        ? convertStickerText(room.lastMessage.content).substring(0, 30)
+                                        : 'Start conversation'}
                         </>
                       )}
                     </span>
