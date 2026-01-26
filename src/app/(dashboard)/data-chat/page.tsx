@@ -399,7 +399,17 @@ export default function DataChatPage() {
   };
 
   useEffect(() => { fetchRooms(); }, [fetchRooms]);
-  useEffect(() => { if (selectedRoom) fetchMessages(selectedRoom); }, [selectedRoom, fetchMessages]);
+  
+  // เมื่อ selectedRoom เปลี่ยน: fetch messages และ mark as read ทันที
+  useEffect(() => { 
+    if (selectedRoom) {
+      // Mark as read ทันทีเมื่อเข้าห้อง
+      setRooms(prev => prev.map(r => r.id === selectedRoom ? { ...r, unreadCount: 0 } : r));
+      fetchMessages(selectedRoom); 
+    }
+  }, [selectedRoom, fetchMessages]);
+  
+  // Scroll to latest message เมื่อ messages เปลี่ยน
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
   
   // Save selected room to localStorage and update ref
@@ -690,7 +700,11 @@ export default function DataChatPage() {
             rooms.map((room) => (
               <div
                 key={room.id}
-                onClick={() => setSelectedRoom(room.id)}
+                onClick={() => {
+                  // เมื่อคลิกห้องแชท ให้ mark as read ทันที (unreadCount = 0)
+                  setRooms(prev => prev.map(r => r.id === room.id ? { ...r, unreadCount: 0 } : r));
+                  setSelectedRoom(room.id);
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '12px 10px', cursor: 'pointer',
                   borderRadius: 10, margin: '4px 0',
