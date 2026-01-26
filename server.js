@@ -149,16 +149,21 @@ app.prepare().then(() => {
   global.__broadcast = (event, data) => {
     if (global.__io) {
       global.__io.to('all-rooms').emit(event, data);
-      console.log(`[Socket.IO] 📡 Broadcast: ${event}`);
+      console.log(`[Socket.IO] 📡 Broadcast to all-rooms: ${event}`);
     }
   };
 
-  // Broadcast to specific room
+  // Broadcast to specific room AND all-rooms
   global.__broadcastToRoom = (roomId, event, data) => {
-    if (global.__io && roomId) {
-      global.__io.to(roomId).emit(event, data);
+    if (global.__io) {
+      // Emit to specific room first
+      if (roomId) {
+        global.__io.to(roomId).emit(event, data);
+        console.log(`[Socket.IO] 📡 Broadcast to room ${roomId}: ${event}`);
+      }
+      // ALWAYS emit to all-rooms for dashboard updates
       global.__io.to('all-rooms').emit(event, data);
-      console.log(`[Socket.IO] 📡 Broadcast to ${roomId}: ${event}`);
+      console.log(`[Socket.IO] 📡 Broadcast to all-rooms: ${event}`);
     }
   };
 
