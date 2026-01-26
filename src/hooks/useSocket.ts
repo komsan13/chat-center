@@ -53,6 +53,7 @@ interface UseSocketOptions {
   onUserTyping?: (data: { roomId: string; userName: string; isTyping: boolean }) => void;
   onRoomReadUpdate?: (data: { roomId: string; readAt: string }) => void;
   onRoomPropertyChanged?: (data: { roomId: string; updates: RoomPropertyUpdate; updatedAt: string }) => void;
+  onRoomDeleted?: (data: { roomId: string; deletedAt: string }) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onConnectionChange?: (connected: boolean) => void;
@@ -330,6 +331,12 @@ export function useSocket(options: UseSocketOptions = {}) {
       optionsRef.current.onRoomPropertyChanged?.(data);
     });
 
+    // Room removed - when room is deleted
+    socket.on('room-removed', (data: { roomId: string; deletedAt: string }) => {
+      console.log('[Socket] 🗑️ Room removed:', data.roomId);
+      optionsRef.current.onRoomDeleted?.(data);
+    });
+
     // Visibility change handler - reconnect when page becomes visible
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !socket.connected) {
@@ -412,6 +419,17 @@ export function useSocket(options: UseSocketOptions = {}) {
     }
   }, []);
 
+  // Emit room deleted - broadcast to all clients
+  const emitRoomDeleted = useCallback((roomId: string) => {
+    console.log('[Socket] Emitting room-deleted:', roomId, 'Connected:', socketRef.current?.connected);
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('room-deleted', { roomId });
+      console.log('[Socket] Emitted room-deleted successfully');
+    } else {
+      console.warn('[Socket] Cannot emit room-deleted - socket not connected');
+    }
+  }, []);
+
   // Manual reconnect
   const reconnect = useCallback(() => {
     if (socketRef.current && !socketRef.current.connected) {
@@ -431,6 +449,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     markAsRead,
     emitRoomRead,
     emitRoomPropertyUpdate,
+    emitRoomDeleted,
     reconnect,
     playNotificationSound,
   };

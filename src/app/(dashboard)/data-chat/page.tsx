@@ -541,13 +541,24 @@ export default function DataChatPage() {
     });
   }, []);
 
-  const { isConnected, connectionState, reconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate } = useSocket({
+  // Handle room deleted from other browsers
+  const handleRoomDeleted = useCallback((data: { roomId: string; deletedAt: string }) => {
+    console.log('[Chat] Room deleted:', data.roomId);
+    setRooms(prev => prev.filter(r => r.id !== data.roomId));
+    // If viewing the deleted room, clear selection
+    if (selectedRoomRef.current === data.roomId) {
+      setSelectedRoom(null);
+    }
+  }, []);
+
+  const { isConnected, connectionState, reconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate, emitRoomDeleted } = useSocket({
     onNewMessage: handleNewMessage,
     onNewRoom: handleNewRoom,
     onUserTyping: handleTypingEvent,
     onRoomReadUpdate: handleRoomReadSync,
     onRoomUpdate: handleRoomUpdate,
     onRoomPropertyChanged: handleRoomPropertyChanged,
+    onRoomDeleted: handleRoomDeleted,
   });
 
   // Store sendTyping in ref
@@ -801,6 +812,8 @@ export default function DataChatPage() {
         if (selectedRoom === roomId) {
           setSelectedRoom(null);
         }
+        // Broadcast to all other browsers via socket
+        emitRoomDeleted(roomId);
         return true;
       }
       return false;

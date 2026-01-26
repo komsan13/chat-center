@@ -112,6 +112,15 @@ app.prepare().then(() => {
       }
     });
 
+    // Room deleted - broadcast to ALL clients
+    socket.on('room-deleted', ({ roomId }) => {
+      if (roomId) {
+        console.log(`[Socket.IO] Room deleted: ${roomId}`);
+        // Broadcast to ALL clients including sender
+        io.emit('room-removed', { roomId, deletedAt: new Date().toISOString() });
+      }
+    });
+
     // Typing indicators
     socket.on('typing-start', ({ roomId, userName }) => {
       if (roomId) {
