@@ -944,6 +944,27 @@ export default function DataChatPage() {
       'choco': '🐻', 'rangers': '🦸', 'friends': '👥',
     };
 
+    // Compound phrases - check these first (multi-word expressions)
+    const compoundPhrases: { [key: string]: string } = {
+      'heart hands': '🫶', 'heart eyes': '😍', 'thumbs up': '👍', 'thumbs down': '👎',
+      'high five': '🙏', 'face palm': '🤦', 'rolling eyes': '🙄', 'mind blown': '🤯',
+      'crossed fingers': '🤞', 'rock on': '🤘', 'call me': '🤙', 'pinched fingers': '🤌',
+      'folded hands': '🙏', 'raised hands': '🙌', 'open hands': '👐', 'palms up': '🤲',
+      'writing hand': '✍️', 'nail polish': '💅', 'selfie': '🤳', 'flexed biceps': '💪',
+      'serious moon': '🌙😐', 'sick moon': '🌙🤒', 'pleading moon': '🌙🥺', 
+      'heart eyes moon': '🌙😍', 'love moon': '🌙😍', 'happy moon': '🌙😊',
+      'crying brown': '🐻😭', 'happy brown': '🐻😊', 'love brown': '🐻😍',
+      'crying cony': '🐰😭', 'happy cony': '🐰😊', 'love cony': '🐰😍',
+      'crying sally': '🐥😭', 'happy sally': '🐥😊', 'love sally': '🐥😍',
+      // More common expressions
+      'on fire': '🔥', 'broken heart': '💔', 'sparkling heart': '💖', 'beating heart': '💓',
+      'two hearts': '💕', 'growing heart': '💗', 'revolving hearts': '💞', 
+      'red heart': '❤️', 'orange heart': '🧡', 'yellow heart': '💛', 
+      'green heart': '💚', 'blue heart': '💙', 'purple heart': '💜',
+      'see no evil': '🙈', 'hear no evil': '🙉', 'speak no evil': '🙊',
+      'party popper': '🎉', 'confetti ball': '🎊', 'shooting star': '🌠',
+    };
+
     // Emotion/Action to emoji mapping
     const emotionEmojis: { [key: string]: string } = {
       'happy': '😊', 'sad': '😢', 'cry': '😢', 'crying': '😭', 'laugh': '😂', 'laughing': '😂',
@@ -951,17 +972,17 @@ export default function DataChatPage() {
       'shock': '😱', 'shocked': '😱', 'surprise': '😲', 'surprised': '😲', 'omg': '😱',
       'sleepy': '😴', 'sleep': '😴', 'tired': '😫', 'bored': '😑', 'shy': '🙈',
       'hello': '👋', 'hi': '👋', 'bye': '👋', 'wave': '👋', 'ok': '👌', 'okay': '👌',
-      'yes': '👍', 'no': '👎', 'thumbs up': '👍', 'thumbs down': '👎',
-      'clap': '👏', 'pray': '🙏', 'please': '🙏', 'thank': '🙏', 'thanks': '🙏',
-      'muscle': '💪', 'strong': '💪', 'flex': '💪', 'peace': '✌️', 'victory': '✌️',
-      'funny': '😄', 'lol': '🤣', 'rofl': '🤣', 'haha': '😂', 'cute': '🥰',
-      'what': '🤔', 'think': '🤔', 'thinking': '🤔', 'hmm': '🤔', 'wonder': '🤔',
-      'wow': '🤩', 'amazing': '🤩', 'yay': '🥳', 'party': '🎉', 'celebrate': '🎉',
-      'fire': '🔥', 'hot': '🔥', 'cold': '🥶', 'sick': '🤒', 'money': '💰', 'rich': '🤑',
-      'gift': '🎁', 'present': '🎁', 'star': '⭐', 'sparkle': '✨', 'shine': '✨',
-      'idea': '💡', 'bulb': '💡', 'coffee': '☕', 'tea': '🍵', 'cake': '🎂',
-      'good': '👍', 'great': '👍', 'nice': '👍', 'bad': '👎', 'work': '💼', 'home': '🏠',
-      'run': '🏃', 'running': '🏃', 'walk': '🚶', 'dance': '💃', 'dancing': '💃',
+      'yes': '👍', 'no': '👎', 'clap': '👏', 'pray': '🙏', 'please': '🙏', 
+      'thank': '🙏', 'thanks': '🙏', 'muscle': '💪', 'strong': '💪', 'flex': '💪', 
+      'peace': '✌️', 'victory': '✌️', 'funny': '😄', 'lol': '🤣', 'rofl': '🤣', 
+      'haha': '😂', 'cute': '🥰', 'what': '🤔', 'think': '🤔', 'thinking': '🤔', 
+      'hmm': '🤔', 'wonder': '🤔', 'wow': '🤩', 'amazing': '🤩', 'yay': '🥳', 
+      'party': '🎉', 'celebrate': '🎉', 'fire': '🔥', 'hot': '🔥', 'cold': '🥶', 
+      'sick': '🤒', 'money': '💰', 'rich': '🤑', 'gift': '🎁', 'present': '🎁', 
+      'star': '⭐', 'sparkle': '✨', 'shine': '✨', 'idea': '💡', 'bulb': '💡', 
+      'coffee': '☕', 'tea': '🍵', 'cake': '🎂', 'good': '👍', 'great': '👍', 
+      'nice': '👍', 'bad': '👎', 'work': '💼', 'home': '🏠', 'run': '🏃', 
+      'running': '🏃', 'walk': '🚶', 'dance': '💃', 'dancing': '💃',
       'eat': '🍽️', 'eating': '🍽️', 'hungry': '😋', 'yummy': '😋', 'delicious': '😋',
       'sticker': '📦', 'hands': '🙌', 'hand': '✋', 'fist': '✊', 'punch': '👊',
       'point': '👉', 'pointing': '👉', 'call': '📞', 'phone': '📱', 'camera': '📷',
@@ -972,19 +993,29 @@ export default function DataChatPage() {
       'dog': '🐶', 'bear': '🐻', 'rabbit': '🐰', 'bird': '🐦', 'fish': '🐟',
       'flower': '🌸', 'rose': '🌹', 'sun': '☀️', 'rain': '🌧️', 'snow': '❄️',
       'rainbow': '🌈', 'umbrella': '☂️', 'car': '🚗', 'bike': '🚲', 'plane': '✈️',
+      'banana': '🍌', 'apple': '🍎', 'orange': '🍊', 'grapes': '🍇', 'watermelon': '🍉',
+      'strawberry': '🍓', 'cherry': '🍒', 'peach': '🍑', 'mango': '🥭', 'pineapple': '🍍',
+      'pleading': '🥺', 'begging': '🥺', 'serious': '😐', 'neutral': '😐', 'straight': '😐',
+      'confused': '😕', 'worried': '😟', 'anxious': '😰', 'nervous': '😬', 'scared': '😨',
+      'crying out loud': '😭', 'tears of joy': '😂', 'rolling on floor': '🤣',
       // Thai keywords
       'ยิ้ม': '😊', 'หัวเราะ': '😂', 'ร้องไห้': '😢', 'โกรธ': '😠', 'รัก': '❤️',
       'ถูกใจ': '👍', 'ตกใจ': '😱', 'เศร้า': '😢', 'สับสน': '🤔', 'งง': '😕',
       'ขอบคุณ': '🙏', 'สวัสดี': '👋', 'บาย': '👋', 'โอเค': '👌', 'ดี': '👍',
     };
 
-    // First check exact matches in map (case-insensitive)
     const lowerText = text.toLowerCase().trim();
     
     // Try to match pattern like "(action character)" or "(action)"
     const stickerMatch = lowerText.match(/^\(([^)]+)\)$/);
     if (stickerMatch) {
-      const content = stickerMatch[1].toLowerCase();
+      const content = stickerMatch[1].toLowerCase().trim();
+      
+      // First check compound phrases
+      if (compoundPhrases[content]) {
+        return compoundPhrases[content];
+      }
+      
       const words = content.split(/\s+/);
       
       // Check if last word is a LINE character
@@ -994,7 +1025,11 @@ export default function DataChatPage() {
       if (characterEmoji && words.length > 1) {
         // It's "(action character)" format
         const action = words.slice(0, -1).join(' ');
-        const actionEmoji = emotionEmojis[action] || '';
+        // Check compound action first
+        if (compoundPhrases[action]) {
+          return characterEmoji + compoundPhrases[action];
+        }
+        const actionEmoji = emotionEmojis[action] || emotionEmojis[words[0]] || '';
         return characterEmoji + (actionEmoji || '');
       }
       
@@ -1002,16 +1037,15 @@ export default function DataChatPage() {
       const actionEmoji = emotionEmojis[content];
       if (actionEmoji) return actionEmoji;
       
-      // Check if any word matches an emotion
+      // Check individual words
       for (const word of words) {
         if (emotionEmojis[word]) {
-          const charEmoji = words.length > 1 ? (lineCharacters[words.find(w => lineCharacters[w]) || ''] || '') : '';
-          return charEmoji + emotionEmojis[word];
+          return emotionEmojis[word];
         }
       }
       
-      // Default: return a generic sticker emoji with the text
-      return '📦 ' + text;
+      // Default: return a generic sticker emoji
+      return '📦';
     }
     
     // Handle [sticker:xxx/xxx] format
