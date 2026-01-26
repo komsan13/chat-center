@@ -486,11 +486,24 @@ export default function DataChatPage() {
 
   const convertStickerText = (text: string): string => {
     const emojiMap: { [key: string]: string } = {
+      // Thai
       '(ยิ้ม)': '😊', '(หัวเราะ)': '😂', '(ร้องไห้)': '😢', '(โกรธ)': '😠', '(รัก)': '❤️',
       '(ถูกใจ)': '👍', '(ไม่ถูกใจ)': '👎', '(ตกใจ)': '😱', '(เศร้า)': '😞', '(สับสน)': '😕',
+      // English
       '(cool)': '😎', '(kiss)': '😘', '(wink)': '😉', '(happy)': '😄', '(sad)': '😔',
       '(angry)': '😡', '(love)': '💕', '(heart)': '❤️', '(star)': '⭐', '(fire)': '🔥',
       '(ok)': '👌', '(pray)': '🙏', '(clap)': '👏', '(muscle)': '💪', '(peace)': '✌️',
+      // Moon & Brown (LINE Characters)
+      '(funny Moon)': '🌝', '(laugh Moon)': '😆', '(cry Moon)': '😭', '(angry Moon)': '😤',
+      '(love Moon)': '😍', '(shock Moon)': '😲', '(sleepy Moon)': '😴', '(cool Moon)': '😎',
+      '(happy Moon)': '😊', '(sad Moon)': '😢', '(wink Moon)': '😜', '(shy Moon)': '🙈',
+      '(Brown)': '🐻', '(Cony)': '🐰', '(Sally)': '🐥', '(James)': '👱', '(Boss)': '🦁',
+      '(funny Brown)': '🐻', '(laugh Brown)': '🐻', '(love Brown)': '🐻', '(cry Brown)': '🐻',
+      '(funny Cony)': '🐰', '(laugh Cony)': '🐰', '(love Cony)': '🐰', '(cry Cony)': '🐰',
+      // More expressions
+      '(lol)': '🤣', '(omg)': '😱', '(wow)': '🤩', '(yay)': '🥳', '(no)': '🙅',
+      '(yes)': '🙆', '(think)': '🤔', '(idea)': '💡', '(sleep)': '😴', '(sick)': '🤒',
+      '(money)': '💰', '(gift)': '🎁', '(party)': '🎉', '(cake)': '🎂', '(coffee)': '☕',
     };
     let result = text;
     for (const [pattern, emoji] of Object.entries(emojiMap)) {
