@@ -67,12 +67,16 @@ export default function DataChatPage() {
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [typingUsers, setTypingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout } }>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedRoomRef = useRef<string | null>(null);
   const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const soundUnlockedRef = useRef(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false);
+  const sendTypingRef = useRef<((roomId: string, userName: string, isTyping: boolean) => void) | null>(null);
 
   // Initialize notification audio on mount
   useEffect(() => {
@@ -113,6 +117,22 @@ export default function DataChatPage() {
   }, []);
 
   useEffect(() => { selectedRoomRef.current = selectedRoom; }, [selectedRoom]);
+
+  // Fetch current user info
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentUser({ name: data.name || data.username, username: data.username });
+        }
+      } catch (error) {
+        console.error('Failed to fetch current user:', error);
+      }
+    };
+    fetchCurrentUser();
+  }, []);
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
 
@@ -208,6 +228,47 @@ export default function DataChatPage() {
     }
   }, []);
 
+  // Handle typing indicator
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMessage(value);
+
+    // Send typing indicator
+    if (selectedRoom && currentUser && sendTypingRef.current) {
+      // If not currently typing, send typing start
+      if (!isTypingRef.current && value.length > 0) {
+        isTypingRef.current = true;
+        sendTypingRef.current(selectedRoom, currentUser.name, true);
+        console.log('[Typing] Started typing:', currentUser.name);
+      }
+
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Set timeout to stop typing after 2 seconds of no input
+      typingTimeoutRef.current = setTimeout(() => {
+        if (isTypingRef.current && selectedRoom && currentUser && sendTypingRef.current) {
+          isTypingRef.current = false;
+          sendTypingRef.current(selectedRoom, currentUser.name, false);
+          console.log('[Typing] Stopped typing:', currentUser.name);
+        }
+      }, 2000);
+    }
+  }, [selectedRoom, currentUser]);
+
+  // Stop typing when message is sent
+  const stopTyping = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (isTypingRef.current && selectedRoom && currentUser && sendTypingRef.current) {
+      isTypingRef.current = false;
+      sendTypingRef.current(selectedRoom, currentUser.name, false);
+    }
+  }, [selectedRoom, currentUser]);
+
   const { isConnected, connectionState, joinRoom, markAsRead, playNotificationSound, reconnect, sendTyping } = useSocket({
     onNewMessage: (msg) => {
       const message: Message = { ...msg, content: msg.content || '' };
@@ -251,6 +312,11 @@ export default function DataChatPage() {
     enableSound: true,
   });
 
+  // Update sendTypingRef when sendTyping changes
+  useEffect(() => {
+    sendTypingRef.current = sendTyping;
+  }, [sendTyping]);
+
   const handleNewMessage = useCallback((msg: Message) => {
     if (selectedRoomRef.current === msg.roomId) {
       setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
@@ -279,6 +345,7 @@ export default function DataChatPage() {
   const sendMessage = async (content: string) => {
     if (!selectedRoom || isSending || !content.trim()) return;
     setIsSending(true);
+    stopTyping(); // Stop typing when sending message
     try {
       const response = await fetch('/api/chat/send', {
         method: 'POST',
@@ -873,7 +940,7 @@ export default function DataChatPage() {
                 <input
                   type="text"
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
                   placeholder="พิมพ์ข้อความ..."
                   style={{ flex: 1, height: 40, border: 'none', background: 'transparent', color: colors.textPrimary, fontSize: 14, outline: 'none' }}

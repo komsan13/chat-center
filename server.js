@@ -97,13 +97,17 @@ app.prepare().then(() => {
     // Typing indicators
     socket.on('typing-start', ({ roomId, userName }) => {
       if (roomId) {
+        console.log(`[Socket.IO] Typing start: ${userName} in room ${roomId}`);
         socket.to(roomId).emit('user-typing', { roomId, userName, isTyping: true });
+        socket.to('all-rooms').emit('user-typing', { roomId, userName, isTyping: true });
       }
     });
 
     socket.on('typing-stop', ({ roomId, userName }) => {
       if (roomId) {
+        console.log(`[Socket.IO] Typing stop: ${userName} in room ${roomId}`);
         socket.to(roomId).emit('user-typing', { roomId, userName, isTyping: false });
+        socket.to('all-rooms').emit('user-typing', { roomId, userName, isTyping: false });
       }
     });
 
