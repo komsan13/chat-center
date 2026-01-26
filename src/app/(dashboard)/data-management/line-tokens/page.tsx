@@ -433,12 +433,14 @@ export default function LineTokensPage() {
                       </td>
                       <td style={{ padding: '16px' }}>
                         {token.websiteName ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Globe style={{ width: '16px', height: '16px', color: colors.textMuted }} />
-                            <span style={{ fontSize: '14px', color: colors.text }}>{token.websiteName}</span>
-                          </div>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }}>
+                            <Globe style={{ width: '14px', height: '14px' }} />
+                            {token.websiteName}
+                          </span>
                         ) : (
-                          <span style={{ fontSize: '14px', color: colors.textFaded }}>-</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: colors.inputBg, color: colors.textFaded }}>
+                            {language === 'th' ? 'ไม่ระบุ' : 'None'}
+                          </span>
                         )}
                       </td>
                       <td style={{ padding: '16px' }}>
