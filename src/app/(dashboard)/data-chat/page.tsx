@@ -831,6 +831,19 @@ export default function DataChatPage() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
+                {[Search, Settings].map((Icon, i) => (
+                  <button
+                    key={i}
+                    onClick={() => i === 1 && setShowRightPanel(!showRightPanel)}
+                    style={{
+                      width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
+                      background: colors.bgCard, color: colors.textSecondary, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <Icon size={18} />
+                  </button>
+                ))}
                 {/* Close chat button */}
                 <button 
                   onClick={() => setSelectedRoom(null)} 
@@ -843,13 +856,6 @@ export default function DataChatPage() {
                 >
                   <X size={18} />
                 </button>
-                {[Phone, Video, Search, MoreVertical].map((Icon, i) => (
-                  <button key={i} onClick={() => i === 3 && setShowRightPanel(!showRightPanel)} style={{
-                    width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
-                    background: colors.bgCard, color: colors.textSecondary, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}><Icon size={18} /></button>
-                ))}
               </div>
             </div>
 
