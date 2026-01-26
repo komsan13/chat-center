@@ -526,7 +526,19 @@ export default function DataChatPage() {
     status?: 'active' | 'archived' | 'blocked' | 'spam';
   }; updatedAt: string }) => {
     console.log('[Chat] Room property changed:', data.roomId, data.updates);
-    setRooms(prev => prev.map(r => r.id === data.roomId ? { ...r, ...data.updates } : r));
+    setRooms(prev => {
+      const updatedRooms = prev.map(r => r.id === data.roomId ? { ...r, ...data.updates } : r);
+      // Re-sort if isPinned changed
+      if (data.updates.isPinned !== undefined) {
+        updatedRooms.sort((a, b) => {
+          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+          const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+          const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+          return timeB - timeA;
+        });
+      }
+      return updatedRooms;
+    });
   }, []);
 
   const { isConnected, connectionState, reconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate } = useSocket({
@@ -717,8 +729,20 @@ export default function DataChatPage() {
       });
       
       if (response.ok) {
-        // Update local state immediately
-        setRooms(prev => prev.map(r => r.id === roomId ? { ...r, ...updates } : r));
+        // Update local state and re-sort if isPinned changed
+        setRooms(prev => {
+          const updatedRooms = prev.map(r => r.id === roomId ? { ...r, ...updates } : r);
+          // Re-sort if isPinned changed
+          if (updates.isPinned !== undefined) {
+            updatedRooms.sort((a, b) => {
+              if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+              const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+              const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+              return timeB - timeA;
+            });
+          }
+          return updatedRooms;
+        });
         // Broadcast to all other browsers via socket
         emitRoomPropertyUpdate(roomId, updates);
         return true;
