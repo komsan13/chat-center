@@ -437,11 +437,24 @@ export default function DataChatPage() {
       
       if (response.ok) {
         const data = await response.json();
-        setMessages(prev => prev.map(m => m.id === tempId ? { ...data.message, status: 'sent' } : m));
+        const sentMessage = { ...data.message, status: 'sent' };
+        
+        // Update messages list
+        setMessages(prev => prev.map(m => m.id === tempId ? sentMessage : m));
+        
+        // Update cache
         if (messagesCacheRef.current.has(selectedRoom)) {
           const cached = messagesCacheRef.current.get(selectedRoom)!;
-          messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempId ? { ...data.message, status: 'sent' } : m));
+          messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempId ? sentMessage : m));
         }
+        
+        // Update room's lastMessage in rooms list
+        setRooms(prev => prev.map(room => 
+          room.id === selectedRoom 
+            ? { ...room, lastMessage: sentMessage, lastMessageAt: sentMessage.createdAt }
+            : room
+        ));
+        
         // Scroll to bottom after successful send
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
