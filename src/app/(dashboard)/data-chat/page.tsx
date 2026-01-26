@@ -331,7 +331,9 @@ export default function DataChatPage() {
       room.lastMessageAt = msg.createdAt;
       
       // Only increment unread and play sound for incoming user messages
+      // Note: The actual unreadCount from server will come via room-update event
       if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user') {
+        // Increment locally for immediate UI feedback
         room.unreadCount = (room.unreadCount || 0) + 1;
         playSound();
       }
