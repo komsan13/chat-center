@@ -366,7 +366,8 @@ export default function DataChatPage() {
     }
   }, []);
 
-  const handleRoomReadSync = useCallback((data: { roomId: string }) => {
+  const handleRoomReadSync = useCallback((data: { roomId: string; readAt?: string }) => {
+    // Update message statuses to 'read'
     setMessages(prev => prev.map(m => 
       m.roomId === data.roomId && m.sender === 'agent' ? { ...m, status: 'read' } : m
     ));
@@ -376,6 +377,11 @@ export default function DataChatPage() {
         m.sender === 'agent' ? { ...m, status: 'read' } : m
       ));
     }
+    
+    // Update unreadCount to 0 for this room across all browsers
+    setRooms(prev => prev.map(room => 
+      room.id === data.roomId ? { ...room, unreadCount: 0 } : room
+    ));
   }, []);
 
   // Handle room update from socket - update rooms list when other browsers send messages
@@ -414,7 +420,7 @@ export default function DataChatPage() {
     });
   }, []);
 
-  const { isConnected, connectionState, reconnect, sendTyping, markAsRead } = useSocket({
+  const { isConnected, connectionState, reconnect, sendTyping, markAsRead, emitRoomRead } = useSocket({
     onNewMessage: handleNewMessage,
     onUserTyping: handleTypingEvent,
     onRoomReadUpdate: handleRoomReadSync,
@@ -437,9 +443,19 @@ export default function DataChatPage() {
       localStorage.setItem('selectedChatRoom', selectedRoom);
       selectedRoomRef.current = selectedRoom;
       fetchMessages(selectedRoom);
+      
+      // Mark as read locally
       if (markAsRead) markAsRead(selectedRoom, []);
+      
+      // Broadcast room read to all clients
+      if (emitRoomRead) emitRoomRead(selectedRoom);
+      
+      // Update local unreadCount immediately
+      setRooms(prev => prev.map(room => 
+        room.id === selectedRoom ? { ...room, unreadCount: 0 } : room
+      ));
     }
-  }, [selectedRoom, fetchMessages, markAsRead]);
+  }, [selectedRoom, fetchMessages, markAsRead, emitRoomRead]);
 
   // Auto-scroll
   useEffect(() => {
