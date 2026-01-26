@@ -345,22 +345,40 @@ export default function DataChatPage() {
     });
   }, [playSound]);
 
+  // Reference to current user for typing check
+  const currentUserRef = useRef<{ name: string } | null>(null);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
   const handleTypingEvent = useCallback((data: { roomId: string; userName: string; isTyping: boolean }) => {
+    // Don't show typing indicator for yourself
+    if (currentUserRef.current && data.userName === currentUserRef.current.name) {
+      return;
+    }
+    
+    console.log('[Typing Event]', data);
     if (data.isTyping) {
       setTypingUsers(prev => {
-        if (prev[data.roomId]?.timeout) clearTimeout(prev[data.roomId].timeout);
+        // Clear existing timeout if any
+        if (prev[data.roomId]?.timeout) {
+          clearTimeout(prev[data.roomId].timeout);
+        }
+        // Set new timeout to auto-clear after 5 seconds (in case stop event is missed)
         const timeout = setTimeout(() => {
           setTypingUsers(p => {
             const newState = { ...p };
             delete newState[data.roomId];
             return newState;
           });
-        }, 3000);
+        }, 5000);
         return { ...prev, [data.roomId]: { userName: data.userName, timeout } };
       });
     } else {
       setTypingUsers(prev => {
-        if (prev[data.roomId]?.timeout) clearTimeout(prev[data.roomId].timeout);
+        if (prev[data.roomId]?.timeout) {
+          clearTimeout(prev[data.roomId].timeout);
+        }
         const newState = { ...prev };
         delete newState[data.roomId];
         return newState;
@@ -622,17 +640,25 @@ export default function DataChatPage() {
   // Emoji list
   const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😱', '🤔', '👏', '💪', '🙌', '😎', '🥳', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🧾', '📝', '🎁', '🏆'];
 
-  // Typing indicator component
-  const TypingIndicator = () => (
+  // Typing indicator component - shows who is typing
+  const TypingIndicator = ({ userName }: { userName?: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
       <div style={{ width: 36, height: 36, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <User size={16} style={{ color: colors.textMuted }} />
       </div>
-      <div style={{ padding: '12px 16px', borderRadius: 18, background: colors.bubbleIncoming, border: `1px solid ${colors.border}` }}>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {[0, 1, 2].map((i) => (
-            <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: colors.textMuted, animation: `typingDot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
-          ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {userName && (
+          <span style={{ fontSize: 11, color: colors.textMuted, marginLeft: 4 }}>{userName}</span>
+        )}
+        <div style={{ padding: '12px 16px', borderRadius: 18, background: colors.bubbleIncoming, border: `1px solid ${colors.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 12, color: colors.textMuted }}>กำลังพิมพ์</span>
+            <div style={{ display: 'flex', gap: 3 }}>
+              {[0, 1, 2].map((i) => (
+                <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: colors.accent, animation: `typingDot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1042,7 +1068,9 @@ export default function DataChatPage() {
                       </div>
                     );
                   })}
-                  {selectedRoom && typingUsers[selectedRoom] && <TypingIndicator />}
+                  {selectedRoom && typingUsers[selectedRoom] && (
+                    <TypingIndicator userName={typingUsers[selectedRoom].userName} />
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               )}
