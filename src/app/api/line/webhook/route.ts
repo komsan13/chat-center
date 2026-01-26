@@ -359,6 +359,9 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
   console.log(`[LINE Webhook] Broadcasting room-update with unreadCount: ${newUnreadCount}`);
   emitChatEvent('room-update', {
     id: room.id,
+    displayName: room.displayName,
+    pictureUrl: room.pictureUrl,
+    status: room.status,
     lastMessage: messageData,
     lastMessageAt: now,
     unreadCount: newUnreadCount,

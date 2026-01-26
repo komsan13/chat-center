@@ -427,10 +427,38 @@ export default function DataChatPage() {
   }, []);
 
   // Handle room update from socket - update rooms list when other browsers send messages
-  const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number }) => {
+  const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number; displayName?: string; pictureUrl?: string; status?: string }) => {
+    console.log('[Chat] Room update received:', data.id);
+    
     setRooms(prev => {
       const roomIndex = prev.findIndex(r => r.id === data.id);
-      if (roomIndex === -1) return prev;
+      
+      // If room doesn't exist and we have enough info, add it
+      if (roomIndex === -1) {
+        // Only add if it's not spam and we have display name
+        if (data.status === 'spam') return prev;
+        
+        // Create a minimal room entry
+        const newRoom: ChatRoom = {
+          id: data.id,
+          lineUserId: '',
+          displayName: data.displayName || 'New Customer',
+          pictureUrl: data.pictureUrl,
+          lastMessage: data.lastMessage,
+          lastMessageAt: data.lastMessageAt,
+          unreadCount: data.unreadCount || 1,
+          isPinned: false,
+          isMuted: false,
+          tags: [],
+          status: data.status || 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        console.log('[Chat] Adding new room from update:', newRoom.id, newRoom.displayName);
+        playSound();
+        return [newRoom, ...prev];
+      }
       
       const updatedRooms = [...prev];
       const room = { ...updatedRooms[roomIndex] };
@@ -460,7 +488,7 @@ export default function DataChatPage() {
       
       return updatedRooms;
     });
-  }, []);
+  }, [playSound]);
 
   // Handle new room from socket (when a new customer starts chatting)
   const handleNewRoom = useCallback((room: ChatRoom) => {
