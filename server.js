@@ -86,11 +86,20 @@ app.prepare().then(() => {
       }
     });
 
-    // Message read acknowledgment
+    // Message read acknowledgment - broadcast to ALL clients
     socket.on('message-read', ({ roomId, messageIds }) => {
       if (roomId && messageIds) {
         io.to(roomId).emit('messages-read', { roomId, messageIds });
         io.to('all-rooms').emit('messages-read', { roomId, messageIds });
+      }
+    });
+
+    // Room read status - broadcast when someone opens a room
+    socket.on('room-read', ({ roomId }) => {
+      if (roomId) {
+        console.log(`[Socket.IO] Room read: ${roomId} by ${socket.id}`);
+        // Broadcast to ALL clients that this room has been read
+        io.emit('room-read-update', { roomId, readAt: new Date().toISOString() });
       }
     });
 

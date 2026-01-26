@@ -75,6 +75,9 @@ export default function DataChatPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   
+  // Message cache - store messages per room for instant loading
+  const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Initialize selectedRoomRef from localStorage immediately
   const selectedRoomRef = useRef<string | null>(
@@ -189,12 +192,34 @@ export default function DataChatPage() {
     }
   }, [filterStatus, searchTerm]);
 
-  const fetchMessages = useCallback(async (roomId: string) => {
+  const fetchMessages = useCallback(async (roomId: string, useCache = true) => {
+    // Check cache first for instant loading
+    if (useCache && messagesCacheRef.current.has(roomId)) {
+      const cached = messagesCacheRef.current.get(roomId)!;
+      setMessages(cached);
+      setIsLoadingMessages(false);
+      // Still fetch in background to get latest
+      fetch(`/api/chat/rooms/${roomId}/messages`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            messagesCacheRef.current.set(roomId, data);
+            setMessages(data);
+          }
+        })
+        .catch(() => {});
+      // Mark as read
+      fetch(`/api/chat/rooms/${roomId}/messages`, { method: 'POST' }).catch(() => {});
+      return;
+    }
+
     setIsLoadingMessages(true);
     try {
       const response = await fetch(`/api/chat/rooms/${roomId}/messages`);
       if (response.ok) {
         const data = await response.json();
+        // Cache the messages
+        messagesCacheRef.current.set(roomId, data);
         setMessages(data);
         await fetch(`/api/chat/rooms/${roomId}/messages`, { method: 'POST' });
         setRooms(prev => prev.map(r => r.id === roomId ? { ...r, unreadCount: 0 } : r));
@@ -285,10 +310,17 @@ export default function DataChatPage() {
     }
   }, [selectedRoom, currentUser]);
 
-  const { isConnected, connectionState, joinRoom, markAsRead, playNotificationSound, reconnect, sendTyping } = useSocket({
+  const { isConnected, connectionState, joinRoom, markAsRead, emitRoomRead, playNotificationSound, reconnect, sendTyping } = useSocket({
     onNewMessage: (msg) => {
       const message: Message = { ...msg, content: msg.content || '' };
       handleNewMessage(message);
+      // Update cache with new message
+      const cached = messagesCacheRef.current.get(msg.roomId);
+      if (cached) {
+        if (!cached.some(m => m.id === msg.id)) {
+          messagesCacheRef.current.set(msg.roomId, [...cached, message]);
+        }
+      }
     },
     onNewRoom: (room) => {
       const newRoom: ChatRoom = {
@@ -322,6 +354,10 @@ export default function DataChatPage() {
         }
         return newState;
       });
+    },
+    // Real-time sync when another browser marks room as read
+    onRoomReadUpdate: ({ roomId }) => {
+      setRooms(prev => prev.map(r => r.id === roomId ? { ...r, unreadCount: 0 } : r));
     },
     enableSound: true,
     currentRoomId: selectedRoom, // Pass current room to skip sound notification
@@ -363,6 +399,23 @@ export default function DataChatPage() {
     if (!selectedRoom || isSending || !content.trim()) return;
     setIsSending(true);
     stopTyping(); // Stop typing when sending message
+    
+    // Optimistic UI: add message immediately before server confirms
+    const tempMessage: Message = {
+      id: `temp-${Date.now()}`,
+      roomId: selectedRoom,
+      messageType: 'text',
+      content,
+      sender: 'agent',
+      senderName: currentUser?.name || 'Agent',
+      status: 'sending',
+      createdAt: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, tempMessage]);
+    setMessage('');
+    setShowQuickReplies(false);
+    setShowEmojiPicker(false);
+    
     try {
       const response = await fetch('/api/chat/send', {
         method: 'POST',
@@ -371,10 +424,13 @@ export default function DataChatPage() {
       });
       const result = await response.json();
       if (result.success && result.message) {
-        setMessages(prev => [...prev, result.message]);
-        setMessage('');
-        setShowQuickReplies(false);
-        setShowEmojiPicker(false);
+        // Replace temp message with real one
+        setMessages(prev => prev.map(m => m.id === tempMessage.id ? result.message : m));
+        // Update cache
+        const cached = messagesCacheRef.current.get(selectedRoom);
+        if (cached) {
+          messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempMessage.id ? result.message : m));
+        }
         // Update last message in room list
         setRooms(prev => {
           const updated = prev.map(r => 
@@ -388,9 +444,14 @@ export default function DataChatPage() {
             return new Date(b.lastMessageAt || b.createdAt).getTime() - new Date(a.lastMessageAt || a.createdAt).getTime();
           });
         });
+      } else {
+        // Remove temp message on failure
+        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
       }
     } catch (error) {
       console.error('Send error:', error);
+      // Remove temp message on error
+      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
     } finally {
       setIsSending(false);
     }
@@ -409,14 +470,17 @@ export default function DataChatPage() {
 
   useEffect(() => { fetchRooms(); }, [fetchRooms]);
   
-  // เมื่อ selectedRoom เปลี่ยน: fetch messages และ mark as read ทันที
+  // เมื่อ selectedRoom เปลี่ยน: fetch messages และ mark as read ทันที + broadcast ไป browser อื่น
   useEffect(() => { 
     if (selectedRoom) {
-      // Mark as read ทันทีเมื่อเข้าห้อง
+      // Mark as read ทันทีเมื่อเข้าห้อง (optimistic UI)
       setRooms(prev => prev.map(r => r.id === selectedRoom ? { ...r, unreadCount: 0 } : r));
+      // Fetch messages (uses cache for instant loading)
       fetchMessages(selectedRoom); 
+      // Broadcast to other browsers that this room has been read
+      emitRoomRead(selectedRoom);
     }
-  }, [selectedRoom, fetchMessages]);
+  }, [selectedRoom, fetchMessages, emitRoomRead]);
   
   // Scroll to latest message เมื่อ messages เปลี่ยน
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);

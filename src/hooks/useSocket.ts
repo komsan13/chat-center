@@ -43,6 +43,7 @@ interface UseSocketOptions {
   onNewRoom?: (room: ChatRoom) => void;
   onMessagesRead?: (data: { roomId: string; messageIds: string[] }) => void;
   onUserTyping?: (data: { roomId: string; userName: string; isTyping: boolean }) => void;
+  onRoomReadUpdate?: (data: { roomId: string; readAt: string }) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onConnectionChange?: (connected: boolean) => void;
@@ -294,6 +295,12 @@ export function useSocket(options: UseSocketOptions = {}) {
       optionsRef.current.onUserTyping?.(data);
     });
 
+    // Room read update - when another user reads a room
+    socket.on('room-read-update', (data: { roomId: string; readAt: string }) => {
+      console.log('[Socket] 📖 Room read update:', data.roomId);
+      optionsRef.current.onRoomReadUpdate?.(data);
+    });
+
     // Visibility change handler - reconnect when page becomes visible
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !socket.connected) {
@@ -358,6 +365,13 @@ export function useSocket(options: UseSocketOptions = {}) {
     }
   }, []);
 
+  // Emit room read event - broadcast to all clients
+  const emitRoomRead = useCallback((roomId: string) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('room-read', { roomId });
+    }
+  }, []);
+
   // Manual reconnect
   const reconnect = useCallback(() => {
     if (socketRef.current && !socketRef.current.connected) {
@@ -375,6 +389,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     leaveRoom,
     sendTyping,
     markAsRead,
+    emitRoomRead,
     reconnect,
     playNotificationSound,
   };
