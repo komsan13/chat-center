@@ -158,46 +158,46 @@ export default function DataChatPage() {
     bgTertiary: isDark ? '#2A313C' : '#f1f5f9',
     bgCard: isDark ? '#23262B' : '#ffffff',
     bgHover: isDark ? '#2A313C' : '#f1f5f9',
-    bgActive: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)',
+    bgActive: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)',
     bgChat: isDark ? '#1D1E24' : '#f1f5f9',
     bgInput: isDark ? '#1D1E24' : '#ffffff',
-    // No borders - use shadows instead
-    border: 'transparent',
-    borderLight: 'transparent',
-    borderAccent: isDark ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)',
+    // Borders - Subtle 1px borders
+    border: isDark ? '#2A313C' : '#e2e8f0',
+    borderLight: isDark ? '#3A414C' : '#cbd5e1',
+    borderAccent: isDark ? 'rgba(34, 197, 94, 0.4)' : 'rgba(34, 197, 94, 0.3)',
     // Typography - High contrast for readability
     textPrimary: isDark ? '#ffffff' : '#1e293b',
     textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b',
     textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#94a3b8',
-    // Brand Colors - Emerald accent (matching main theme)
-    accent: '#10b981',
-    accentHover: '#059669',
-    accentLight: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
-    accentGradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    // Brand Colors - Green accent (matching main theme #22c55e)
+    accent: '#22c55e',
+    accentHover: '#16a34a',
+    accentLight: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+    accentGradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
     // Chat Bubbles
     bubbleAgent: isDark 
-      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-      : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+      ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+      : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
     bubbleUser: isDark ? '#2A313C' : '#ffffff',
-    bubbleUserBorder: 'transparent',
+    bubbleUserBorder: isDark ? '#3A414C' : '#e2e8f0',
     // Status Colors
-    online: '#10b981',
+    online: '#22c55e',
     warning: '#f59e0b',
     danger: '#ef4444',
     link: '#3b82f6',
-    // Shadows - Soft and subtle
+    // Shadows - Very light and subtle
     shadow: isDark 
-      ? '0 4px 16px rgba(0,0,0,0.25)'
-      : '0 4px 16px rgba(0,0,0,0.06)',
-    shadowSm: isDark 
-      ? '0 2px 8px rgba(0,0,0,0.2)'
+      ? '0 2px 8px rgba(0,0,0,0.12)'
       : '0 2px 8px rgba(0,0,0,0.04)',
+    shadowSm: isDark 
+      ? '0 1px 4px rgba(0,0,0,0.08)'
+      : '0 1px 4px rgba(0,0,0,0.03)',
     shadowLg: isDark 
-      ? '0 8px 24px rgba(0,0,0,0.35)'
-      : '0 8px 24px rgba(0,0,0,0.08)',
+      ? '0 4px 12px rgba(0,0,0,0.15)'
+      : '0 4px 12px rgba(0,0,0,0.06)',
     shadowInset: isDark
-      ? 'inset 0 1px 3px rgba(0,0,0,0.2)'
-      : 'inset 0 1px 3px rgba(0,0,0,0.05)',
+      ? 'inset 0 1px 2px rgba(0,0,0,0.1)'
+      : 'inset 0 1px 2px rgba(0,0,0,0.03),
   }), [isDark]);
 
   const fetchRooms = useCallback(async () => {
@@ -675,14 +675,15 @@ export default function DataChatPage() {
       background: colors.bgPrimary,
       borderRadius: 16,
       overflow: 'hidden',
-      boxShadow: colors.shadowLg,
+      border: `1px solid ${colors.border}`,
+      boxShadow: colors.shadowSm,
     }}>
       
       {/* LEFT SIDEBAR */}
       <div style={{
         width: 360,
         background: colors.bgSecondary,
-        boxShadow: '4px 0 12px rgba(0,0,0,0.1)',
+        borderRight: `1px solid ${colors.border}`,
         display: 'flex',
         flexDirection: 'column',
         zIndex: 2,
@@ -691,18 +692,18 @@ export default function DataChatPage() {
         <div style={{ 
           padding: '16px 20px', 
           background: colors.bgSecondary, 
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          borderBottom: `1px solid ${colors.border}`,
         }}>
           {/* Filter Row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
             <button style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
-              background: colors.bgTertiary, border: 'none', borderRadius: 10,
+              background: colors.bgTertiary, border: `1px solid ${colors.border}`, borderRadius: 10,
               color: colors.textPrimary, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              transition: 'all 0.2s ease', boxShadow: colors.shadowSm,
+              transition: 'all 0.2s ease',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.accent}`; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.boxShadow = colors.shadowSm; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.accent; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
             >
               <Filter size={16} style={{ color: colors.accent }} />
               <span>All</span>
@@ -716,12 +717,12 @@ export default function DataChatPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
                   width: '100%', height: 42, paddingLeft: 42, paddingRight: 16,
-                  borderRadius: 10, border: 'none',
+                  borderRadius: 10, border: `1px solid ${colors.border}`,
                   background: colors.bgInput, color: colors.textPrimary, fontSize: 14, outline: 'none',
-                  transition: 'all 0.2s ease', boxShadow: colors.shadowInset,
+                  transition: 'all 0.2s ease',
                 }}
-                onFocus={(e) => { e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.accent}`; }}
-                onBlur={(e) => { e.currentTarget.style.boxShadow = colors.shadowInset; }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; }}
               />
             </div>
           </div>
@@ -940,37 +941,37 @@ export default function DataChatPage() {
               <div style={{ display: 'flex', gap: 10 }}>
                 {/* Action Buttons - Premium Design */}
                 <button style={{
-                  padding: '10px 18px', borderRadius: 10, border: 'none',
+                  padding: '10px 18px', borderRadius: 10, border: `1px solid ${colors.border}`,
                   background: colors.bgTertiary, color: colors.link, fontSize: 13, fontWeight: 600,
                   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                  transition: 'all 0.2s ease', boxShadow: colors.shadowSm,
+                  transition: 'all 0.2s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.link}`; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.boxShadow = colors.shadowSm; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.link; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
                 >
                   <Clock size={15} />
                   Follow up
                 </button>
                 <button style={{
-                  padding: '10px 18px', borderRadius: 10, border: 'none',
+                  padding: '10px 18px', borderRadius: 10, border: `1px solid ${colors.border}`,
                   background: colors.bgTertiary, color: colors.accent, fontSize: 13, fontWeight: 600,
                   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                  transition: 'all 0.2s ease', boxShadow: colors.shadowSm,
+                  transition: 'all 0.2s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = colors.accentLight; e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.accent}`; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.boxShadow = colors.shadowSm; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = colors.accentLight; e.currentTarget.style.borderColor = colors.accent; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
                 >
                   <Check size={15} />
                   Resolve
                 </button>
                 <button style={{
-                  padding: '10px 18px', borderRadius: 10, border: 'none',
+                  padding: '10px 18px', borderRadius: 10, border: `1px solid ${colors.border}`,
                   background: colors.bgTertiary, color: colors.textSecondary, fontSize: 13, fontWeight: 600,
                   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                  transition: 'all 0.2s ease', boxShadow: colors.shadowSm,
+                  transition: 'all 0.2s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.textMuted}`; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.boxShadow = colors.shadowSm; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.textMuted; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
                 >
                   <Search size={15} />
                   Search
@@ -978,11 +979,11 @@ export default function DataChatPage() {
                 <button
                   onClick={() => setShowRightPanel(!showRightPanel)}
                   style={{
-                    width: 42, height: 42, borderRadius: 10, border: 'none',
+                    width: 42, height: 42, borderRadius: 10, border: `1px solid ${colors.border}`,
                     background: showRightPanel ? colors.accentLight : colors.bgTertiary, 
                     color: showRightPanel ? colors.accent : colors.textSecondary, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s ease', boxShadow: colors.shadowSm,
+                    transition: 'all 0.2s ease',
                   }}
                   onMouseEnter={(e) => { if (!showRightPanel) { e.currentTarget.style.background = colors.bgHover; } }}
                   onMouseLeave={(e) => { if (!showRightPanel) { e.currentTarget.style.background = colors.bgTertiary; } }}
@@ -1102,7 +1103,7 @@ export default function DataChatPage() {
 
             {/* Quick Replies */}
             {showQuickReplies && (
-              <div style={{ padding: '12px 24px', background: colors.bgSecondary, boxShadow: '0 -2px 12px rgba(0,0,0,0.08)' }}>
+              <div style={{ padding: '12px 24px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ข้อความด่วน</span>
                   <button onClick={() => setShowQuickReplies(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer', padding: 4 }}><X size={16} /></button>
@@ -1110,13 +1111,13 @@ export default function DataChatPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {quickReplies.map((reply) => (
                     <button key={reply.id} onClick={() => sendMessage(reply.label)} style={{
-                      padding: '10px 16px', borderRadius: 12, border: 'none',
+                      padding: '10px 16px', borderRadius: 12, border: `1px solid ${colors.border}`,
                       background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 8, boxShadow: colors.shadowSm,
+                      display: 'flex', alignItems: 'center', gap: 8,
                       transition: 'all 0.2s ease',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.accent}`; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.boxShadow = colors.shadowSm; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.accent; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
                     >
                       <span>{reply.icon}</span>
                       <span>{reply.label.length > 35 ? reply.label.substring(0, 35) + '...' : reply.label}</span>
@@ -1131,7 +1132,7 @@ export default function DataChatPage() {
               <div style={{ 
                 padding: '12px 20px', 
                 background: colors.bgSecondary, 
-                boxShadow: '0 -2px 12px rgba(0,0,0,0.08)',
+                borderTop: `1px solid ${colors.border}`,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Emoji</span>
@@ -1162,7 +1163,7 @@ export default function DataChatPage() {
             )}
 
             {/* Input - Premium Design */}
-            <div style={{ padding: '16px 24px 20px', background: colors.bgSecondary, boxShadow: '0 -4px 16px rgba(0,0,0,0.08)' }}>
+            <div style={{ padding: '16px 24px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
               {/* Hint text */}
               <div style={{ marginBottom: 10, fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>
                 <span style={{ color: colors.textSecondary }}>Enter</span> to send • <span style={{ color: colors.textSecondary }}>Shift + Enter</span> for new line
@@ -1178,14 +1179,13 @@ export default function DataChatPage() {
                     placeholder="Type your message..."
                     style={{ 
                       width: '100%', minHeight: 48, padding: '14px 18px',
-                      border: 'none', borderRadius: 12,
+                      border: `1px solid ${colors.border}`, borderRadius: 12,
                       background: colors.bgInput, color: colors.textPrimary, fontSize: 14, outline: 'none',
                       resize: 'none',
                       transition: 'all 0.2s ease',
-                      boxShadow: colors.shadowInset,
                     }}
-                    onFocus={(e) => { e.currentTarget.style.boxShadow = `0 0 0 2px ${colors.accent}`; }}
-                    onBlur={(e) => { e.currentTarget.style.boxShadow = colors.shadowInset; }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; }}
                   />
                 </div>
                 {/* Send Button */}
@@ -1200,7 +1200,7 @@ export default function DataChatPage() {
                     cursor: message.trim() && !isSending ? 'pointer' : 'default',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     transition: 'all 0.2s ease',
-                    boxShadow: message.trim() && !isSending ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
+                    boxShadow: message.trim() && !isSending ? '0 4px 12px rgba(34, 197, 94, 0.25)' : 'none',
                   }}
                   onMouseEnter={(e) => { if (message.trim() && !isSending) e.currentTarget.style.transform = 'translateY(-1px)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
@@ -1266,7 +1266,7 @@ export default function DataChatPage() {
 
           {/* RIGHT PANEL - Premium Design */}
           {showRightPanel && (
-            <div style={{ width: 360, background: colors.bgSecondary, boxShadow: '-4px 0 16px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', overflowY: 'auto', zIndex: 2 }}>
+            <div style={{ width: 360, background: colors.bgSecondary, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto', zIndex: 2 }}>
               {/* Profile Section - Premium Design */}
               <div style={{ 
                 padding: '32px 24px', 
@@ -1279,7 +1279,7 @@ export default function DataChatPage() {
                       <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ 
                         width: 88, height: 88, borderRadius: '50%', objectFit: 'cover',
                         border: `3px solid ${colors.accent}`,
-                        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.2)',
+                        boxShadow: '0 4px 12px rgba(34, 197, 94, 0.15)',
                       }} />
                       <div style={{
                         position: 'absolute', bottom: 4, right: 4,
@@ -1294,7 +1294,7 @@ export default function DataChatPage() {
                       background: colors.accentGradient,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: '#fff', fontSize: 32, fontWeight: 700,
-                      boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3)',
+                      boxShadow: '0 4px 12px rgba(34, 197, 94, 0.2)',
                     }}>
                       {selectedRoomData.displayName.charAt(0).toUpperCase()}
                     </div>
@@ -1328,7 +1328,7 @@ export default function DataChatPage() {
                     background: colors.accentGradient, border: 'none', color: '#fff', 
                     fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '8px 16px',
                     borderRadius: 20, display: 'inline-flex', alignItems: 'center', gap: 6,
-                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                    boxShadow: '0 2px 8px rgba(34, 197, 94, 0.2)',
                     transition: 'all 0.2s ease',
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
@@ -1358,7 +1358,7 @@ export default function DataChatPage() {
                       background: colors.accentGradient,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: '#fff', fontSize: 13, fontWeight: 700,
-                      boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)',
+                      boxShadow: '0 2px 6px rgba(34, 197, 94, 0.2)',
                     }}>
                       {currentUser?.name?.charAt(0) || 'A'}
                     </div>
@@ -1391,9 +1391,8 @@ export default function DataChatPage() {
                   </button>
                 </div>
                 <div style={{ 
-                  padding: '20px', borderRadius: 12, border: 'none',
+                  padding: '20px', borderRadius: 12, border: `1px solid ${colors.border}`,
                   background: colors.bgPrimary,
-                  boxShadow: colors.shadowSm,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
                     <div style={{ 
