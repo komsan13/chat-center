@@ -937,38 +937,91 @@ export default function DataChatPage() {
   };
 
   const convertStickerText = (text: string): string => {
-    const emojiMap: { [key: string]: string } = {
-      // Thai
-      '(ยิ้ม)': '😊', '(หัวเราะ)': '😂', '(ร้องไห้)': '😢', '(โกรธ)': '😠', '(รัก)': '❤️',
-      '(ถูกใจ)': '👍', '(ไม่ถูกใจ)': '👎', '(ตกใจ)': '😱', '(เศร้า)': '😞', '(สับสน)': '😕',
-      // English
-      '(cool)': '😎', '(kiss)': '😘', '(wink)': '😉', '(happy)': '😄', '(sad)': '😔',
-      '(angry)': '😡', '(love)': '💕', '(heart)': '❤️', '(star)': '⭐', '(fire)': '🔥',
-      '(ok)': '👌', '(pray)': '🙏', '(clap)': '👏', '(muscle)': '💪', '(peace)': '✌️',
-      // Moon & Brown (LINE Characters)
-      '(funny Moon)': '🌝', '(laugh Moon)': '😆', '(cry Moon)': '😭', '(angry Moon)': '😤',
-      '(love Moon)': '😍', '(shock Moon)': '😲', '(sleepy Moon)': '😴', '(cool Moon)': '😎',
-      '(happy Moon)': '😊', '(sad Moon)': '😢', '(wink Moon)': '😜', '(shy Moon)': '🙈',
-      '(Brown)': '🐻', '(Cony)': '🐰', '(Sally)': '🐥', '(James)': '👱', '(Boss)': '🦁',
-      '(funny Brown)': '🐻', '(laugh Brown)': '🐻', '(love Brown)': '🐻', '(cry Brown)': '🐻', '(crying Brown)': '🐻😢',
-      '(funny Cony)': '🐰', '(laugh Cony)': '🐰', '(love Cony)': '🐰', '(cry Cony)': '🐰', '(crying Cony)': '🐰😢',
-      '(hello Cony)': '🐰👋', '(hello Brown)': '🐻👋', '(bye Cony)': '🐰👋', '(bye Brown)': '🐻👋',
-      '(angry Cony)': '🐰😠', '(angry Brown)': '🐻😠', '(happy Cony)': '🐰😊', '(happy Brown)': '🐻😊',
-      '(sleepy Cony)': '🐰😴', '(sleepy Brown)': '🐻😴', '(shock Cony)': '🐰😲', '(shock Brown)': '🐻😲',
-      // More expressions
-      '(lol)': '🤣', '(omg)': '😱', '(wow)': '🤩', '(yay)': '🥳', '(no)': '🙅',
-      '(yes)': '🙆', '(think)': '🤔', '(idea)': '💡', '(sleep)': '😴', '(sick)': '🤒',
-      '(money)': '💰', '(gift)': '🎁', '(party)': '🎉', '(cake)': '🎂', '(coffee)': '☕',
+    // LINE Characters emoji mapping
+    const lineCharacters: { [key: string]: string } = {
+      'brown': '🐻', 'cony': '🐰', 'sally': '🐥', 'moon': '🌙', 'james': '👱',
+      'boss': '🦁', 'jessica': '👩', 'leonard': '🐸', 'edward': '🐛', 'pangyo': '🐧',
+      'choco': '🐻', 'rangers': '🦸', 'friends': '👥',
     };
-    let result = text;
-    for (const [pattern, emoji] of Object.entries(emojiMap)) {
-      result = result.replace(new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), emoji);
+
+    // Emotion/Action to emoji mapping
+    const emotionEmojis: { [key: string]: string } = {
+      'happy': '😊', 'sad': '😢', 'cry': '😢', 'crying': '😭', 'laugh': '😂', 'laughing': '😂',
+      'angry': '😠', 'love': '😍', 'heart': '❤️', 'kiss': '😘', 'wink': '😉', 'cool': '😎',
+      'shock': '😱', 'shocked': '😱', 'surprise': '😲', 'surprised': '😲', 'omg': '😱',
+      'sleepy': '😴', 'sleep': '😴', 'tired': '😫', 'bored': '😑', 'shy': '🙈',
+      'hello': '👋', 'hi': '👋', 'bye': '👋', 'wave': '👋', 'ok': '👌', 'okay': '👌',
+      'yes': '👍', 'no': '👎', 'thumbs up': '👍', 'thumbs down': '👎',
+      'clap': '👏', 'pray': '🙏', 'please': '🙏', 'thank': '🙏', 'thanks': '🙏',
+      'muscle': '💪', 'strong': '💪', 'flex': '💪', 'peace': '✌️', 'victory': '✌️',
+      'funny': '😄', 'lol': '🤣', 'rofl': '🤣', 'haha': '😂', 'cute': '🥰',
+      'what': '🤔', 'think': '🤔', 'thinking': '🤔', 'hmm': '🤔', 'wonder': '🤔',
+      'wow': '🤩', 'amazing': '🤩', 'yay': '🥳', 'party': '🎉', 'celebrate': '🎉',
+      'fire': '🔥', 'hot': '🔥', 'cold': '🥶', 'sick': '🤒', 'money': '💰', 'rich': '🤑',
+      'gift': '🎁', 'present': '🎁', 'star': '⭐', 'sparkle': '✨', 'shine': '✨',
+      'idea': '💡', 'bulb': '💡', 'coffee': '☕', 'tea': '🍵', 'cake': '🎂',
+      'good': '👍', 'great': '👍', 'nice': '👍', 'bad': '👎', 'work': '💼', 'home': '🏠',
+      'run': '🏃', 'running': '🏃', 'walk': '🚶', 'dance': '💃', 'dancing': '💃',
+      'eat': '🍽️', 'eating': '🍽️', 'hungry': '😋', 'yummy': '😋', 'delicious': '😋',
+      'sticker': '📦', 'hands': '🙌', 'hand': '✋', 'fist': '✊', 'punch': '👊',
+      'point': '👉', 'pointing': '👉', 'call': '📞', 'phone': '📱', 'camera': '📷',
+      'photo': '📸', 'music': '🎵', 'sing': '🎤', 'game': '🎮', 'play': '🎮',
+      'win': '🏆', 'winner': '🏆', 'trophy': '🏆', 'medal': '🏅', 'crown': '👑',
+      'king': '👑', 'queen': '👑', 'angel': '😇', 'devil': '😈', 'ghost': '👻',
+      'skull': '💀', 'poop': '💩', 'alien': '👽', 'robot': '🤖', 'cat': '🐱',
+      'dog': '🐶', 'bear': '🐻', 'rabbit': '🐰', 'bird': '🐦', 'fish': '🐟',
+      'flower': '🌸', 'rose': '🌹', 'sun': '☀️', 'rain': '🌧️', 'snow': '❄️',
+      'rainbow': '🌈', 'umbrella': '☂️', 'car': '🚗', 'bike': '🚲', 'plane': '✈️',
+      // Thai keywords
+      'ยิ้ม': '😊', 'หัวเราะ': '😂', 'ร้องไห้': '😢', 'โกรธ': '😠', 'รัก': '❤️',
+      'ถูกใจ': '👍', 'ตกใจ': '😱', 'เศร้า': '😢', 'สับสน': '🤔', 'งง': '😕',
+      'ขอบคุณ': '🙏', 'สวัสดี': '👋', 'บาย': '👋', 'โอเค': '👌', 'ดี': '👍',
+    };
+
+    // First check exact matches in map (case-insensitive)
+    const lowerText = text.toLowerCase().trim();
+    
+    // Try to match pattern like "(action character)" or "(action)"
+    const stickerMatch = lowerText.match(/^\(([^)]+)\)$/);
+    if (stickerMatch) {
+      const content = stickerMatch[1].toLowerCase();
+      const words = content.split(/\s+/);
+      
+      // Check if last word is a LINE character
+      const lastWord = words[words.length - 1];
+      const characterEmoji = lineCharacters[lastWord];
+      
+      if (characterEmoji && words.length > 1) {
+        // It's "(action character)" format
+        const action = words.slice(0, -1).join(' ');
+        const actionEmoji = emotionEmojis[action] || '';
+        return characterEmoji + (actionEmoji || '');
+      }
+      
+      // Check if it's just an emotion/action
+      const actionEmoji = emotionEmojis[content];
+      if (actionEmoji) return actionEmoji;
+      
+      // Check if any word matches an emotion
+      for (const word of words) {
+        if (emotionEmojis[word]) {
+          const charEmoji = words.length > 1 ? (lineCharacters[words.find(w => lineCharacters[w]) || ''] || '') : '';
+          return charEmoji + emotionEmojis[word];
+        }
+      }
+      
+      // Default: return a generic sticker emoji with the text
+      return '📦 ' + text;
     }
-    if (result.startsWith('[sticker')) {
-      const match = result.match(/packageId=(\d+).*?stickerId=(\d+)/);
-      if (match) return `📦 Sticker`;
+    
+    // Handle [sticker:xxx/xxx] format
+    if (text.startsWith('[sticker')) {
+      const match = text.match(/packageId=(\d+).*?stickerId=(\d+)/);
+      if (match) return '📦 Sticker';
+      return '📦';
     }
-    return result;
+    
+    return text;
   };
 
   // Emoji list
