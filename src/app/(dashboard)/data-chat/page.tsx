@@ -205,14 +205,16 @@ export default function DataChatPage() {
         if (room.status === 'spam') return false;
       }
       
-      // Then filter by selected tokens (only if some tokens are selected)
-      if (selectedTokenIds.size > 0 && room.lineTokenId) {
-        if (!selectedTokenIds.has(room.lineTokenId)) return false;
+      // Then filter by selected tokens
+      // If there are LINE tokens configured but none selected, hide all chats
+      if (lineTokens.length > 0) {
+        if (selectedTokenIds.size === 0) return false;
+        if (room.lineTokenId && !selectedTokenIds.has(room.lineTokenId)) return false;
       }
       
       return true;
     });
-  }, [rooms, filterStatus, selectedTokenIds]);
+  }, [rooms, filterStatus, selectedTokenIds, lineTokens.length]);
 
   // ═══════════════════════════════════════════════════════════════════
   // AUDIO SETUP
@@ -278,12 +280,22 @@ export default function DataChatPage() {
             const activeTokens = data.data.filter((t: LineToken) => t.status === 'active');
             setLineTokens(activeTokens);
             
-            // If no tokens selected yet, select all by default
-            if (selectedTokenIds.size === 0 && activeTokens.length > 0) {
+            // Check if any saved selection is still valid
+            const activeIds = new Set(activeTokens.map((t: LineToken) => t.id));
+            const savedValid = [...selectedTokenIds].filter(id => activeIds.has(id));
+            
+            // If no valid tokens selected, select all by default
+            if (savedValid.length === 0 && activeTokens.length > 0) {
               const allIds = new Set<string>(activeTokens.map((t: LineToken) => t.id));
               setSelectedTokenIds(allIds);
               selectedTokenIdsRef.current = allIds;
               localStorage.setItem('selectedChatTokens', JSON.stringify([...allIds]));
+            } else if (savedValid.length < selectedTokenIds.size) {
+              // Clean up invalid IDs from saved selection
+              const validSet = new Set<string>(savedValid);
+              setSelectedTokenIds(validSet);
+              selectedTokenIdsRef.current = validSet;
+              localStorage.setItem('selectedChatTokens', JSON.stringify(savedValid));
             }
           }
         }
