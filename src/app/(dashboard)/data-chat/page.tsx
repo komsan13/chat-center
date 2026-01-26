@@ -73,26 +73,24 @@ export default function DataChatPage() {
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
 
-  // Premium Theme Colors
+  // Theme Colors - Balanced & Professional
   const colors = useMemo(() => ({
-    bgPrimary: isDark ? '#0f0f0f' : '#ffffff',
-    bgSecondary: isDark ? '#161616' : '#f8fafc',
-    bgTertiary: isDark ? '#1c1c1c' : '#f1f5f9',
-    bgCard: isDark ? '#1f1f1f' : '#ffffff',
-    bgHover: isDark ? '#252525' : '#f1f5f9',
-    bgActive: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)',
-    border: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-    borderLight: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-    textPrimary: isDark ? '#ffffff' : '#0f172a',
-    textSecondary: isDark ? '#a1a1aa' : '#64748b',
-    textMuted: isDark ? '#71717a' : '#94a3b8',
-    accent: '#10b981',
-    accentHover: '#059669',
-    accentLight: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
-    accentGlow: 'rgba(16, 185, 129, 0.4)',
-    bubbleAgent: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    bubbleUser: isDark ? '#252525' : '#f1f5f9',
-    online: '#10b981',
+    bgPrimary: isDark ? '#111214' : '#ffffff',
+    bgSecondary: isDark ? '#17181c' : '#f9fafb',
+    bgTertiary: isDark ? '#1e2024' : '#f3f4f6',
+    bgCard: isDark ? '#22242a' : '#ffffff',
+    bgHover: isDark ? '#282a32' : '#f3f4f6',
+    bgActive: isDark ? 'rgba(34, 197, 94, 0.08)' : 'rgba(34, 197, 94, 0.06)',
+    border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    borderLight: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+    textPrimary: isDark ? '#f3f4f6' : '#111827',
+    textSecondary: isDark ? '#9ca3af' : '#6b7280',
+    textMuted: isDark ? '#6b7280' : '#9ca3af',
+    accent: '#22c55e',
+    accentLight: isDark ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.08)',
+    bubbleAgent: isDark ? '#2d7a4d' : '#22c55e',
+    bubbleUser: isDark ? '#2a2d35' : '#f3f4f6',
+    online: '#22c55e',
     warning: '#f59e0b',
   }), [isDark]);
 
@@ -254,9 +252,9 @@ export default function DataChatPage() {
               }}><Filter size={18} /></button>
               <button style={{
                 width: 38, height: 38, borderRadius: 12, border: 'none',
-                background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+                background: colors.accent,
                 color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: `0 4px 12px ${colors.accentGlow}`,
+                boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.12)',
               }}><Plus size={18} strokeWidth={2.5} /></button>
             </div>
           </div>
@@ -334,10 +332,9 @@ export default function DataChatPage() {
                   ) : (
                     <div style={{
                       width: 52, height: 52, borderRadius: 16, 
-                      background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+                      background: colors.accent,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: '#fff', fontSize: 20, fontWeight: 700,
-                      boxShadow: `0 4px 12px ${colors.accentGlow}`,
                     }}>
                       {room.displayName.charAt(0).toUpperCase()}
                     </div>
@@ -373,10 +370,9 @@ export default function DataChatPage() {
                     {room.unreadCount > 0 && (
                       <span style={{
                         minWidth: 22, height: 22, borderRadius: 11,
-                        background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+                        background: colors.accent,
                         color: '#fff', fontSize: 11, fontWeight: 700,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px',
-                        boxShadow: `0 2px 8px ${colors.accentGlow}`,
                       }}>
                         {room.unreadCount > 99 ? '99+' : room.unreadCount}
                       </span>
@@ -400,11 +396,11 @@ export default function DataChatPage() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 {selectedRoomData.pictureUrl ? (
-                  <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 46, height: 46, borderRadius: 14, objectFit: 'cover', border: `2px solid ${colors.accent}30` }} />
+                  <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 46, height: 46, borderRadius: 14, objectFit: 'cover', border: `2px solid ${colors.border}` }} />
                 ) : (
                   <div style={{
                     width: 46, height: 46, borderRadius: 14, 
-                    background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+                    background: colors.accent,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: '#fff', fontSize: 18, fontWeight: 700,
                   }}>
@@ -414,8 +410,8 @@ export default function DataChatPage() {
                 <div>
                   <h3 style={{ fontSize: 16, fontWeight: 600, color: colors.textPrimary, margin: 0, letterSpacing: '-0.01em' }}>{selectedRoomData.displayName}</h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.online, boxShadow: `0 0 8px ${colors.online}` }} />
-                    <span style={{ fontSize: 13, color: colors.accent, fontWeight: 500 }}>ออนไลน์</span>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.online }} />
+                    <span style={{ fontSize: 13, color: colors.textSecondary, fontWeight: 500 }}>ออนไลน์</span>
                   </div>
                 </div>
               </div>
@@ -481,7 +477,7 @@ export default function DataChatPage() {
                               borderTopLeftRadius: isAgent ? 20 : 6, borderTopRightRadius: isAgent ? 6 : 20,
                               background: isAgent ? colors.bubbleAgent : colors.bubbleUser, 
                               color: isAgent ? '#fff' : colors.textPrimary,
-                              boxShadow: isAgent ? `0 4px 16px ${colors.accentGlow}` : (isDark ? '0 2px 8px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.06)'),
+                              boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : '0 2px 8px rgba(0,0,0,0.08)',
                             }}>
                               <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 400 }}>{msg.content}</p>
                             </div>
@@ -549,11 +545,11 @@ export default function DataChatPage() {
                     disabled={!message.trim() || isSending}
                     style={{
                       width: 44, height: 44, borderRadius: 14, border: 'none',
-                      background: message.trim() && !isSending ? `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)` : colors.bgTertiary,
+                      background: message.trim() && !isSending ? colors.accent : colors.bgTertiary,
                       color: message.trim() && !isSending ? '#fff' : colors.textMuted,
                       cursor: message.trim() && !isSending ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: message.trim() && !isSending ? `0 4px 12px ${colors.accentGlow}` : 'none',
+                      boxShadow: message.trim() && !isSending ? (isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.12)') : 'none',
                     }}
                   >
                     {isSending ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={20} />}
@@ -570,19 +566,18 @@ export default function DataChatPage() {
               <div style={{ padding: 28, textAlign: 'center', background: isDark ? 'linear-gradient(180deg, #1c1c1c 0%, #161616 100%)' : 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)' }}>
                 <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
                   {selectedRoomData.pictureUrl ? (
-                    <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 88, height: 88, borderRadius: 24, objectFit: 'cover', border: `3px solid ${colors.accent}30` }} />
+                    <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 88, height: 88, borderRadius: 24, objectFit: 'cover', border: `3px solid ${colors.border}` }} />
                   ) : (
                     <div style={{
                       width: 88, height: 88, borderRadius: 24, 
-                      background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+                      background: colors.accent,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: '#fff', fontSize: 32, fontWeight: 700,
-                      boxShadow: `0 8px 24px ${colors.accentGlow}`,
                     }}>
                       {selectedRoomData.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, borderRadius: '50%', background: colors.online, border: `3px solid ${colors.bgSecondary}`, boxShadow: `0 0 12px ${colors.online}` }} />
+                  <div style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, borderRadius: '50%', background: colors.online, border: `3px solid ${colors.bgSecondary}` }} />
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: colors.textPrimary, margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>{selectedRoomData.displayName}</h3>
                 <p style={{ fontSize: 13, color: colors.textMuted, margin: '0 0 20px 0', fontFamily: 'monospace' }}>{selectedRoomData.lineUserId}</p>
@@ -590,7 +585,7 @@ export default function DataChatPage() {
                   <button style={{ padding: '10px 20px', borderRadius: 12, border: `1px solid ${colors.border}`, background: colors.bgCard, color: colors.textPrimary, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Clock size={16} />Follow up
                   </button>
-                  <button style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: `0 4px 12px ${colors.accentGlow}` }}>
+                  <button style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: colors.accent, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.12)' }}>
                     <Check size={16} />Resolve
                   </button>
                 </div>
@@ -622,7 +617,7 @@ export default function DataChatPage() {
                   <span style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 12 }}>ผู้รับผิดชอบ</span>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 15, fontWeight: 700 }}>A</div>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: colors.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 15, fontWeight: 700 }}>A</div>
                       <div>
                         <p style={{ fontSize: 14, color: colors.textPrimary, fontWeight: 600, margin: 0 }}>Admin</p>
                         <p style={{ fontSize: 12, color: colors.textMuted, margin: 0 }}>ผู้ดูแลระบบ</p>
@@ -666,7 +661,7 @@ export default function DataChatPage() {
         }}>
           <div style={{ width: 120, height: 120, borderRadius: 32, background: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, position: 'relative' }}>
             <MessageCircle size={56} style={{ color: colors.accent }} />
-            <div style={{ position: 'absolute', top: -4, right: -4, width: 32, height: 32, borderRadius: '50%', background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 12px ${colors.accentGlow}` }}>
+            <div style={{ position: 'absolute', top: -4, right: -4, width: 32, height: 32, borderRadius: '50%', background: colors.accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ color: '#fff', fontSize: 16 }}>💬</span>
             </div>
           </div>
@@ -675,7 +670,7 @@ export default function DataChatPage() {
             เลือกการสนทนาจากรายการด้านซ้าย เพื่อเริ่มตอบแชทกับลูกค้า
           </p>
           <div style={{ padding: '14px 24px', borderRadius: 14, background: colors.bgCard, border: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: 12, boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: isConnected ? colors.online : colors.warning, boxShadow: isConnected ? `0 0 12px ${colors.online}` : 'none' }} />
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: isConnected ? colors.online : colors.warning }} />
             <span style={{ fontSize: 14, color: colors.textSecondary, fontWeight: 500 }}>{isConnected ? 'ระบบพร้อมรับข้อความใหม่' : 'กำลังเชื่อมต่อ...'}</span>
           </div>
         </div>
