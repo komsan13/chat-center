@@ -442,6 +442,10 @@ export default function DataChatPage() {
           const cached = messagesCacheRef.current.get(selectedRoom)!;
           messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempId ? { ...data.message, status: 'sent' } : m));
         }
+        // Scroll to bottom after successful send
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       } else {
         setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
       }
@@ -780,6 +784,7 @@ export default function DataChatPage() {
               background: colors.bgSecondary,
               borderBottom: `1px solid ${colors.border}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              minHeight: 69,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {selectedRoomData.pictureUrl ? (
@@ -1082,11 +1087,13 @@ export default function DataChatPage() {
             }}>
               {/* Panel Header with Close Button */}
               <div style={{ 
-                padding: '12px 16px', 
+                padding: '14px 20px', 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'space-between',
                 borderBottom: `1px solid ${colors.border}`,
+                background: colors.bgSecondary,
+                minHeight: 69,
               }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Customer Info</span>
                 <button
