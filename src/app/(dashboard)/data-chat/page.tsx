@@ -1389,7 +1389,7 @@ export default function DataChatPage() {
                                 border: `1px solid ${colors.border}`,
                               }}>
                                 <img 
-                                  src={msg.mediaUrl} 
+                                  src={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl} 
                                   alt="รูปภาพ" 
                                   style={{ 
                                     maxWidth: isMobile ? 200 : 240, 
