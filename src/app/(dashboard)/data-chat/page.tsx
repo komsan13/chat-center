@@ -150,26 +150,29 @@ export default function DataChatPage() {
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
 
-  // Theme Colors - Modern clean design
+  // Theme Colors - LINE OA Style with emerald accent
   const colors = useMemo(() => ({
-    bgPrimary: isDark ? '#0f0f10' : '#f8fafc',
-    bgSecondary: isDark ? '#18181b' : '#ffffff',
-    bgTertiary: isDark ? '#27272a' : '#f4f4f5',
-    bgCard: isDark ? '#1f1f23' : '#ffffff',
-    bgHover: isDark ? '#27272a' : '#f4f4f5',
-    bgActive: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
-    border: isDark ? '#27272a' : '#e4e4e7',
-    borderLight: isDark ? '#3f3f46' : '#e4e4e7',
-    textPrimary: isDark ? '#fafafa' : '#18181b',
-    textSecondary: isDark ? '#a1a1aa' : '#71717a',
-    textMuted: isDark ? '#71717a' : '#a1a1aa',
+    bgPrimary: isDark ? '#1a1a1a' : '#ffffff',
+    bgSecondary: isDark ? '#242424' : '#ffffff',
+    bgTertiary: isDark ? '#2f2f2f' : '#f5f5f5',
+    bgCard: isDark ? '#2a2a2a' : '#ffffff',
+    bgHover: isDark ? '#333333' : '#f0f0f0',
+    bgActive: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)',
+    bgChat: isDark ? '#1a1a1a' : '#e8e8e8',
+    border: isDark ? '#3a3a3a' : '#e0e0e0',
+    borderLight: isDark ? '#444444' : '#eeeeee',
+    textPrimary: isDark ? '#ffffff' : '#333333',
+    textSecondary: isDark ? '#b0b0b0' : '#666666',
+    textMuted: isDark ? '#808080' : '#999999',
     accent: '#10b981',
-    accentLight: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
-    bubbleAgent: isDark ? '#10b981' : '#10b981',
-    bubbleUser: isDark ? '#27272a' : '#f4f4f5',
+    accentHover: '#059669',
+    accentLight: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
+    bubbleAgent: '#10b981',
+    bubbleUser: isDark ? '#3a3a3a' : '#ffffff',
     online: '#10b981',
     warning: '#f59e0b',
     danger: '#ef4444',
+    link: '#3b82f6',
   }), [isDark]);
 
   const fetchRooms = useCallback(async () => {
@@ -661,126 +664,57 @@ export default function DataChatPage() {
         display: 'flex',
         flexDirection: 'column',
       }}>
-        {/* Header */}
-        <div style={{ padding: '20px 20px 16px', background: colors.bgSecondary }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <div>
-              <h1 style={{ fontSize: 18, fontWeight: 600, color: colors.textPrimary, margin: 0, letterSpacing: '-0.02em' }}>แชท</h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                <span style={{ fontSize: 12, color: colors.textMuted }}>{rooms.length} การสนทนา</span>
-                <span style={{ fontSize: 10, color: colors.textMuted }}>•</span>
-                <div 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 5,
-                    padding: '2px 8px',
-                    borderRadius: 10,
-                    background: connectionState === 'connected' 
-                      ? 'rgba(34, 197, 94, 0.15)' 
-                      : connectionState === 'reconnecting'
-                        ? 'rgba(245, 158, 11, 0.15)'
-                        : 'rgba(239, 68, 68, 0.15)',
-                    cursor: connectionState !== 'connected' ? 'pointer' : 'default',
-                  }}
-                  onClick={() => { if (connectionState !== 'connected') reconnect(); }}
-                  title={connectionState !== 'connected' ? 'คลิกเพื่อเชื่อมต่อใหม่' : 'เชื่อมต่อแล้ว'}
-                >
-                  <div style={{ 
-                    width: 6, 
-                    height: 6, 
-                    borderRadius: '50%', 
-                    background: connectionState === 'connected' 
-                      ? '#22c55e' 
-                      : connectionState === 'reconnecting'
-                        ? '#f59e0b'
-                        : '#ef4444',
-                    animation: connectionState === 'reconnecting' ? 'pulse 1.5s infinite' : 'none',
-                  }} />
-                  <span style={{ 
-                    fontSize: 11, 
-                    fontWeight: 500,
-                    color: connectionState === 'connected' 
-                      ? '#22c55e' 
-                      : connectionState === 'reconnecting'
-                        ? '#f59e0b'
-                        : '#ef4444',
-                  }}>
-                    {connectionState === 'connected' 
-                      ? 'เชื่อมต่อแล้ว' 
-                      : connectionState === 'reconnecting'
-                        ? 'กำลังเชื่อมต่อ...'
-                        : 'ขาดการเชื่อมต่อ'}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button 
-                onClick={playNotificationSound}
-                title="ทดสอบเสียงแจ้งเตือน"
+        {/* Header - LINE OA Style */}
+        <div style={{ padding: '12px 16px', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}` }}>
+          {/* Filter Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            <button style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
+              background: colors.bgTertiary, border: 'none', borderRadius: 6,
+              color: colors.textPrimary, fontSize: 14, fontWeight: 500, cursor: 'pointer',
+            }}>
+              <span style={{ fontSize: 16 }}>≡</span>
+              <span>All</span>
+            </button>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: colors.textMuted }} />
+              <input
+                type="text"
+                placeholder="Search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
-                  background: colors.bgCard, color: colors.textSecondary, 
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: 'none',
-                }}>🔔</button>
-              <button style={{
-                width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
-                background: colors.bgCard, color: colors.textSecondary, 
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: 'none',
-              }}><Filter size={18} /></button>
-              <button style={{
-                width: 36, height: 36, borderRadius: 10, border: 'none',
-                background: colors.accent,
-                color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: 'none',
-              }}><Plus size={18} strokeWidth={2.5} /></button>
-            </div>
-          </div>
-
-          {/* Search */}
-          <div style={{ position: 'relative', marginBottom: 16 }}>
-            <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: colors.textMuted }} />
-            <input
-              type="text"
-              placeholder="ค้นหา..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%', height: 42, paddingLeft: 38, paddingRight: 14,
-                borderRadius: 12, border: 'none',
-                background: colors.bgTertiary, color: colors.textPrimary, fontSize: 14, outline: 'none',
-                transition: 'box-shadow 0.2s',
-              }}
-              onFocus={(e) => e.target.style.boxShadow = `0 0 0 2px ${colors.accent}30`}
-              onBlur={(e) => e.target.style.boxShadow = 'none'}
-            />
-          </div>
-
-          {/* Filter Tabs */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            {(['all', 'unread', 'pinned'] as const).map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setFilterStatus(filter)}
-                style={{
-                  padding: '8px 16px', borderRadius: 20, border: 'none',
-                  background: filterStatus === filter ? colors.accent : colors.bgTertiary,
-                  color: filterStatus === filter ? '#fff' : colors.textSecondary,
-                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  width: '100%', height: 36, paddingLeft: 34, paddingRight: 12,
+                  borderRadius: 6, border: `1px solid ${colors.border}`,
+                  background: colors.bgPrimary, color: colors.textPrimary, fontSize: 14, outline: 'none',
                 }}
-              >
-                {filter === 'all' ? 'ทั้งหมด' : filter === 'unread' ? 'ยังไม่อ่าน' : 'ปักหมุด'}
-              </button>
-            ))}
+              />
+            </div>
           </div>
+          {/* Connection Status */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 12, color: colors.textMuted }}>{rooms.length} chats</span>
+            <div 
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: 5, padding: '2px 8px',
+                borderRadius: 10, cursor: connectionState !== 'connected' ? 'pointer' : 'default',
+              }}
+              onClick={() => { if (connectionState !== 'connected') reconnect(); }}
+            >
+              <div style={{ 
+                width: 6, height: 6, borderRadius: '50%', 
+                background: connectionState === 'connected' ? '#22c55e' : connectionState === 'reconnecting' ? '#f59e0b' : '#ef4444',
+              }} />
+              <span style={{ fontSize: 11, fontWeight: 500, color: connectionState === 'connected' ? '#22c55e' : connectionState === 'reconnecting' ? '#f59e0b' : '#ef4444' }}>
+                {connectionState === 'connected' ? 'Connected' : connectionState === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}
+              </span>
+            </div>
+          </div>
+
         </div>
 
-        {/* Chat List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 12px' }}>
+        {/* Chat List - LINE OA Style */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
           {isLoadingRooms ? (
             <div style={{ padding: 60, textAlign: 'center' }}>
               <Loader2 size={28} style={{ color: colors.accent, animation: 'spin 1s linear infinite', marginBottom: 12 }} />
@@ -801,49 +735,45 @@ export default function DataChatPage() {
                   setSelectedRoom(room.id);
                 }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 12px', cursor: 'pointer',
-                  borderRadius: 14, margin: '2px 0',
-                  background: selectedRoom === room.id ? colors.bgActive : 'transparent',
-                  transition: 'all 0.15s ease',
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer',
+                  borderBottom: `1px solid ${colors.borderLight}`,
+                  background: selectedRoom === room.id ? colors.bgActive : colors.bgSecondary,
+                  transition: 'background 0.15s ease',
                 }}
                 onMouseEnter={(e) => { if (selectedRoom !== room.id) e.currentTarget.style.background = colors.bgHover; }}
-                onMouseLeave={(e) => { if (selectedRoom !== room.id) e.currentTarget.style.background = 'transparent'; }}
+                onMouseLeave={(e) => { if (selectedRoom !== room.id) e.currentTarget.style.background = selectedRoom === room.id ? colors.bgActive : colors.bgSecondary; }}
               >
-                {/* Avatar */}
+                {/* Avatar - LINE OA Style */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   {room.pictureUrl ? (
-                    <img src={room.pictureUrl} alt={room.displayName} style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover' }} />
+                    <img src={room.pictureUrl} alt={room.displayName} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{
-                      width: 50, height: 50, borderRadius: '50%', 
-                      background: `linear-gradient(135deg, ${colors.accent} 0%, #059669 100%)`,
+                      width: 48, height: 48, borderRadius: '50%', 
+                      background: colors.bgTertiary,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 18, fontWeight: 600,
+                      color: colors.textMuted, fontSize: 20, fontWeight: 500,
                     }}>
                       {room.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div style={{ position: 'absolute', bottom: 2, right: 2, width: 12, height: 12, borderRadius: '50%', background: colors.online, border: `2px solid ${colors.bgSecondary}` }} />
                 </div>
 
-                {/* Content */}
+                {/* Content - LINE OA Style */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: room.unreadCount > 0 ? 600 : 500, color: colors.textPrimary, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }}>
-                        {room.displayName}
-                      </span>
-                      {room.isPinned && <Pin size={12} style={{ color: colors.warning }} />}
-                    </div>
-                    <span style={{ fontSize: 12, color: room.unreadCount > 0 ? colors.accent : colors.textMuted, fontWeight: room.unreadCount > 0 ? 500 : 400 }}>
+                    <span style={{ fontWeight: 500, color: colors.textPrimary, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
+                      {room.displayName}
+                    </span>
+                    <span style={{ fontSize: 12, color: colors.textMuted, flexShrink: 0 }}>
                       {room.lastMessageAt && formatTime(room.lastMessageAt)}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 13, color: typingUsers[room.id] ? colors.accent : colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200, fontStyle: typingUsers[room.id] ? 'italic' : 'normal' }}>
+                    <span style={{ fontSize: 13, color: typingUsers[room.id] ? colors.accent : colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, fontStyle: typingUsers[room.id] ? 'italic' : 'normal' }}>
                       {typingUsers[room.id] ? (
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          กำลังพิมพ์
+                          Typing
                           <span style={{ display: 'inline-flex', gap: 2 }}>
                             {[0, 1, 2].map((i) => (
                               <span key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: colors.accent, animation: `typingBounce 1.4s ease-in-out ${i * 0.2}s infinite`, display: 'inline-block' }} />
@@ -852,21 +782,20 @@ export default function DataChatPage() {
                         </span>
                       ) : (
                         <>
-                          {room.lastMessage?.sender === 'agent' && <span>คุณ: </span>}
                           {room.lastMessage?.content 
                             ? (room.lastMessage.content.startsWith('(') || room.lastMessage.content.startsWith('[sticker'))
                               ? convertStickerText(room.lastMessage.content)
                               : room.lastMessage.content
-                            : 'เริ่มการสนทนา'}
+                            : 'Start conversation'}
                         </>
                       )}
                     </span>
                     {room.unreadCount > 0 && (
                       <span style={{
-                        minWidth: 22, height: 22, borderRadius: 11,
-                        background: colors.accent,
+                        minWidth: 20, height: 20, borderRadius: 10,
+                        background: '#ef4444',
                         color: '#fff', fontSize: 11, fontWeight: 600,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px',
                       }}>
                         {room.unreadCount > 99 ? '99+' : room.unreadCount}
                       </span>
@@ -883,39 +812,62 @@ export default function DataChatPage() {
       {selectedRoom && selectedRoomData ? (
         <>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: colors.bgPrimary }}>
-            {/* Chat Header */}
+            {/* Chat Header - LINE OA Style */}
             <div style={{
-              padding: '16px 24px', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}`,
+              padding: '12px 20px', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {selectedRoomData.pictureUrl ? (
-                  <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
+                  <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{
-                    width: 44, height: 44, borderRadius: '50%', 
-                    background: `linear-gradient(135deg, ${colors.accent} 0%, #059669 100%)`,
+                    width: 40, height: 40, borderRadius: '50%', 
+                    background: colors.bgTertiary,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff', fontSize: 16, fontWeight: 600,
+                    color: colors.textMuted, fontSize: 16, fontWeight: 500,
                   }}>
                     {selectedRoomData.displayName.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.textPrimary, margin: 0 }}>{selectedRoomData.displayName}</h3>
-                  <span style={{ fontSize: 12, color: colors.accent }}>ออนไลน์</span>
+                  <span style={{ fontSize: 18 }}>🔈</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {/* LINE OA Action Buttons */}
+                <button style={{
+                  padding: '8px 16px', borderRadius: 6, border: `1px solid ${colors.border}`,
+                  background: colors.bgSecondary, color: colors.link, fontSize: 13, fontWeight: 500,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  <Clock size={14} />
+                  Follow up
+                </button>
+                <button style={{
+                  padding: '8px 16px', borderRadius: 6, border: `1px solid ${colors.border}`,
+                  background: colors.bgSecondary, color: colors.accent, fontSize: 13, fontWeight: 500,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  <Check size={14} />
+                  Resolve
+                </button>
+                <button style={{
+                  padding: '8px 16px', borderRadius: 6, border: `1px solid ${colors.border}`,
+                  background: colors.bgSecondary, color: colors.textSecondary, fontSize: 13, fontWeight: 500,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  <Search size={14} />
+                  Search
+                </button>
                 <button
                   onClick={() => setShowRightPanel(!showRightPanel)}
-                  title="ข้อมูล"
                   style={{
-                    width: 38, height: 38, borderRadius: '50%', border: 'none',
-                    background: showRightPanel ? colors.accentLight : colors.bgTertiary, 
+                    width: 36, height: 36, borderRadius: 6, border: `1px solid ${colors.border}`,
+                    background: showRightPanel ? colors.accentLight : colors.bgSecondary, 
                     color: showRightPanel ? colors.accent : colors.textSecondary, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s',
                   }}
                 >
                   <MoreVertical size={18} />
@@ -923,10 +875,10 @@ export default function DataChatPage() {
               </div>
             </div>
 
-            {/* Messages */}
+            {/* Messages - LINE OA Style */}
             <div style={{ 
-              flex: 1, overflowY: 'auto', padding: '24px 24px',
-              background: colors.bgPrimary,
+              flex: 1, overflowY: 'auto', padding: '20px 24px',
+              background: colors.bgChat,
             }}>
               {isLoadingMessages ? (
                 <div style={{ textAlign: 'center', padding: 60 }}>
@@ -937,60 +889,90 @@ export default function DataChatPage() {
                   <p style={{ fontSize: 14, color: colors.textMuted, margin: 0 }}>ยังไม่มีข้อความ</p>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {messages.map((msg, idx) => {
                     const isAgent = msg.sender === 'agent';
                     const showAvatar = !isAgent && (idx === 0 || messages[idx - 1]?.sender !== 'user');
                     const showTime = idx === messages.length - 1 || 
                       messages[idx + 1]?.sender !== msg.sender ||
                       new Date(messages[idx + 1]?.createdAt).getTime() - new Date(msg.createdAt).getTime() > 300000;
+                    const isAutoResponse = isAgent && msg.senderName === 'Auto-response';
                     
                     return (
-                      <div key={msg.id} style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', gap: 8, marginBottom: showTime ? 12 : 0 }}>
-                        {!isAgent && (
-                          <div style={{ width: 32, flexShrink: 0 }}>
-                            {showAvatar && (
-                              selectedRoomData.pictureUrl ? (
-                                <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-                              ) : (
-                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textSecondary, fontSize: 12, fontWeight: 600 }}>
-                                  {selectedRoomData.displayName.charAt(0)}
-                                </div>
-                              )
-                            )}
-                          </div>
-                        )}
-                        
-                        <div style={{ maxWidth: '70%' }}>
-                          {msg.messageType === 'sticker' ? (
-                            <div>{renderSticker(msg.packageId, msg.stickerId)}</div>
-                          ) : msg.messageType === 'image' ? (
-                            <img src={msg.mediaUrl} alt="Image" style={{ maxWidth: 260, borderRadius: 16 }} />
-                          ) : (msg.content.startsWith('(') && msg.content.endsWith(')')) || msg.content.startsWith('[sticker') ? (
-                            <div style={{ fontSize: 48, lineHeight: 1 }}>
-                              {convertStickerText(msg.content)}
-                            </div>
-                          ) : (
-                            <div style={{
-                              padding: '10px 14px', 
-                              borderRadius: 18,
-                              borderBottomLeftRadius: isAgent ? 18 : 4, 
-                              borderBottomRightRadius: isAgent ? 4 : 18,
-                              background: isAgent ? colors.bubbleAgent : colors.bubbleUser, 
-                              color: isAgent ? '#fff' : colors.textPrimary,
-                            }}>
-                              <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{msg.content}</p>
+                      <div key={msg.id} style={{ marginBottom: showTime ? 16 : 4 }}>
+                        {/* Message Row */}
+                        <div style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 8 }}>
+                          {/* User Avatar */}
+                          {!isAgent && (
+                            <div style={{ width: 36, flexShrink: 0 }}>
+                              {showAvatar && (
+                                selectedRoomData.pictureUrl ? (
+                                  <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                                ) : (
+                                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textMuted, fontSize: 14, fontWeight: 500 }}>
+                                    {selectedRoomData.displayName.charAt(0)}
+                                  </div>
+                                )
+                              )}
                             </div>
                           )}
-                          {showTime && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, justifyContent: isAgent ? 'flex-end' : 'flex-start', padding: '0 4px' }}>
+                          
+                          {/* Agent Label (Auto-response) */}
+                          {isAgent && isAutoResponse && (
+                            <span style={{ fontSize: 11, color: colors.textMuted, marginRight: 4, alignSelf: 'flex-start', marginTop: 4 }}>Auto-response</span>
+                          )}
+                          
+                          {/* Message Bubble */}
+                          <div style={{ maxWidth: '65%' }}>
+                            {msg.messageType === 'sticker' ? (
+                              <div>{renderSticker(msg.packageId, msg.stickerId)}</div>
+                            ) : msg.messageType === 'image' ? (
+                              <img src={msg.mediaUrl} alt="Image" style={{ maxWidth: 260, borderRadius: 12 }} />
+                            ) : (msg.content.startsWith('(') && msg.content.endsWith(')')) || msg.content.startsWith('[sticker') ? (
+                              <div style={{ fontSize: 48, lineHeight: 1 }}>
+                                {convertStickerText(msg.content)}
+                              </div>
+                            ) : (
+                              <div style={{
+                                padding: '10px 14px', 
+                                borderRadius: isAgent ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                                background: isAgent ? colors.bubbleAgent : colors.bubbleUser, 
+                                color: isAgent ? '#fff' : colors.textPrimary,
+                                boxShadow: isDark ? 'none' : '0 1px 2px rgba(0,0,0,0.08)',
+                              }}>
+                                <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{msg.content}</p>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Time & Status for Agent messages */}
+                          {isAgent && showTime && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginLeft: 4 }}>
+                              <span style={{ fontSize: 11, color: msg.status === 'read' ? colors.textMuted : colors.textMuted }}>
+                                {msg.status === 'read' ? 'Read' : ''}
+                              </span>
                               <span style={{ fontSize: 11, color: colors.textMuted }}>
                                 {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
                               </span>
-                              {isAgent && <span style={{ color: msg.status === 'read' ? colors.accent : colors.textMuted }}>{msg.status === 'read' ? <CheckCheck size={12} /> : <Check size={12} />}</span>}
                             </div>
                           )}
                         </div>
+                        
+                        {/* Time for User messages */}
+                        {!isAgent && showTime && (
+                          <div style={{ marginLeft: 44, marginTop: 4 }}>
+                            <span style={{ fontSize: 11, color: colors.textMuted }}>
+                              {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Agent name label */}
+                        {isAgent && showTime && !isAutoResponse && msg.senderName && (
+                          <div style={{ textAlign: 'right', marginTop: 4, marginRight: 60 }}>
+                            <span style={{ fontSize: 11, color: colors.textMuted }}>{msg.senderName}</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1058,157 +1040,187 @@ export default function DataChatPage() {
               </div>
             )}
 
-            {/* Input */}
-            <div style={{ padding: '16px 24px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <button onClick={() => setShowQuickReplies(!showQuickReplies)} style={{
-                    width: 40, height: 40, borderRadius: '50%', border: 'none',
-                    background: showQuickReplies ? colors.accentLight : colors.bgTertiary,
-                    color: showQuickReplies ? colors.accent : colors.textMuted, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s',
-                  }}><Bookmark size={18} /></button>
-                  <button 
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    style={{ 
-                      width: 40, height: 40, borderRadius: '50%', border: 'none', 
-                      background: showEmojiPicker ? colors.accentLight : colors.bgTertiary, 
-                      color: showEmojiPicker ? colors.accent : colors.textMuted, 
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <Smile size={18} />
-                  </button>
-                </div>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: colors.bgTertiary, borderRadius: 24, padding: '4px 4px 4px 18px' }}>
+            {/* Input - LINE OA Style */}
+            <div style={{ padding: '12px 20px 16px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+              {/* Hint text */}
+              <div style={{ marginBottom: 8, fontSize: 12, color: colors.textMuted }}>
+                Enter: Send message, Shift + Enter: New line
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+                {/* Input Field */}
+                <div style={{ flex: 1, position: 'relative' }}>
                   <input
                     type="text"
                     value={message}
                     onChange={handleInputChange}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
-                    placeholder="พิมพ์ข้อความ..."
-                    style={{ flex: 1, height: 40, border: 'none', background: 'transparent', color: colors.textPrimary, fontSize: 14, outline: 'none' }}
-                  />
-                  <button
-                    onClick={() => sendMessage(message)}
-                    disabled={!message.trim() || isSending}
-                    style={{
-                      width: 40, height: 40, borderRadius: '50%', border: 'none',
-                      background: message.trim() && !isSending ? colors.accent : 'transparent',
-                      color: message.trim() && !isSending ? '#fff' : colors.textMuted,
-                      cursor: message.trim() && !isSending ? 'pointer' : 'default',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.2s',
+                    placeholder=""
+                    style={{ 
+                      width: '100%', minHeight: 44, padding: '12px 16px',
+                      border: `1px solid ${colors.border}`, borderRadius: 8,
+                      background: colors.bgPrimary, color: colors.textPrimary, fontSize: 14, outline: 'none',
+                      resize: 'none',
                     }}
-                  >
-                    {isSending ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={18} />}
-                  </button>
+                  />
                 </div>
+                {/* Send Button */}
+                <button
+                  onClick={() => sendMessage(message)}
+                  disabled={!message.trim() || isSending}
+                  style={{
+                    padding: '12px 24px', borderRadius: 8, border: 'none',
+                    background: message.trim() && !isSending ? colors.accent : colors.bgTertiary,
+                    color: message.trim() && !isSending ? '#fff' : colors.textMuted,
+                    fontSize: 14, fontWeight: 500,
+                    cursor: message.trim() && !isSending ? 'pointer' : 'default',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {isSending ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : 'Send'}
+                </button>
+              </div>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                <button 
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  style={{ 
+                    width: 32, height: 32, borderRadius: '50%', border: 'none', 
+                    background: 'transparent', color: colors.textMuted, 
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Smile size={20} />
+                </button>
+                <button style={{ 
+                  width: 32, height: 32, borderRadius: '50%', border: 'none', 
+                  background: 'transparent', color: colors.textMuted, 
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Paperclip size={20} />
+                </button>
+                <button 
+                  onClick={() => setShowQuickReplies(!showQuickReplies)} 
+                  style={{ 
+                    width: 32, height: 32, borderRadius: '50%', border: 'none', 
+                    background: 'transparent', color: colors.textMuted, 
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Plus size={20} />
+                </button>
+                <button style={{ 
+                  width: 32, height: 32, borderRadius: '50%', border: 'none', 
+                  background: 'transparent', color: colors.textMuted, 
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Smile size={20} />
+                </button>
               </div>
             </div>
           </div>
 
-          {/* RIGHT PANEL */}
+          {/* RIGHT PANEL - LINE OA Style */}
           {showRightPanel && (
-            <div style={{ width: 320, background: colors.bgSecondary, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-              {/* Profile Section */}
-              <div style={{ padding: '32px 24px 24px', textAlign: 'center' }}>
+            <div style={{ width: 340, background: colors.bgSecondary, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+              {/* Close Button */}
+              <div style={{ position: 'absolute', top: 12, right: 12 }}>
                 <button 
                   onClick={() => setShowRightPanel(false)}
                   style={{
-                    position: 'absolute', top: 16, right: 16,
-                    width: 32, height: 32, borderRadius: '50%', border: 'none',
-                    background: colors.bgTertiary, color: colors.textMuted, cursor: 'pointer',
+                    width: 28, height: 28, borderRadius: 4, border: 'none',
+                    background: 'transparent', color: colors.textMuted, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
-                  <X size={16} />
+                  <MoreVertical size={18} />
                 </button>
-                <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
+              </div>
+
+              {/* Profile Section - LINE OA Style */}
+              <div style={{ padding: '24px 20px', textAlign: 'center', borderBottom: `1px solid ${colors.border}` }}>
+                <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12 }}>
                   {selectedRoomData.pictureUrl ? (
-                    <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 88, height: 88, borderRadius: '50%', objectFit: 'cover' }} />
+                    <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{
-                      width: 88, height: 88, borderRadius: '50%', 
-                      background: `linear-gradient(135deg, ${colors.accent} 0%, #059669 100%)`,
+                      width: 80, height: 80, borderRadius: '50%', 
+                      background: colors.bgTertiary,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 32, fontWeight: 600,
+                      color: colors.textMuted, fontSize: 28, fontWeight: 500,
                     }}>
                       {selectedRoomData.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div style={{ position: 'absolute', bottom: 4, right: 4, width: 18, height: 18, borderRadius: '50%', background: colors.online, border: `3px solid ${colors.bgSecondary}` }} />
                 </div>
-                <h3 style={{ fontSize: 17, fontWeight: 600, color: colors.textPrimary, margin: '0 0 4px 0' }}>{selectedRoomData.displayName}</h3>
-                <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 20px 0' }}>ออนไลน์</p>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-                  <button style={{ padding: '10px 20px', borderRadius: 20, border: 'none', background: colors.accent, color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-                    ส่งข้อความ
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 600, color: colors.textPrimary, margin: 0 }}>{selectedRoomData.displayName}</h3>
+                  <span style={{ fontSize: 14 }}>✏️</span>
+                </div>
+                <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>({selectedRoomData.statusMessage || 'LINE User'})</p>
+              </div>
+
+              {/* Tags Section - LINE OA Style */}
+              <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
+                <div style={{ 
+                  padding: '12px 16px', borderRadius: 8, border: `1px dashed ${colors.border}`,
+                  background: colors.bgPrimary, textAlign: 'center',
+                }}>
+                  <p style={{ fontSize: 13, color: colors.textMuted, margin: '0 0 8px 0' }}>Using tags can help you sort chats.</p>
+                  <button style={{ 
+                    background: 'none', border: 'none', color: colors.accent, 
+                    fontSize: 14, fontWeight: 500, cursor: 'pointer', padding: 0,
+                  }}>
+                    + Add tags
                   </button>
                 </div>
               </div>
 
-              {/* Info Sections */}
-              <div style={{ flex: 1, padding: '0 16px 16px' }}>
-                {/* Quick Info */}
-                <div style={{ padding: '16px 0', borderBottom: `1px solid ${colors.border}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.textMuted }}>LINE ID</span>
-                    <span style={{ fontSize: 13, color: colors.textPrimary, fontFamily: 'monospace' }}>{selectedRoomData.lineUserId.slice(0, 12)}...</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.textMuted }}>สถานะ</span>
-                    <span style={{ fontSize: 13, color: colors.accent }}>● ออนไลน์</span>
-                  </div>
-                </div>
-
-                {/* Tags */}
-                <div style={{ padding: '16px 0', borderBottom: `1px solid ${colors.border}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.textMuted }}>แท็ก</span>
-                    <button style={{ background: 'none', border: 'none', color: colors.accent, fontSize: 13, cursor: 'pointer', padding: 0 }}>
-                      + เพิ่ม
-                    </button>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {selectedRoomData.tags?.length > 0 ? (
-                      selectedRoomData.tags.map((tag, i) => (
-                        <span key={i} style={{ padding: '5px 12px', borderRadius: 16, fontSize: 12, fontWeight: 500, background: tag === 'VIP' ? `${colors.warning}20` : colors.bgTertiary, color: tag === 'VIP' ? colors.warning : colors.textPrimary }}>{tag}</span>
-                      ))
-                    ) : (
-                      <span style={{ fontSize: 13, color: colors.textMuted }}>ไม่มีแท็ก</span>
-                    )}
+              {/* Assign Section - LINE OA Style */}
+              <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: colors.textPrimary }}>Assign</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ 
+                      width: 28, height: 28, borderRadius: '50%', 
+                      background: colors.accent,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontSize: 12, fontWeight: 600,
+                    }}>
+                      {currentUser?.name?.charAt(0) || 'A'}
+                    </div>
+                    <span style={{ fontSize: 14, color: colors.textPrimary }}>{currentUser?.name || 'Agent'}</span>
+                    <span style={{ fontSize: 14 }}>✏️</span>
                   </div>
                 </div>
+              </div>
 
-                {/* Actions */}
-                <div style={{ padding: '16px 0' }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: colors.textMuted, display: 'block', marginBottom: 12 }}>การจัดการ</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <button style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: 'transparent', color: colors.textPrimary, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'background 0.15s' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = colors.bgTertiary}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <VolumeX size={18} style={{ color: colors.textMuted }} />
-                      <span>ปิดเสียงแจ้งเตือน</span>
-                    </button>
-                    <button style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: 'transparent', color: colors.textPrimary, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'background 0.15s' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = colors.bgTertiary}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <AlertTriangle size={18} style={{ color: colors.textMuted }} />
-                      <span>รายงานสแปม</span>
-                    </button>
-                    <button style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: 'transparent', color: colors.danger, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'background 0.15s' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <Trash2 size={18} />
-                      <span>ลบการสนทนา</span>
-                    </button>
+              {/* Notes Section - LINE OA Style */}
+              <div style={{ padding: '16px 20px', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: colors.textPrimary }}>Notes</span>
+                    <span style={{ fontSize: 13, color: colors.textMuted }}>0/1</span>
                   </div>
+                  <button style={{ 
+                    width: 24, height: 24, borderRadius: 4, border: 'none',
+                    background: 'transparent', color: colors.textMuted, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Plus size={18} />
+                  </button>
+                </div>
+                <div style={{ 
+                  padding: '16px', borderRadius: 8, border: `1px solid ${colors.border}`,
+                  background: colors.bgPrimary,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
+                    <span style={{ fontSize: 18 }}>ℹ️</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>Keep records in Notes</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: colors.textSecondary, margin: 0, lineHeight: 1.5 }}>
+                    Record info on this user and your interactions with them, and leave handoff notes for your team. Notes aren't visible to the user; only account members can view and edit them.
+                  </p>
                 </div>
               </div>
             </div>
