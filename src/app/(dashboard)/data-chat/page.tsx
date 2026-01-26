@@ -72,6 +72,35 @@ export default function DataChatPage() {
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(true); // On mobile, show sidebar by default
+  
+  // Detect screen size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
+      // On larger screens, always show sidebar
+      if (width >= 768) {
+        setShowMobileSidebar(true);
+      }
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
+  
+  // When selecting a room on mobile, hide sidebar and show chat
+  useEffect(() => {
+    if (isMobile && selectedRoom) {
+      setShowMobileSidebar(false);
+    }
+  }, [selectedRoom, isMobile]);
+  
   const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedRoomRef = useRef<string | null>(
@@ -452,6 +481,23 @@ export default function DataChatPage() {
       // Clear message input when changing rooms
       setMessage('');
       
+      // Clear notes and tags UI state
+      setRoomNotes([]);
+      setShowNoteInput(false);
+      setNewNoteContent('');
+      setShowTagInput(false);
+      setNewTag('');
+      
+      // Fetch room details including notes
+      fetch(`/api/chat/rooms/${selectedRoom}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.notes) {
+            setRoomNotes(data.notes);
+          }
+        })
+        .catch(err => console.error('Failed to fetch room details:', err));
+      
       // Mark as read locally
       if (markAsRead) markAsRead(selectedRoom, []);
       
@@ -563,6 +609,224 @@ export default function DataChatPage() {
   };
 
   // ═══════════════════════════════════════════════════════════════════
+  // CHAT ROOM ACTIONS (Pin, Mute, Archive, Block, Delete)
+  // ═══════════════════════════════════════════════════════════════════
+  const updateRoom = async (roomId: string, updates: {
+    isPinned?: boolean;
+    isMuted?: boolean;
+    tags?: string[];
+    status?: 'active' | 'archived' | 'blocked';
+  }) => {
+    try {
+      const response = await fetch(`/api/chat/rooms/${roomId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      
+      if (response.ok) {
+        const { room } = await response.json();
+        setRooms(prev => prev.map(r => r.id === roomId ? { ...r, ...updates } : r));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to update room:', error);
+      return false;
+    }
+  };
+
+  const togglePinRoom = async (roomId: string) => {
+    const room = rooms.find(r => r.id === roomId);
+    if (room) {
+      await updateRoom(roomId, { isPinned: !room.isPinned });
+    }
+  };
+
+  const toggleMuteRoom = async (roomId: string) => {
+    const room = rooms.find(r => r.id === roomId);
+    if (room) {
+      await updateRoom(roomId, { isMuted: !room.isMuted });
+    }
+  };
+
+  const archiveRoom = async (roomId: string) => {
+    const success = await updateRoom(roomId, { status: 'archived' });
+    if (success && selectedRoom === roomId) {
+      setSelectedRoom(null);
+    }
+  };
+
+  const blockRoom = async (roomId: string) => {
+    const success = await updateRoom(roomId, { status: 'blocked' });
+    if (success && selectedRoom === roomId) {
+      setSelectedRoom(null);
+    }
+  };
+
+  const deleteRoom = async (roomId: string, permanent: boolean = false) => {
+    try {
+      const response = await fetch(`/api/chat/rooms/${roomId}?permanent=${permanent}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setRooms(prev => prev.filter(r => r.id !== roomId));
+        if (selectedRoom === roomId) {
+          setSelectedRoom(null);
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to delete room:', error);
+      return false;
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // FILE UPLOAD
+  // ═══════════════════════════════════════════════════════════════════
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedRoom || isUploading) return;
+
+    setIsUploading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('roomId', selectedRoom);
+      formData.append('senderName', currentUser?.name || 'Agent');
+
+      const response = await fetch('/api/chat/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const { message: uploadedMessage } = await response.json();
+        setMessages(prev => [...prev, uploadedMessage]);
+        
+        // Update room's lastMessage
+        setRooms(prev => prev.map(room => 
+          room.id === selectedRoom 
+            ? { ...room, lastMessage: uploadedMessage, lastMessageAt: uploadedMessage.createdAt }
+            : room
+        ));
+        
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // NOTES MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════════
+  const [roomNotes, setRoomNotes] = useState<{ id: string; content: string; createdBy: string; createdAt: string }[]>([]);
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [showNoteInput, setShowNoteInput] = useState(false);
+
+  const addNote = async () => {
+    if (!newNoteContent.trim() || !selectedRoom) return;
+    setIsAddingNote(true);
+    
+    try {
+      const response = await fetch(`/api/chat/rooms/${selectedRoom}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: {
+            action: 'add',
+            content: newNoteContent.trim(),
+            createdBy: currentUser?.name || 'Agent',
+          }
+        }),
+      });
+
+      if (response.ok) {
+        const newNote = {
+          id: `note_${Date.now()}`,
+          content: newNoteContent.trim(),
+          createdBy: currentUser?.name || 'Agent',
+          createdAt: new Date().toISOString(),
+        };
+        setRoomNotes(prev => [newNote, ...prev]);
+        setNewNoteContent('');
+        setShowNoteInput(false);
+      }
+    } catch (error) {
+      console.error('Failed to add note:', error);
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
+
+  const deleteNote = async (noteId: string) => {
+    if (!selectedRoom) return;
+    
+    try {
+      const response = await fetch(`/api/chat/rooms/${selectedRoom}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: {
+            action: 'delete',
+            noteId,
+          }
+        }),
+      });
+
+      if (response.ok) {
+        setRoomNotes(prev => prev.filter(n => n.id !== noteId));
+      }
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // TAGS MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════════
+  const [showTagInput, setShowTagInput] = useState(false);
+  const [newTag, setNewTag] = useState('');
+  const predefinedTags = ['VIP', 'New', 'Important', 'Follow-up', 'Resolved', 'Pending'];
+
+  const addTag = async (tag: string) => {
+    if (!selectedRoom || !tag.trim()) return;
+    const room = rooms.find(r => r.id === selectedRoom);
+    if (!room) return;
+    
+    const currentTags = room.tags || [];
+    if (currentTags.includes(tag)) return;
+    
+    const newTags = [...currentTags, tag.trim()];
+    await updateRoom(selectedRoom, { tags: newTags });
+  };
+
+  const removeTag = async (tag: string) => {
+    if (!selectedRoom) return;
+    const room = rooms.find(r => r.id === selectedRoom);
+    if (!room) return;
+    
+    const newTags = (room.tags || []).filter(t => t !== tag);
+    await updateRoom(selectedRoom, { tags: newTags });
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
   // HELPER FUNCTIONS
   // ═══════════════════════════════════════════════════════════════════
   const formatTime = (dateString: string) => {
@@ -658,24 +922,31 @@ export default function DataChatPage() {
       display: 'flex', 
       height: 'calc(100vh - 118px)', 
       background: colors.bgPrimary,
-      borderRadius: 12,
+      borderRadius: isMobile ? 0 : 12,
       overflow: 'hidden',
-      border: `1px solid ${colors.border}`,
-      boxShadow: colors.shadow,
+      border: isMobile ? 'none' : `1px solid ${colors.border}`,
+      boxShadow: isMobile ? 'none' : colors.shadow,
+      position: 'relative',
     }}>
       
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* LEFT SIDEBAR - Chat List */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <div style={{ 
-        width: 340, 
+        width: isMobile ? '100%' : isTablet ? 300 : 340,
+        minWidth: isMobile ? '100%' : isTablet ? 300 : 340,
         background: colors.bgSecondary, 
-        borderRight: `1px solid ${colors.border}`,
-        display: 'flex', 
+        borderRight: isMobile ? 'none' : `1px solid ${colors.border}`,
+        display: isMobile ? (showMobileSidebar ? 'flex' : 'none') : 'flex', 
         flexDirection: 'column',
+        position: isMobile ? 'absolute' : 'relative',
+        top: 0,
+        left: 0,
+        bottom: 0,
+        zIndex: isMobile ? 10 : 1,
       }}>
         {/* Header */}
-        <div style={{ padding: 20 }}>
+        <div style={{ padding: isMobile ? 16 : 20 }}>
           {/* Filter & Search */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
             {/* Filter Dropdown */}
@@ -684,18 +955,18 @@ export default function DataChatPage() {
                 onClick={() => setShowFilterDropdown(!showFilterDropdown)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '10px 14px', borderRadius: 8,
+                  padding: isMobile ? '8px 12px' : '10px 14px', borderRadius: 8,
                   background: colors.bgTertiary,
                   border: `1px solid ${colors.border}`,
                   color: colors.textPrimary,
-                  fontSize: 14, fontWeight: 500,
+                  fontSize: isMobile ? 13 : 14, fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
               >
-                <Filter size={15} style={{ color: colors.accent }} />
+                <Filter size={isMobile ? 14 : 15} style={{ color: colors.accent }} />
                 <span>{filterStatus === 'all' ? 'All' : filterStatus === 'unread' ? 'Unread' : 'Pinned'}</span>
-                <ChevronDown size={14} style={{ color: colors.textMuted }} />
+                <ChevronDown size={isMobile ? 12 : 14} style={{ color: colors.textMuted }} />
               </button>
               
               {showFilterDropdown && (
@@ -831,22 +1102,45 @@ export default function DataChatPage() {
                 {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ 
-                      fontWeight: room.unreadCount > 0 ? 600 : 500,
-                      color: colors.textPrimary, fontSize: 14,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      maxWidth: 160,
-                    }}>
-                      {room.displayName}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                      <span style={{ 
+                        fontWeight: room.unreadCount > 0 ? 600 : 500,
+                        color: colors.textPrimary, fontSize: 14,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {room.displayName}
+                      </span>
+                      {room.isPinned && <Pin size={12} style={{ color: colors.accent, transform: 'rotate(-45deg)', flexShrink: 0 }} />}
+                      {room.isMuted && <VolumeX size={12} style={{ color: colors.warning, flexShrink: 0 }} />}
+                    </div>
                     <span style={{ 
                       fontSize: 11, 
                       color: room.unreadCount > 0 ? colors.accent : colors.textMuted,
                       fontWeight: room.unreadCount > 0 ? 600 : 400,
+                      flexShrink: 0,
                     }}>
                       {room.lastMessageAt && formatTime(room.lastMessageAt)}
                     </span>
                   </div>
+                  {/* Tags row - show first 2 tags */}
+                  {room.tags && room.tags.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                      {room.tags.slice(0, 2).map((tag, idx) => (
+                        <span key={idx} style={{
+                          padding: '2px 6px', borderRadius: 8,
+                          background: colors.accentLight, border: `1px solid ${colors.accent}30`,
+                          fontSize: 9, fontWeight: 500, color: colors.accent,
+                        }}>
+                          {tag}
+                        </span>
+                      ))}
+                      {room.tags.length > 2 && (
+                        <span style={{ fontSize: 9, color: colors.textMuted }}>
+                          +{room.tags.length - 2}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ 
                       fontSize: 12, color: colors.textMuted,
@@ -890,81 +1184,111 @@ export default function DataChatPage() {
       {/* ═══════════════════════════════════════════════════════════════ */}
       {selectedRoom && selectedRoomData ? (
         <>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: colors.bgPrimary }}>
+          <div style={{ 
+            flex: 1, 
+            display: isMobile ? (showMobileSidebar ? 'none' : 'flex') : 'flex', 
+            flexDirection: 'column', 
+            background: colors.bgPrimary,
+            minWidth: 0, // Prevent flex item from overflowing
+          }}>
             {/* Chat Header */}
             <div style={{
-              padding: '14px 20px',
+              padding: isMobile ? '12px 16px' : '14px 20px',
               background: colors.bgSecondary,
               borderBottom: `1px solid ${colors.border}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              minHeight: 69,
+              minHeight: isMobile ? 60 : 69,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 12 }}>
+                {/* Back button for mobile */}
+                {isMobile && (
+                  <button
+                    onClick={() => {
+                      setShowMobileSidebar(true);
+                      setSelectedRoom(null);
+                    }}
+                    style={{
+                      padding: 8, borderRadius: 8,
+                      background: 'transparent', border: 'none',
+                      color: colors.accent, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                )}
                 {selectedRoomData.pictureUrl ? (
                   <img src={selectedRoomData.pictureUrl} alt="" style={{ 
-                    width: 40, height: 40, borderRadius: '50%', objectFit: 'cover',
+                    width: isMobile ? 36 : 40, height: isMobile ? 36 : 40, borderRadius: '50%', objectFit: 'cover',
                   }} />
                 ) : (
                   <div style={{
-                    width: 40, height: 40, borderRadius: '50%',
+                    width: isMobile ? 36 : 40, height: isMobile ? 36 : 40, borderRadius: '50%',
                     background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff', fontSize: 16, fontWeight: 600,
+                    color: '#fff', fontSize: isMobile ? 14 : 16, fontWeight: 600,
                   }}>
                     {selectedRoomData.displayName.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.textPrimary, margin: 0 }}>
+                  <h3 style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600, color: colors.textPrimary, margin: 0 }}>
                     {selectedRoomData.displayName}
                   </h3>
-                  <p style={{ fontSize: 12, color: colors.online, margin: 0, fontWeight: 500 }}>
+                  <p style={{ fontSize: isMobile ? 11 : 12, color: colors.online, margin: 0, fontWeight: 500 }}>
                     ● Online
                   </p>
                 </div>
               </div>
               
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: isMobile ? 4 : 8 }}>
+                {!isMobile && (
+                  <>
+                    <button style={{
+                      padding: '8px 14px', borderRadius: 6,
+                      background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                      color: colors.info, fontSize: 12, fontWeight: 500,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                    onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
+                    >
+                      <Clock size={14} /> Follow up
+                    </button>
+                  </>
+                )}
                 <button style={{
-                  padding: '8px 14px', borderRadius: 6,
-                  background: colors.bgTertiary, border: `1px solid ${colors.border}`,
-                  color: colors.info, fontSize: 12, fontWeight: 500,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
-                onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
-                >
-                  <Clock size={14} /> Follow up
-                </button>
-                <button style={{
-                  padding: '8px 14px', borderRadius: 6,
+                  padding: isMobile ? 8 : '8px 14px', borderRadius: 6,
                   background: colors.bgTertiary, border: `1px solid ${colors.border}`,
                   color: colors.accent, fontSize: 12, fontWeight: 500,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 6,
                   transition: 'all 0.15s ease',
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.background = colors.accentLight}
                 onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
                 >
-                  <Check size={14} /> Resolve
+                  <Check size={14} /> {!isMobile && 'Resolve'}
                 </button>
-                <button style={{
-                  padding: '8px 14px', borderRadius: 6,
-                  background: colors.bgTertiary, border: `1px solid ${colors.border}`,
-                  color: colors.textSecondary, fontSize: 12, fontWeight: 500,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                  transition: 'all 0.15s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
-                onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
-                >
-                  <Search size={14} /> Search
-                </button>
-                <button
-                  onClick={() => setShowRightPanel(!showRightPanel)}
-                  style={{
-                    width: 36, height: 36, borderRadius: 6,
+                {!isMobile && (
+                  <button style={{
+                    padding: '8px 14px', borderRadius: 6,
+                    background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                    color: colors.textSecondary, fontSize: 12, fontWeight: 500,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                  onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
+                  >
+                    <Search size={14} /> Search
+                  </button>
+                )}
+                {!isMobile && !isTablet && (
+                  <button
+                    onClick={() => setShowRightPanel(!showRightPanel)}
+                    style={{
+                      width: 36, height: 36, borderRadius: 6,
                     background: showRightPanel ? colors.accentLight : colors.bgTertiary,
                     border: `1px solid ${colors.border}`,
                     color: showRightPanel ? colors.accent : colors.textSecondary,
@@ -975,11 +1299,12 @@ export default function DataChatPage() {
                 >
                   {showRightPanel ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                 </button>
+                )}
               </div>
             </div>
 
             {/* Messages */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: colors.bgPrimary }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '20px 24px', background: colors.bgPrimary }}>
               {isLoadingMessages ? (
                 <div style={{ textAlign: 'center', padding: 40 }}>
                   <Loader2 size={24} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
@@ -999,9 +1324,9 @@ export default function DataChatPage() {
                     
                     return (
                       <div key={msg.id} style={{ marginBottom: showTime ? 12 : 2 }}>
-                        <div style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: isMobile ? 6 : 8 }}>
                           {!isAgent && (
-                            <div style={{ width: 32, flexShrink: 0 }}>
+                            <div style={{ width: isMobile ? 28 : 32, flexShrink: 0 }}>
                               {showAvatar && (
                                 selectedRoomData.pictureUrl ? (
                                   <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
@@ -1014,7 +1339,7 @@ export default function DataChatPage() {
                             </div>
                           )}
                           
-                          <div style={{ maxWidth: '65%' }}>
+                          <div style={{ maxWidth: isMobile ? '80%' : '65%' }}>
                             {msg.messageType === 'sticker' ? (
                               <div>{renderSticker(msg.packageId, msg.stickerId)}</div>
                             ) : msg.messageType === 'image' && msg.mediaUrl ? (
@@ -1028,8 +1353,8 @@ export default function DataChatPage() {
                                   src={msg.mediaUrl} 
                                   alt="รูปภาพ" 
                                   style={{ 
-                                    maxWidth: 240, 
-                                    maxHeight: 320,
+                                    maxWidth: isMobile ? 200 : 240, 
+                                    maxHeight: isMobile ? 260 : 320,
                                     display: 'block',
                                     objectFit: 'contain',
                                   }} 
@@ -1107,9 +1432,9 @@ export default function DataChatPage() {
               )}
             </div>
 
-            {/* Quick Replies */}
-            {showQuickReplies && (
-              <div style={{ padding: '12px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+            {/* Quick Replies - hidden on mobile */}
+            {showQuickReplies && !isMobile && (
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>Quick Replies</span>
                   <button onClick={() => setShowQuickReplies(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
@@ -1134,19 +1459,19 @@ export default function DataChatPage() {
 
             {/* Emoji Picker */}
             {showEmojiPicker && (
-              <div style={{ padding: '12px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+              <div style={{ padding: isMobile ? '10px 12px' : '12px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>Emoji</span>
                   <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 6 : 4 }}>
                   {commonEmojis.map((emoji, i) => (
                     <button 
                       key={i} 
                       onClick={() => { setMessage(prev => prev + emoji); setShowEmojiPicker(false); }}
                       style={{
-                        width: 32, height: 32, borderRadius: 6, border: 'none',
-                        background: colors.bgTertiary, fontSize: 18, cursor: 'pointer',
+                        width: isMobile ? 38 : 32, height: isMobile ? 38 : 32, borderRadius: 6, border: 'none',
+                        background: colors.bgTertiary, fontSize: isMobile ? 20 : 18, cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transition: 'transform 0.1s',
                       }}
@@ -1161,13 +1486,15 @@ export default function DataChatPage() {
             )}
 
             {/* Input Area */}
-            <div style={{ padding: '14px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
-              <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>
-                <kbd style={{ padding: '2px 6px', background: colors.bgTertiary, borderRadius: 4, fontSize: 10 }}>Enter</kbd> to send
-                <span style={{ margin: '0 6px' }}>•</span>
-                <kbd style={{ padding: '2px 6px', background: colors.bgTertiary, borderRadius: 4, fontSize: 10 }}>Shift + Enter</kbd> for new line
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+            <div style={{ padding: isMobile ? '10px 12px' : '14px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+              {!isMobile && (
+                <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>
+                  <kbd style={{ padding: '2px 6px', background: colors.bgTertiary, borderRadius: 4, fontSize: 10 }}>Enter</kbd> to send
+                  <span style={{ margin: '0 6px' }}>•</span>
+                  <kbd style={{ padding: '2px 6px', background: colors.bgTertiary, borderRadius: 4, fontSize: 10 }}>Shift + Enter</kbd> for new line
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? 8 : 12 }}>
                 <div style={{ flex: 1 }}>
                   <input
                     type="text"
@@ -1176,10 +1503,10 @@ export default function DataChatPage() {
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
                     placeholder="Type your message..."
                     style={{
-                      width: '100%', height: 44, padding: '0 14px',
+                      width: '100%', height: isMobile ? 40 : 44, padding: '0 14px',
                       borderRadius: 8, border: `1px solid ${colors.border}`,
                       background: colors.bgInput, color: colors.textPrimary,
-                      fontSize: 14, outline: 'none',
+                      fontSize: isMobile ? 16 : 14, outline: 'none',
                       transition: 'border-color 0.15s ease',
                     }}
                     onFocus={(e) => e.currentTarget.style.borderColor = colors.accent}
@@ -1190,7 +1517,7 @@ export default function DataChatPage() {
                   onClick={() => sendMessage(message)}
                   disabled={!message.trim() || isSending}
                   style={{
-                    padding: '12px 20px', borderRadius: 8, border: 'none',
+                    padding: isMobile ? '10px 14px' : '12px 20px', borderRadius: 8, border: 'none',
                     background: message.trim() && !isSending ? colors.accent : colors.bgTertiary,
                     color: message.trim() && !isSending ? '#fff' : colors.textMuted,
                     fontSize: 13, fontWeight: 600,
@@ -1199,12 +1526,12 @@ export default function DataChatPage() {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  {isSending ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <><Send size={15} /> Send</>}
+                  {isSending ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : isMobile ? <Send size={18} /> : <><Send size={15} /> Send</>}
                 </button>
               </div>
               
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
+              <div style={{ display: 'flex', gap: 4, marginTop: isMobile ? 8 : 10 }}>
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   style={{ 
@@ -1216,28 +1543,47 @@ export default function DataChatPage() {
                 >
                   <Smile size={18} />
                 </button>
-                <button style={{ width: 34, height: 34, borderRadius: 6, border: 'none', background: 'transparent', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Paperclip size={18} />
-                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  style={{ display: 'none' }}
+                />
                 <button 
-                  onClick={() => setShowQuickReplies(!showQuickReplies)}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
                   style={{ 
-                    width: 34, height: 34, borderRadius: 6, border: 'none',
-                    background: showQuickReplies ? colors.accentLight : 'transparent',
-                    color: showQuickReplies ? colors.accent : colors.textMuted,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 34, height: 34, borderRadius: 6, border: 'none', 
+                    background: isUploading ? colors.accentLight : 'transparent', 
+                    color: isUploading ? colors.accent : colors.textMuted, 
+                    cursor: isUploading ? 'not-allowed' : 'pointer', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' 
                   }}
                 >
-                  <Plus size={18} />
+                  {isUploading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Paperclip size={18} />}
                 </button>
+                {!isMobile && (
+                  <button 
+                    onClick={() => setShowQuickReplies(!showQuickReplies)}
+                    style={{ 
+                      width: 34, height: 34, borderRadius: 6, border: 'none',
+                      background: showQuickReplies ? colors.accentLight : 'transparent',
+                      color: showQuickReplies ? colors.accent : colors.textMuted,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <Plus size={18} />
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════ */}
-          {/* RIGHT PANEL */}
+          {/* RIGHT PANEL - Hidden on mobile/tablet */}
           {/* ═══════════════════════════════════════════════════════════════ */}
-          {showRightPanel && (
+          {showRightPanel && !isMobile && !isTablet && (
             <div style={{ 
               width: 320, 
               background: colors.bgSecondary, 
@@ -1306,24 +1652,126 @@ export default function DataChatPage() {
 
               {/* Tags Section */}
               <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}` }}>
-                <div style={{ 
-                  padding: 16, borderRadius: 8,
-                  border: `1px dashed ${colors.border}`,
-                  background: colors.bgPrimary, textAlign: 'center',
-                }}>
-                  <Tag size={20} style={{ color: colors.textMuted, marginBottom: 8 }} />
-                  <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 10px 0' }}>
-                    Use tags to organize chats
-                  </p>
-                  <button style={{ 
-                    background: colors.accent, border: 'none', color: '#fff',
-                    fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                    padding: '6px 14px', borderRadius: 6,
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                  }}>
-                    <Plus size={14} /> Add tags
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Tags</span>
+                  <button 
+                    onClick={() => setShowTagInput(!showTagInput)}
+                    style={{ 
+                      width: 28, height: 28, borderRadius: 6, border: 'none',
+                      background: showTagInput ? colors.accentLight : colors.bgTertiary, 
+                      color: colors.accent,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <Plus size={16} />
                   </button>
                 </div>
+                
+                {/* Existing Tags */}
+                {selectedRoomData.tags && selectedRoomData.tags.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                    {selectedRoomData.tags.map((tag, idx) => (
+                      <div key={idx} style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        padding: '4px 8px', borderRadius: 12,
+                        background: colors.accentLight, border: `1px solid ${colors.accent}30`,
+                        fontSize: 11, fontWeight: 500, color: colors.accent,
+                      }}>
+                        {tag}
+                        <button
+                          onClick={() => removeTag(tag)}
+                          style={{
+                            width: 14, height: 14, borderRadius: '50%', border: 'none',
+                            background: 'transparent', color: colors.accent,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            padding: 0,
+                          }}
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Tag Input */}
+                {showTagInput && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                      <input
+                        type="text"
+                        placeholder="New tag..."
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newTag.trim()) {
+                            addTag(newTag.trim());
+                            setNewTag('');
+                          }
+                        }}
+                        style={{
+                          flex: 1, padding: '6px 10px', borderRadius: 6,
+                          border: `1px solid ${colors.border}`,
+                          background: colors.bgInput, color: colors.textPrimary,
+                          fontSize: 12, outline: 'none',
+                        }}
+                      />
+                      <button
+                        onClick={() => { if (newTag.trim()) { addTag(newTag.trim()); setNewTag(''); } }}
+                        style={{
+                          padding: '6px 12px', borderRadius: 6,
+                          background: colors.accent, border: 'none',
+                          color: '#fff', fontSize: 12, fontWeight: 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {predefinedTags.filter(t => !selectedRoomData.tags?.includes(t)).map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => addTag(tag)}
+                          style={{
+                            padding: '4px 8px', borderRadius: 12,
+                            background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                            color: colors.textSecondary, fontSize: 10, fontWeight: 500,
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.color = colors.accent; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.color = colors.textSecondary; }}
+                        >
+                          + {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {(!selectedRoomData.tags || selectedRoomData.tags.length === 0) && !showTagInput && (
+                  <div style={{ 
+                    padding: 16, borderRadius: 8,
+                    border: `1px dashed ${colors.border}`,
+                    background: colors.bgPrimary, textAlign: 'center',
+                  }}>
+                    <Tag size={20} style={{ color: colors.textMuted, marginBottom: 8 }} />
+                    <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 10px 0' }}>
+                      Use tags to organize chats
+                    </p>
+                    <button 
+                      onClick={() => setShowTagInput(true)}
+                      style={{ 
+                        background: colors.accent, border: 'none', color: '#fff',
+                        fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                        padding: '6px 14px', borderRadius: 6,
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                      }}
+                    >
+                      <Plus size={14} /> Add tags
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Assign Section */}
@@ -1349,45 +1797,250 @@ export default function DataChatPage() {
               </div>
 
               {/* Notes Section */}
-              <div style={{ padding: 20, flex: 1 }}>
+              <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Notes</span>
-                  <button style={{ 
-                    width: 28, height: 28, borderRadius: 6, border: 'none',
-                    background: colors.bgTertiary, color: colors.accent,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                  <button 
+                    onClick={() => setShowNoteInput(!showNoteInput)}
+                    style={{ 
+                      width: 28, height: 28, borderRadius: 6, border: 'none',
+                      background: showNoteInput ? colors.accentLight : colors.bgTertiary, 
+                      color: colors.accent,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
                     <Plus size={16} />
                   </button>
                 </div>
-                <div style={{ 
-                  padding: 16, borderRadius: 8,
-                  background: colors.bgPrimary, border: `1px solid ${colors.border}`,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
-                    <FileEdit size={18} style={{ color: colors.info, flexShrink: 0, marginTop: 2 }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Keep records</span>
+                
+                {/* Add Note Input */}
+                {showNoteInput && (
+                  <div style={{ marginBottom: 12 }}>
+                    <textarea
+                      placeholder="Write a note..."
+                      value={newNoteContent}
+                      onChange={(e) => setNewNoteContent(e.target.value)}
+                      style={{
+                        width: '100%', height: 80, padding: 10, borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                        background: colors.bgInput, color: colors.textPrimary,
+                        fontSize: 12, outline: 'none', resize: 'none',
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <button
+                        onClick={() => { setShowNoteInput(false); setNewNoteContent(''); }}
+                        style={{
+                          flex: 1, padding: '8px', borderRadius: 6,
+                          background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                          color: colors.textSecondary, fontSize: 12, fontWeight: 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={addNote}
+                        disabled={isAddingNote || !newNoteContent.trim()}
+                        style={{
+                          flex: 1, padding: '8px', borderRadius: 6,
+                          background: colors.accent, border: 'none',
+                          color: '#fff', fontSize: 12, fontWeight: 500,
+                          cursor: isAddingNote || !newNoteContent.trim() ? 'not-allowed' : 'pointer',
+                          opacity: isAddingNote || !newNoteContent.trim() ? 0.6 : 1,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                        }}
+                      >
+                        {isAddingNote && <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />}
+                        Save Note
+                      </button>
+                    </div>
                   </div>
-                  <p style={{ fontSize: 12, color: colors.textMuted, margin: 0, lineHeight: 1.5 }}>
-                    Record info about this user and leave notes for your team.
-                  </p>
+                )}
+                
+                {/* Notes List */}
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {roomNotes.length > 0 ? (
+                    roomNotes.map((note) => (
+                      <div key={note.id} style={{ 
+                        padding: 12, borderRadius: 8, marginBottom: 8,
+                        background: colors.bgPrimary, border: `1px solid ${colors.border}`,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: colors.textMuted }}>
+                            {note.createdBy} • {formatTime(note.createdAt)}
+                          </span>
+                          <button
+                            onClick={() => deleteNote(note.id)}
+                            style={{
+                              width: 20, height: 20, borderRadius: 4, border: 'none',
+                              background: 'transparent', color: colors.danger,
+                              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              opacity: 0.6, transition: 'opacity 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                        <p style={{ fontSize: 12, color: colors.textPrimary, margin: 0, lineHeight: 1.5 }}>
+                          {note.content}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ 
+                      padding: 16, borderRadius: 8,
+                      background: colors.bgPrimary, border: `1px solid ${colors.border}`,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+                        <FileEdit size={18} style={{ color: colors.info, flexShrink: 0, marginTop: 2 }} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Keep records</span>
+                      </div>
+                      <p style={{ fontSize: 12, color: colors.textMuted, margin: 0, lineHeight: 1.5 }}>
+                        Record info about this user and leave notes for your team.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Actions Section */}
+              <div style={{ padding: 20, borderTop: `1px solid ${colors.border}` }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary, display: 'block', marginBottom: 12 }}>
+                  Actions
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button
+                    onClick={() => togglePinRoom(selectedRoom)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 8,
+                      background: selectedRoomData.isPinned ? colors.accentLight : colors.bgPrimary,
+                      border: `1px solid ${selectedRoomData.isPinned ? colors.accent + '50' : colors.border}`,
+                      color: selectedRoomData.isPinned ? colors.accent : colors.textPrimary,
+                      fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      transition: 'all 0.15s ease', textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = selectedRoomData.isPinned ? colors.accentLight : colors.bgHover}
+                    onMouseLeave={(e) => e.currentTarget.style.background = selectedRoomData.isPinned ? colors.accentLight : colors.bgPrimary}
+                  >
+                    <Pin size={16} style={{ transform: selectedRoomData.isPinned ? 'rotate(-45deg)' : 'none' }} />
+                    {selectedRoomData.isPinned ? 'Unpin Chat' : 'Pin Chat'}
+                  </button>
+                  
+                  <button
+                    onClick={() => toggleMuteRoom(selectedRoom)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 8,
+                      background: selectedRoomData.isMuted ? colors.warning + '15' : colors.bgPrimary,
+                      border: `1px solid ${selectedRoomData.isMuted ? colors.warning + '50' : colors.border}`,
+                      color: selectedRoomData.isMuted ? colors.warning : colors.textPrimary,
+                      fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      transition: 'all 0.15s ease', textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = selectedRoomData.isMuted ? colors.warning + '15' : colors.bgHover}
+                    onMouseLeave={(e) => e.currentTarget.style.background = selectedRoomData.isMuted ? colors.warning + '15' : colors.bgPrimary}
+                  >
+                    {selectedRoomData.isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                    {selectedRoomData.isMuted ? 'Unmute Notifications' : 'Mute Notifications'}
+                  </button>
+                  
+                  <button
+                    onClick={() => archiveRoom(selectedRoom)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 8,
+                      background: colors.bgPrimary,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textSecondary,
+                      fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      transition: 'all 0.15s ease', textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                    onMouseLeave={(e) => e.currentTarget.style.background = colors.bgPrimary}
+                  >
+                    <Bookmark size={16} />
+                    Archive Chat
+                  </button>
+                  
+                  <button
+                    onClick={() => blockRoom(selectedRoom)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 8,
+                      background: colors.bgPrimary,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.warning,
+                      fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      transition: 'all 0.15s ease', textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = colors.warning + '10'; e.currentTarget.style.borderColor = colors.warning + '30'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgPrimary; e.currentTarget.style.borderColor = colors.border; }}
+                  >
+                    <AlertTriangle size={16} />
+                    Block User
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
+                        deleteRoom(selectedRoom, true);
+                      }
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 8,
+                      background: colors.bgPrimary,
+                      border: `1px solid ${colors.border}`,
+                      color: colors.danger,
+                      fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      transition: 'all 0.15s ease', textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = colors.danger + '10'; e.currentTarget.style.borderColor = colors.danger + '30'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgPrimary; e.currentTarget.style.borderColor = colors.border; }}
+                  >
+                    <Trash2 size={16} />
+                    Delete Chat
+                  </button>
                 </div>
               </div>
             </div>
           )}
         </>
       ) : (
-        /* Empty State */
+        /* Empty State - shown when no room selected */
         <div style={{
-          flex: 1, display: 'flex', flexDirection: 'column',
+          flex: 1, 
+          display: isMobile ? (showMobileSidebar ? 'none' : 'flex') : 'flex', 
+          flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
           background: colors.bgPrimary,
+          padding: 20,
         }}>
-          <MessageCircle size={48} style={{ color: colors.textMuted, marginBottom: 16 }} />
-          <h2 style={{ fontSize: 18, fontWeight: 600, color: colors.textPrimary, margin: '0 0 8px 0' }}>
+          {isMobile && (
+            <button
+              onClick={() => setShowMobileSidebar(true)}
+              style={{
+                position: 'absolute',
+                top: 16, left: 16,
+                padding: 10, borderRadius: 8,
+                background: colors.bgSecondary, border: `1px solid ${colors.border}`,
+                color: colors.accent, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <ChevronLeft size={20} />
+            </button>
+          )}
+          <MessageCircle size={isMobile ? 40 : 48} style={{ color: colors.textMuted, marginBottom: 16 }} />
+          <h2 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 600, color: colors.textPrimary, margin: '0 0 8px 0', textAlign: 'center' }}>
             Select a conversation
           </h2>
-          <p style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', maxWidth: 240, margin: '0 0 20px 0' }}>
+          <p style={{ fontSize: isMobile ? 12 : 13, color: colors.textMuted, textAlign: 'center', maxWidth: 240, margin: '0 0 20px 0' }}>
             Choose a chat from the list to start messaging
           </p>
           <div style={{ 
@@ -1409,6 +2062,43 @@ export default function DataChatPage() {
         *::-webkit-scrollbar { width: 6px; }
         *::-webkit-scrollbar-track { background: transparent; }
         *::-webkit-scrollbar-thumb { background: ${colors.border}; border-radius: 3px; }
+        
+        /* Mobile specific styles */
+        @media (max-width: 768px) {
+          input, textarea, button { 
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+          }
+          input[type="text"] {
+            font-size: 16px !important; /* Prevent iOS zoom on input focus */
+          }
+        }
+        
+        /* Safe area for mobile devices with notch */
+        @supports (padding: env(safe-area-inset-bottom)) {
+          .chat-input-area {
+            padding-bottom: calc(14px + env(safe-area-inset-bottom));
+          }
+        }
+        
+        /* Smooth scrolling */
+        .messages-container {
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Mobile sidebar overlay backdrop */
+        @media (max-width: 768px) {
+          .mobile-sidebar-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+          }
+        }
       `}} />
     </div>
   );

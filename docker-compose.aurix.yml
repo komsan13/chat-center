@@ -1,0 +1,19 @@
+services:
+  aurix-dashboard:
+    image: aurix-dashboard
+    container_name: aurix-dashboard
+    restart: unless-stopped
+    volumes:
+      - /root/aurix-data:/app/data
+    networks:
+      - web_proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.aurix.rule=Host(`aurix-center.cloud`)
+      - traefik.http.routers.aurix.entrypoints=websecure
+      - traefik.http.routers.aurix.tls.certresolver=myresolver
+      - traefik.http.services.aurix.loadbalancer.server.port=3001
+
+networks:
+  web_proxy:
+    external: true

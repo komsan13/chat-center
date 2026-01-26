@@ -10,9 +10,10 @@ interface QuickStatsProps {
   expenses: { count: number; total: number; formatted: string };
   websites: number;
   banks: number;
+  isMobile?: boolean;
 }
 
-export default function QuickStats({ transfers, cashWithdrawals, expenses, websites, banks }: QuickStatsProps) {
+export default function QuickStats({ transfers, cashWithdrawals, expenses, websites, banks, isMobile = false }: QuickStatsProps) {
   const { isDark } = useTheme();
   const { t } = useLanguage();
 
@@ -65,8 +66,8 @@ export default function QuickStats({ transfers, cashWithdrawals, expenses, websi
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(5, 1fr)',
-      gap: '16px',
+      gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)',
+      gap: isMobile ? '10px' : '16px',
     }}>
       {stats.map((stat, index) => {
         const Icon = stat.icon;
@@ -75,37 +76,37 @@ export default function QuickStats({ transfers, cashWithdrawals, expenses, websi
             key={index}
             style={{
               background: colors.cardBg,
-              borderRadius: '12px',
+              borderRadius: isMobile ? '10px' : '12px',
               border: `1px solid ${colors.border}`,
-              padding: '16px',
+              padding: isMobile ? '12px' : '16px',
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
+              gap: isMobile ? '10px' : '12px',
               transition: 'all 0.2s ease',
               cursor: 'pointer',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = stat.color;
+              if (!isMobile) e.currentTarget.style.borderColor = stat.color;
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = colors.border;
+              if (!isMobile) e.currentTarget.style.borderColor = colors.border;
             }}
           >
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
+              width: isMobile ? '36px' : '40px',
+              height: isMobile ? '36px' : '40px',
+              borderRadius: isMobile ? '8px' : '10px',
               background: `${stat.color}15`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
             }}>
-              <Icon style={{ width: '20px', height: '20px', color: stat.color }} />
+              <Icon style={{ width: isMobile ? '18px' : '20px', height: isMobile ? '18px' : '20px', color: stat.color }} />
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ 
-                fontSize: '11px', 
+                fontSize: isMobile ? '10px' : '11px', 
                 color: colors.textFaded, 
                 margin: 0,
                 textTransform: 'uppercase',
@@ -117,7 +118,7 @@ export default function QuickStats({ transfers, cashWithdrawals, expenses, websi
                 {stat.label}
               </p>
               <p style={{ 
-                fontSize: '18px', 
+                fontSize: isMobile ? '15px' : '18px', 
                 fontWeight: 700, 
                 color: colors.text, 
                 margin: 0,
@@ -126,9 +127,12 @@ export default function QuickStats({ transfers, cashWithdrawals, expenses, websi
                 {stat.value}
               </p>
               <p style={{ 
-                fontSize: '11px', 
+                fontSize: isMobile ? '10px' : '11px', 
                 color: colors.textMuted, 
                 margin: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
               }}>
                 {stat.count}
               </p>

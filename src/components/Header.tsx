@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Languages, BellRing, SunMedium, MoonStar, ChevronDown } from 'lucide-react';
+import { Languages, BellRing, SunMedium, MoonStar, ChevronDown, Menu } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -13,7 +13,12 @@ const websiteOptions = [
   { id: 'WEB-005', name: 'Aurix Partner', nameTh: 'Aurix Partner' },
 ];
 
-export default function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+  isMobile?: boolean;
+}
+
+export default function Header({ onMenuClick, isMobile = false }: HeaderProps) {
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
   const [selectedWebsite, setSelectedWebsite] = useState('WEB-001');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -70,16 +75,41 @@ export default function Header() {
       alignItems: 'center', 
       justifyContent: 'space-between', 
       height: '100%', 
-      padding: '0 24px',
+      padding: isMobile ? '0 12px' : '0 24px',
+      gap: isMobile ? '8px' : '16px',
     }}>
-      {/* Website Selector */}
-      <div 
-        className="website-dropdown"
-        style={{ 
-          position: 'relative', 
-          width: '280px',
-        }}
-      >
+      {/* Mobile Menu Button */}
+      {isMobile && (
+        <button
+          onClick={onMenuClick}
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '10px',
+            border: `1px solid ${colors.border}`,
+            background: colors.background,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: '#22c55e',
+            transition: 'all 0.2s ease',
+            flexShrink: 0,
+          }}
+        >
+          <Menu style={{ width: '20px', height: '20px' }} />
+        </button>
+      )}
+
+      {/* Website Selector - Hidden on mobile */}
+      {!isMobile && (
+        <div 
+          className="website-dropdown"
+          style={{ 
+            position: 'relative', 
+            width: '280px',
+          }}
+        >
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           style={{
@@ -186,15 +216,29 @@ export default function Header() {
           </div>
         )}
       </div>
+      )}
+
+      {/* Mobile Title */}
+      {isMobile && (
+        <div style={{ 
+          flex: 1, 
+          textAlign: 'center',
+          fontSize: '16px',
+          fontWeight: 600,
+          color: colors.text,
+        }}>
+          Aurix
+        </div>
+      )}
 
       {/* Right Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '12px' }}>
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
           style={{
-            width: '40px',
-            height: '40px',
+            width: isMobile ? '36px' : '40px',
+            height: isMobile ? '36px' : '40px',
             borderRadius: '10px',
             border: isDark ? '1px solid #2A313C' : '1px solid #e5e7eb',
             background: isDark ? '#23262B' : '#ffffff',
@@ -211,35 +255,37 @@ export default function Header() {
           {isDark ? <SunMedium style={{ width: '18px', height: '18px' }} /> : <MoonStar style={{ width: '18px', height: '18px' }} />}
         </button>
 
-        {/* Language Switcher */}
-        <button
-          onClick={() => setLanguage(language === 'en' ? 'th' : 'en')}
-          style={{
-            height: '40px',
-            padding: '0 14px',
-            borderRadius: '10px',
-            border: `1px solid ${colors.border}`,
-            background: colors.background,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            cursor: 'pointer',
-            color: colors.textMuted,
-            fontSize: '13px',
-            fontWeight: 500,
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <Languages style={{ width: '16px', height: '16px' }} />
-          {language.toUpperCase()}
-        </button>
+        {/* Language Switcher - Hidden on mobile */}
+        {!isMobile && (
+          <button
+            onClick={() => setLanguage(language === 'en' ? 'th' : 'en')}
+            style={{
+              height: '40px',
+              padding: '0 14px',
+              borderRadius: '10px',
+              border: `1px solid ${colors.border}`,
+              background: colors.background,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              color: colors.textMuted,
+              fontSize: '13px',
+              fontWeight: 500,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Languages style={{ width: '16px', height: '16px' }} />
+            {language.toUpperCase()}
+          </button>
+        )}
 
         {/* Notifications */}
         <button
           style={{
             position: 'relative',
-            width: '40px',
-            height: '40px',
+            width: isMobile ? '36px' : '40px',
+            height: isMobile ? '36px' : '40px',
             borderRadius: '10px',
             border: `1px solid ${colors.border}`,
             background: colors.background,
@@ -254,8 +300,8 @@ export default function Header() {
           <BellRing style={{ width: '18px', height: '18px' }} />
           <span style={{
             position: 'absolute',
-            top: '8px',
-            right: '8px',
+            top: isMobile ? '6px' : '8px',
+            right: isMobile ? '6px' : '8px',
             width: '8px',
             height: '8px',
             borderRadius: '50%',
@@ -264,45 +310,51 @@ export default function Header() {
           }} />
         </button>
 
-        {/* Divider */}
-        <div style={{ width: '1px', height: '32px', background: colors.border, margin: '0 8px' }} />
+        {/* Divider - Hidden on mobile */}
+        {!isMobile && (
+          <div style={{ width: '1px', height: '32px', background: colors.border, margin: '0 8px' }} />
+        )}
 
         {/* User Profile */}
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: '12px', 
-          padding: '6px 12px 6px 6px',
+          gap: isMobile ? '8px' : '12px', 
+          padding: isMobile ? '4px' : '6px 12px 6px 6px',
           borderRadius: '12px',
-          background: colors.background,
-          border: `1px solid ${colors.border}`,
+          background: isMobile ? 'transparent' : colors.background,
+          border: isMobile ? 'none' : `1px solid ${colors.border}`,
           cursor: 'pointer',
           transition: 'all 0.2s ease',
         }}>
           <div style={{
-            width: '36px',
-            height: '36px',
+            width: isMobile ? '32px' : '36px',
+            height: isMobile ? '32px' : '36px',
             borderRadius: '10px',
             background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#ffffff',
-            fontSize: '13px',
+            fontSize: isMobile ? '11px' : '13px',
             fontWeight: 700,
           }}>
             {getUserInitials()}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: '13px', fontWeight: 600, color: colors.text, margin: 0, whiteSpace: 'nowrap' }}>
-              {user?.name || 'Admin Aurix'}
-            </p>
-            <p style={{ fontSize: '11px', color: colors.textFaded, margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
-              admin
-            </p>
-          </div>
-          <ChevronDown style={{ width: '16px', height: '16px', color: colors.textFaded }} />
+          {!isMobile && (
+            <>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: colors.text, margin: 0, whiteSpace: 'nowrap' }}>
+                  {user?.name || 'Admin Aurix'}
+                </p>
+                <p style={{ fontSize: '11px', color: colors.textFaded, margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
+                  admin
+                </p>
+              </div>
+              <ChevronDown style={{ width: '16px', height: '16px', color: colors.textFaded }} />
+            </>
+          )}
         </div>
       </div>
     </div>

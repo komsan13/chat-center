@@ -54,6 +54,21 @@ export default function Dashboard() {
   const { isDark } = useTheme();
   const { t, language } = useLanguage();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+  
+  // Detect screen size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
   
   // Get current month/year for default selection
   const now = new Date();
@@ -138,76 +153,89 @@ export default function Dashboard() {
   }) => (
     <div style={{
       background: colors.cardBg,
-      borderRadius: '16px',
+      borderRadius: isMobile ? '12px' : '16px',
       border: `1px solid ${colors.border}`,
-      padding: '20px',
+      padding: isMobile ? '16px' : '20px',
       display: 'flex',
       flexDirection: 'column',
-      gap: '12px',
+      gap: isMobile ? '10px' : '12px',
       transition: 'all 0.2s ease',
       cursor: 'pointer',
+      minWidth: 0,
     }}
     onMouseEnter={(e) => {
-      e.currentTarget.style.transform = 'translateY(-2px)';
-      e.currentTarget.style.boxShadow = isDark 
-        ? '0 8px 32px rgba(0, 0, 0, 0.3)' 
-        : '0 8px 32px rgba(0, 0, 0, 0.1)';
+      if (!isMobile) {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = isDark 
+          ? '0 8px 32px rgba(0, 0, 0, 0.3)' 
+          : '0 8px 32px rgba(0, 0, 0, 0.1)';
+      }
     }}
     onMouseLeave={(e) => {
-      e.currentTarget.style.transform = 'translateY(0)';
-      e.currentTarget.style.boxShadow = 'none';
+      if (!isMobile) {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }
     }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{
-          width: '48px',
-          height: '48px',
-          borderRadius: '12px',
+          width: isMobile ? '40px' : '48px',
+          height: isMobile ? '40px' : '48px',
+          borderRadius: isMobile ? '10px' : '12px',
           background: `${color}15`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          flexShrink: 0,
         }}>
-          <Icon style={{ width: '24px', height: '24px', color }} />
+          <Icon style={{ width: isMobile ? '20px' : '24px', height: isMobile ? '20px' : '24px', color }} />
         </div>
         {change !== undefined && change !== null && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
-            padding: '4px 10px',
+            padding: isMobile ? '3px 8px' : '4px 10px',
             borderRadius: '20px',
             background: change >= 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
             color: change >= 0 ? '#22c55e' : '#ef4444',
-            fontSize: '12px',
+            fontSize: isMobile ? '11px' : '12px',
             fontWeight: 600,
+            flexShrink: 0,
           }}>
-            {change >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+            {change >= 0 ? <ArrowUpRight size={isMobile ? 12 : 14} /> : <ArrowDownRight size={isMobile ? 12 : 14} />}
             {Math.abs(change)}%
           </div>
         )}
       </div>
-      <div>
+      <div style={{ minWidth: 0 }}>
         <p style={{ 
-          fontSize: '13px', 
+          fontSize: isMobile ? '12px' : '13px', 
           color: colors.textMuted, 
           margin: 0,
-          marginBottom: '4px'
+          marginBottom: '4px',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}>
           {title}
         </p>
         <p style={{ 
-          fontSize: '24px', 
+          fontSize: isMobile ? '18px' : '24px', 
           fontWeight: 700, 
           color: colors.text, 
           margin: 0,
-          letterSpacing: '-0.5px'
+          letterSpacing: '-0.5px',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
         }}>
           {value}
         </p>
         {subtitle && (
           <p style={{ 
-            fontSize: '12px', 
+            fontSize: isMobile ? '11px' : '12px', 
             color: colors.textFaded, 
             margin: 0,
             marginTop: '4px'
@@ -221,31 +249,32 @@ export default function Dashboard() {
 
   return (
     <ProtectedPage permission="viewDashboard">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '16px' : '24px' }}>
         {/* Page Header */}
         <div style={{ 
           display: 'flex', 
-          alignItems: 'center', 
+          alignItems: isMobile ? 'flex-start' : 'center', 
           justifyContent: 'space-between', 
-          flexWrap: 'wrap', 
+          flexDirection: isMobile ? 'column' : 'row',
           gap: '16px' 
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '16px' }}>
             <div style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '14px',
+              width: isMobile ? '44px' : '52px',
+              height: isMobile ? '44px' : '52px',
+              borderRadius: isMobile ? '12px' : '14px',
               background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 4px 16px rgba(34, 197, 94, 0.3)',
+              flexShrink: 0,
             }}>
-              <Activity style={{ width: '26px', height: '26px', color: '#ffffff' }} />
+              <Activity style={{ width: isMobile ? '22px' : '26px', height: isMobile ? '22px' : '26px', color: '#ffffff' }} />
             </div>
             <div>
               <h1 style={{ 
-                fontSize: '28px', 
+                fontSize: isMobile ? '22px' : '28px', 
                 fontWeight: 700, 
                 color: colors.text, 
                 margin: 0,
@@ -253,18 +282,24 @@ export default function Dashboard() {
               }}>
                 {t('dashboard.title')}
               </h1>
-              <p style={{ fontSize: '14px', color: colors.textMuted, margin: 0 }}>
+              <p style={{ fontSize: isMobile ? '13px' : '14px', color: colors.textMuted, margin: 0 }}>
                 {t('dashboard.welcome')}
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: isMobile ? '8px' : '12px',
+            width: isMobile ? '100%' : 'auto',
+            flexWrap: isMobile ? 'wrap' : 'nowrap',
+          }}>
             {/* Month Selector */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', flex: isMobile ? 1 : 'none', minWidth: isMobile ? '0' : '140px' }}>
               <CalendarDays style={{ 
                 position: 'absolute', 
-                left: '14px', 
+                left: isMobile ? '10px' : '14px', 
                 top: '50%', 
                 transform: 'translateY(-50%)', 
                 width: '16px', 
@@ -276,19 +311,19 @@ export default function Dashboard() {
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
                 style={{
-                  height: '44px',
-                  paddingLeft: '42px',
-                  paddingRight: '16px',
+                  width: '100%',
+                  height: isMobile ? '40px' : '44px',
+                  paddingLeft: isMobile ? '34px' : '42px',
+                  paddingRight: '12px',
                   borderRadius: '12px',
                   border: `1px solid ${colors.border}`,
                   background: colors.cardBg,
                   color: colors.text,
-                  fontSize: '14px',
+                  fontSize: isMobile ? '13px' : '14px',
                   fontWeight: 500,
                   cursor: 'pointer',
                   outline: 'none',
                   appearance: 'none',
-                  minWidth: '140px',
                 }}
               >
                 {thaiMonths.map((month) => (
@@ -302,18 +337,18 @@ export default function Dashboard() {
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
               style={{
-                height: '44px',
-                padding: '0 16px',
+                height: isMobile ? '40px' : '44px',
+                padding: '0 12px',
                 borderRadius: '12px',
                 border: `1px solid ${colors.border}`,
                 background: colors.cardBg,
                 color: colors.text,
-                fontSize: '14px',
+                fontSize: isMobile ? '13px' : '14px',
                 fontWeight: 500,
                 cursor: 'pointer',
                 outline: 'none',
                 appearance: 'none',
-                minWidth: '100px',
+                minWidth: isMobile ? '70px' : '100px',
               }}
             >
               {yearOptions.map((year) => (
@@ -329,14 +364,15 @@ export default function Dashboard() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '44px',
-                height: '44px',
+                width: isMobile ? '40px' : '44px',
+                height: isMobile ? '40px' : '44px',
                 borderRadius: '12px',
                 border: `1px solid ${colors.border}`,
                 background: colors.cardBg,
                 color: colors.textMuted,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                flexShrink: 0,
               }}
             >
               <RefreshCcw 
@@ -385,8 +421,8 @@ export default function Dashboard() {
             {/* Main KPI Cards */}
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(4, 1fr)', 
-              gap: '20px' 
+              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : isTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', 
+              gap: isMobile ? '12px' : '20px' 
             }}>
               <KPICard
                 title={t('dashboard.totalDeposits')}
@@ -429,13 +465,14 @@ export default function Dashboard() {
               expenses={data.stats.expenses}
               websites={data.stats.websites}
               banks={data.stats.banks}
+              isMobile={isMobile}
             />
 
             {/* Charts Row */}
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: '2fr 1fr', 
-              gap: '20px' 
+              gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr' : '2fr 1fr', 
+              gap: isMobile ? '16px' : '20px' 
             }}>
               <FinancialChart data={data.dailyChart} />
               <WebsitePerformance data={data.websitePerformance} />
