@@ -9,15 +9,29 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - COOKIE_SECURE=false
+      - COOKIE_SECURE=true
     volumes:
       # Persist SQLite database
       - ./data:/app/data
       - ./prisma/dev.db:/app/prisma/dev.db
     restart: unless-stopped
+    networks:
+      - web_proxy
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web_proxy"
+      - "traefik.http.routers.aurix-dashboard.rule=Host(`aurix-center.cloud`)"
+      - "traefik.http.routers.aurix-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.aurix-dashboard.tls.certresolver=myresolver"
+      - "traefik.http.services.aurix-dashboard.loadbalancer.server.port=3001"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+networks:
+  web_proxy:
+    external: true
