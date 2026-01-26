@@ -91,7 +91,6 @@ const menuItems: MenuItem[] = [
     ]
   },
   { nameKey: 'sidebar.dataChat', icon: MessagesSquare, href: '/data-chat', badge: null, permission: 'manageChat' },
-  { nameKey: 'sidebar.manageLineTokens', icon: KeyRound, href: '/data-management/line-tokens', badge: null, permission: 'manageData' },
   { nameKey: 'sidebar.permissions', icon: ShieldCheck, href: '/permissions', badge: null, permission: 'managePermissions' },
   { nameKey: 'sidebar.manageUsers', icon: UsersRound, href: '/users', badge: null, permission: 'manageUsers' },
 ];
