@@ -12,6 +12,14 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSocket } from '@/hooks/useSocket';
 
+interface LineEmoji {
+  index: number;
+  length: number;
+  productId: string;
+  emojiId: string;
+  url: string;
+}
+
 interface Message {
   id: string;
   roomId: string;
@@ -21,6 +29,7 @@ interface Message {
   mediaUrl?: string;
   stickerId?: string;
   packageId?: string;
+  emojis?: LineEmoji[];
   sender: 'user' | 'agent' | 'system';
   senderName?: string;
   status: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
@@ -1058,6 +1067,84 @@ export default function DataChatPage() {
     return text;
   };
 
+  // Render content with LINE emoji images
+  const renderMessageContent = (msg: Message) => {
+    const content = msg.content || '';
+    
+    // Check for sticker pattern first (like "[sticker]" or "(crying Cony)(sick Moon)")
+    if (content.startsWith('[sticker') || (content && /^\([a-zA-Z\s]+\)(\([a-zA-Z\s]+\))*$/.test(content.trim()))) {
+      return (
+        <p style={{ fontSize: 40, margin: 0, textAlign: 'center' }}>
+          {convertStickerText(content)}
+        </p>
+      );
+    }
+    
+    // If message has LINE emojis, render them as images
+    if (msg.emojis && msg.emojis.length > 0) {
+      const elements: React.ReactNode[] = [];
+      let lastIndex = 0;
+      
+      // Sort emojis by index
+      const sortedEmojis = [...msg.emojis].sort((a, b) => a.index - b.index);
+      
+      for (const emoji of sortedEmojis) {
+        // Add text before this emoji
+        if (emoji.index > lastIndex) {
+          elements.push(
+            <span key={`text-${lastIndex}`}>{content.slice(lastIndex, emoji.index)}</span>
+          );
+        }
+        
+        // Add emoji image
+        elements.push(
+          <img 
+            key={`emoji-${emoji.index}`}
+            src={emoji.url}
+            alt="LINE emoji"
+            style={{ 
+              width: 24, 
+              height: 24, 
+              display: 'inline-block', 
+              verticalAlign: 'middle',
+              margin: '0 1px',
+            }}
+            onError={(e) => {
+              // Fallback: try alternative URL format
+              const target = e.target as HTMLImageElement;
+              if (!target.dataset.retried) {
+                target.dataset.retried = 'true';
+                target.src = `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/android/${emoji.emojiId}.png`;
+              }
+            }}
+          />
+        );
+        
+        lastIndex = emoji.index + emoji.length;
+      }
+      
+      // Add remaining text
+      if (lastIndex < content.length) {
+        elements.push(
+          <span key={`text-end`}>{content.slice(lastIndex)}</span>
+        );
+      }
+      
+      return (
+        <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+          {elements}
+        </p>
+      );
+    }
+    
+    // Regular text message
+    return (
+      <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+        {content}
+      </p>
+    );
+  };
+
   // Emoji list
   const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😱', '🤔', '👏', '💪', '🙌', '😎', '🥳', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🧾', '📝', '🎁', '🏆'];
 
@@ -1621,10 +1708,6 @@ export default function DataChatPage() {
                                   ดาวน์โหลดไฟล์
                                 </a>
                               </div>
-                            ) : msg.content?.startsWith('[sticker') ? (
-                              <div style={{ fontSize: 40 }}>{convertStickerText(msg.content || '')}</div>
-                            ) : msg.content && /^\([a-zA-Z\s]+\)(\([a-zA-Z\s]+\))*$/.test(msg.content.trim()) ? (
-                              <div style={{ fontSize: 40 }}>{convertStickerText(msg.content || '')}</div>
                             ) : (
                               <div style={{
                                 padding: '10px 14px',
@@ -1634,7 +1717,7 @@ export default function DataChatPage() {
                                 color: isAgent ? '#fff' : colors.textPrimary,
                                 boxShadow: colors.shadow,
                               }}>
-                                <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{msg.content || ''}</p>
+                                {renderMessageContent(msg)}
                               </div>
                             )}
                           </div>

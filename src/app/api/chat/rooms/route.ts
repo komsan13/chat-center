@@ -93,6 +93,7 @@ function ensureSchema(db: Database.Database) {
         mediaUrl TEXT,
         stickerId TEXT,
         packageId TEXT,
+        emojis TEXT,
         sender TEXT NOT NULL DEFAULT 'user',
         senderName TEXT,
         status TEXT DEFAULT 'sent',
@@ -103,6 +104,14 @@ function ensureSchema(db: Database.Database) {
         FOREIGN KEY (roomId) REFERENCES LineChatRoom(id)
       )
     `);
+    
+    // Add emojis column if not exists
+    try {
+      const msgColumns = db.prepare(`PRAGMA table_info(LineChatMessage)`).all() as { name: string }[];
+      if (!msgColumns.some(c => c.name === 'emojis')) {
+        db.exec('ALTER TABLE LineChatMessage ADD COLUMN emojis TEXT');
+      }
+    } catch {}
     
     // Create indexes
     try {

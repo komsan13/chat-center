@@ -40,7 +40,13 @@ export async function GET(
     // Reverse to get chronological order
     messages.reverse();
 
-    return NextResponse.json(messages);
+    // Parse emojis JSON for each message
+    const parsedMessages = messages.map(msg => ({
+      ...msg,
+      emojis: msg.emojis ? JSON.parse(msg.emojis as string) : null,
+    }));
+
+    return NextResponse.json(parsedMessages);
   } catch (error) {
     console.error('[Chat Messages API] Error:', error);
     return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });

@@ -44,11 +44,17 @@ export async function GET(
     }
 
     // Get messages
-    const messages = db.prepare(`
+    const rawMessages = db.prepare(`
       SELECT * FROM LineChatMessage 
       WHERE roomId = ? AND isDeleted = 0 
       ORDER BY createdAt ASC
-    `).all(roomId);
+    `).all(roomId) as any[];
+
+    // Parse emojis JSON for each message
+    const messages = rawMessages.map(msg => ({
+      ...msg,
+      emojis: msg.emojis ? JSON.parse(msg.emojis) : null,
+    }));
 
     // Get notes (handle if ChatNote table doesn't exist)
     let notes: unknown[] = [];

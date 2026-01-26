@@ -86,6 +86,14 @@ interface LineEvent {
     text?: string;
     packageId?: string;
     stickerId?: string;
+    stickerResourceType?: string;
+    keywords?: string[];
+    emojis?: Array<{
+      index: number;
+      length: number;
+      productId: string;
+      emojiId: string;
+    }>;
     contentProvider?: {
       type: string;
       originalContentUrl?: string;
@@ -285,9 +293,22 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
   let stickerId = null;
   let packageId = null;
   
+  // Store emoji data as JSON if present
+  let emojisData: string | null = null;
+  
   switch (message.type) {
     case 'text':
       content = message.text || '';
+      // If message has LINE emojis, store them for rendering
+      if (message.emojis && message.emojis.length > 0) {
+        emojisData = JSON.stringify(message.emojis.map(e => ({
+          index: e.index,
+          length: e.length,
+          productId: e.productId,
+          emojiId: e.emojiId,
+          url: `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${e.productId}/iPhone/${e.emojiId}.png`
+        })));
+      }
       break;
     case 'image':
     case 'video':
@@ -307,8 +328,8 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
   }
 
   db.prepare(`
-    INSERT INTO LineChatMessage (id, roomId, lineMessageId, messageType, content, mediaUrl, stickerId, packageId, sender, senderName, status, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO LineChatMessage (id, roomId, lineMessageId, messageType, content, mediaUrl, stickerId, packageId, emojis, sender, senderName, status, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     messageId,
     room.id,
@@ -318,6 +339,7 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
     mediaUrl,
     stickerId,
     packageId,
+    emojisData,
     'user',
     room.displayName,
     'sent',
@@ -346,6 +368,7 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
     mediaUrl,
     stickerId,
     packageId,
+    emojis: emojisData ? JSON.parse(emojisData) : null,
     sender: 'user',
     senderName: room.displayName,
     status: 'sent',
