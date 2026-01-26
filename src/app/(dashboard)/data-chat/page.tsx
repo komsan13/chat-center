@@ -1404,7 +1404,29 @@ export default function DataChatPage() {
                                   }}
                                 />
                               </div>
-                            ) : (msg.messageType === 'video' || msg.messageType === 'audio' || msg.messageType === 'file') && msg.mediaUrl ? (
+                            ) : msg.messageType === 'video' && msg.mediaUrl ? (
+                              <div style={{
+                                borderRadius: 12,
+                                overflow: 'hidden',
+                                background: colors.bgTertiary,
+                                border: `1px solid ${colors.border}`,
+                              }}>
+                                <video 
+                                  src={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl}
+                                  controls
+                                  style={{ 
+                                    maxWidth: isMobile ? 220 : 280, 
+                                    maxHeight: isMobile ? 180 : 220,
+                                    display: 'block',
+                                  }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLVideoElement;
+                                    target.style.display = 'none';
+                                    target.parentElement!.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">ไม่สามารถโหลดวิดีโอได้</div>';
+                                  }}
+                                />
+                              </div>
+                            ) : (msg.messageType === 'audio' || msg.messageType === 'file') && msg.mediaUrl ? (
                               <div style={{
                                 padding: '12px 16px',
                                 borderRadius: 12,
@@ -1415,15 +1437,15 @@ export default function DataChatPage() {
                                 gap: 8,
                               }}>
                                 <span style={{ fontSize: 24 }}>
-                                  {msg.messageType === 'video' ? '🎬' : msg.messageType === 'audio' ? '🎵' : '📎'}
+                                  {msg.messageType === 'audio' ? '🎵' : '📎'}
                                 </span>
                                 <a 
-                                  href={msg.mediaUrl} 
+                                  href={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   style={{ color: colors.accent, textDecoration: 'none' }}
                                 >
-                                  {msg.messageType === 'video' ? 'ดูวิดีโอ' : msg.messageType === 'audio' ? 'ฟังเสียง' : 'ดาวน์โหลดไฟล์'}
+                                  {msg.messageType === 'audio' ? 'ฟังเสียง' : 'ดาวน์โหลดไฟล์'}
                                 </a>
                               </div>
                             ) : msg.content?.startsWith('[sticker') ? (
