@@ -76,7 +76,10 @@ export default function DataChatPage() {
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const selectedRoomRef = useRef<string | null>(null);
+  // Initialize selectedRoomRef from localStorage immediately
+  const selectedRoomRef = useRef<string | null>(
+    typeof window !== 'undefined' ? localStorage.getItem('selectedChatRoom') : null
+  );
   const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const soundUnlockedRef = useRef(false);
@@ -171,7 +174,13 @@ export default function DataChatPage() {
       const response = await fetch(`/api/chat/rooms?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setRooms(data);
+        // ถ้ามี selectedRoom อยู่แล้ว ให้ mark as read ทันที (ไม่ต้องรอ effect)
+        const currentRoom = selectedRoomRef.current;
+        if (currentRoom) {
+          setRooms(data.map((r: ChatRoom) => r.id === currentRoom ? { ...r, unreadCount: 0 } : r));
+        } else {
+          setRooms(data);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch rooms:', error);
