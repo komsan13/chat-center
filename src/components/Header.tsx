@@ -1,17 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Languages, BellRing, SunMedium, MoonStar, ChevronDown, Menu } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
-const websiteOptions = [
-  { id: 'WEB-001', name: 'Aurix Main', nameTh: 'Aurix Main' },
-  { id: 'WEB-002', name: 'Aurix Shop', nameTh: 'Aurix Shop' },
-  { id: 'WEB-003', name: 'Aurix Blog', nameTh: 'Aurix Blog' },
-  { id: 'WEB-004', name: 'Aurix Support', nameTh: 'Aurix Support' },
-  { id: 'WEB-005', name: 'Aurix Partner', nameTh: 'Aurix Partner' },
-];
+interface Website {
+  id: string;
+  name: string;
+  nameTh?: string;
+}
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -20,10 +18,37 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick, isMobile = false }: HeaderProps) {
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
-  const [selectedWebsite, setSelectedWebsite] = useState('WEB-001');
+  const [websiteOptions, setWebsiteOptions] = useState<Website[]>([]);
+  const [selectedWebsite, setSelectedWebsite] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
+
+  // Fetch websites from API
+  const fetchWebsites = useCallback(async () => {
+    try {
+      const response = await fetch('/api/websites');
+      const result = await response.json();
+      if (result.success && result.data.length > 0) {
+        const websites = result.data.map((w: { id: string; name: string }) => ({
+          id: w.id,
+          name: w.name,
+          nameTh: w.name, // Use same name for Thai
+        }));
+        setWebsiteOptions(websites);
+        // Set first website as default if no website selected
+        if (!selectedWebsite) {
+          setSelectedWebsite(websites[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch websites:', error);
+    }
+  }, [selectedWebsite]);
+
+  useEffect(() => {
+    fetchWebsites();
+  }, [fetchWebsites]);
 
   // Theme-aware colors
   const colors = {
