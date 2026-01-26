@@ -1,4 +1,14 @@
-// Custom Server with Socket.IO for Real-time Chat
+// ═══════════════════════════════════════════════════════════════════════════════
+// ENTERPRISE-GRADE SOCKET.IO SERVER - ULTRA STABLE REAL-TIME CONNECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+// Features:
+// - Optimized ping/pong for connection health monitoring
+// - Graceful handling of client disconnections
+// - Room-based broadcasting with fallback
+// - Connection state tracking per client
+// - Memory-efficient client management
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
@@ -22,7 +32,7 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  // Initialize Socket.IO with optimized settings for stability
+  // Initialize Socket.IO with enterprise-grade settings
   const io = new Server(server, {
     cors: {
       origin: '*',
@@ -31,14 +41,17 @@ app.prepare().then(() => {
     },
     path: '/socket.io',
     transports: ['websocket', 'polling'],
-    // Stability settings
-    pingTimeout: 30000,
-    pingInterval: 10000,
-    upgradeTimeout: 30000,
-    maxHttpBufferSize: 1e6,
-    // Reconnection settings
-    connectTimeout: 45000,
-    allowEIO3: true,
+    // Enterprise stability settings
+    pingTimeout: 20000,        // 20 seconds to wait for pong
+    pingInterval: 5000,        // Ping every 5 seconds (matches client)
+    upgradeTimeout: 30000,     // 30 seconds for transport upgrade
+    maxHttpBufferSize: 1e7,    // 10MB max message size
+    connectTimeout: 30000,     // 30 seconds connection timeout
+    allowEIO3: true,           // Allow Engine.IO v3 clients
+    // Performance settings
+    perMessageDeflate: {
+      threshold: 1024,         // Compress messages larger than 1KB
+    },
   });
 
   // Store io instance globally for API routes to access
@@ -46,17 +59,41 @@ app.prepare().then(() => {
 
   // Connection monitoring
   let totalConnections = 0;
+  let peakConnections = 0;
+
+  // Periodic cleanup of stale connections
+  setInterval(() => {
+    const now = Date.now();
+    let cleanedUp = 0;
+    
+    global.__connectedClients.forEach((client, socketId) => {
+      // Check if socket is still connected
+      const socket = io.sockets.sockets.get(socketId);
+      if (!socket || !socket.connected) {
+        global.__connectedClients.delete(socketId);
+        cleanedUp++;
+      }
+    });
+    
+    if (cleanedUp > 0) {
+      console.log(`[Socket.IO] 🧹 Cleaned up ${cleanedUp} stale connections`);
+    }
+  }, 60000); // Every minute
 
   io.on('connection', (socket) => {
     totalConnections++;
+    peakConnections = Math.max(peakConnections, totalConnections);
+    
     const clientInfo = {
       id: socket.id,
       connectedAt: new Date().toISOString(),
+      lastPingAt: Date.now(),
       rooms: new Set(['all-rooms']),
+      userAgent: socket.handshake.headers['user-agent'] || 'unknown',
     };
     global.__connectedClients.set(socket.id, clientInfo);
     
-    console.log(`[Socket.IO] ✅ Client connected: ${socket.id} (Total: ${totalConnections})`);
+    console.log(`[Socket.IO] ✅ Client connected: ${socket.id} (Active: ${totalConnections}, Peak: ${peakConnections})`);
 
     // Auto join all-rooms for broadcast
     socket.join('all-rooms');
@@ -140,15 +177,21 @@ app.prepare().then(() => {
       }
     });
 
-    // Heartbeat/ping from client
+    // Heartbeat/ping from client - CRITICAL for connection health
     socket.on('ping-server', () => {
-      socket.emit('pong-server', { timestamp: Date.now() });
+      // Update last ping time
+      const clientInfo = global.__connectedClients.get(socket.id);
+      if (clientInfo) {
+        clientInfo.lastPingAt = Date.now();
+      }
+      // Respond immediately with pong
+      socket.emit('pong-server', { timestamp: Date.now(), socketId: socket.id });
     });
 
     socket.on('disconnect', (reason) => {
-      totalConnections--;
+      totalConnections = Math.max(0, totalConnections - 1);
       global.__connectedClients.delete(socket.id);
-      console.log(`[Socket.IO] ❌ Client disconnected: ${socket.id}, reason: ${reason} (Total: ${totalConnections})`);
+      console.log(`[Socket.IO] ❌ Client disconnected: ${socket.id}, reason: ${reason} (Active: ${totalConnections})`);
     });
 
     socket.on('error', (error) => {
@@ -187,13 +230,17 @@ app.prepare().then(() => {
 
   server.listen(port, () => {
     console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║                                                           ║
-║   🚀 Server ready on http://${hostname}:${port}                 ║
-║   📡 Socket.IO enabled for real-time chat                 ║
-║   ⚡ Optimized for stability and reliability              ║
-║                                                           ║
-╚═══════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║   🚀 ENTERPRISE-GRADE SERVER READY                                 ║
+║   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   ║
+║   📡 HTTP Server: http://${hostname}:${port}                             ║
+║   🔌 Socket.IO: WebSocket + Polling fallback                       ║
+║   ⚡ Heartbeat: 5s interval / 20s timeout                          ║
+║   🔄 Auto-reconnect: Exponential backoff with jitter               ║
+║   🧹 Cleanup: Stale connections every 60s                          ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
     `);
   });
 

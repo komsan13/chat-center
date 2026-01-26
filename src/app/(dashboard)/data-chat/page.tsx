@@ -726,7 +726,7 @@ export default function DataChatPage() {
     }
   }, []);
 
-  const { isConnected, connectionState, reconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate, emitRoomDeleted } = useSocket({
+  const { isConnected, connectionState, connectionHealth, reconnect, forceReconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate, emitRoomDeleted } = useSocket({
     onNewMessage: handleNewMessage,
     onNewRoom: handleNewRoom,
     onUserTyping: handleTypingEvent,
@@ -734,6 +734,8 @@ export default function DataChatPage() {
     onRoomUpdate: handleRoomUpdate,
     onRoomPropertyChanged: handleRoomPropertyChanged,
     onRoomDeleted: handleRoomDeleted,
+    currentRoomId: selectedRoom, // Pass current room to avoid sound notification for active room
+    enableSound: true,
   });
 
   // Store sendTyping in ref
@@ -3093,14 +3095,70 @@ export default function DataChatPage() {
           <p style={{ fontSize: isMobile ? 12 : 13, color: colors.textMuted, textAlign: 'center', maxWidth: 240, margin: '0 0 20px 0' }}>
             Choose a chat from the list to start messaging
           </p>
+          
+          {/* Connection Status with Quality Indicator */}
           <div style={{ 
-            display: 'flex', alignItems: 'center', gap: 6,
-            color: isConnected ? colors.accent : colors.warning,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor' }} />
-            <span style={{ fontSize: 12, fontWeight: 500 }}>
-              {isConnected ? 'Connected' : 'Connecting...'}
-            </span>
+            <div style={{ 
+              display: 'flex', alignItems: 'center', gap: 6,
+              color: isConnected ? colors.accent : connectionState === 'reconnecting' ? colors.warning : '#ef4444',
+            }}>
+              <span style={{ 
+                width: 10, height: 10, borderRadius: '50%', 
+                background: 'currentColor',
+                animation: connectionState === 'reconnecting' ? 'pulse 1.5s ease-in-out infinite' : 'none',
+              }} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>
+                {connectionState === 'connected' ? 'Connected' : 
+                 connectionState === 'reconnecting' ? 'Reconnecting...' : 
+                 connectionState === 'suspended' ? 'Suspended' : 'Disconnected'}
+              </span>
+            </div>
+            
+            {/* Connection Quality Bar */}
+            {isConnected && connectionHealth && (
+              <div style={{ 
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px', borderRadius: 12,
+                background: colors.bgTertiary,
+                fontSize: 11, color: colors.textMuted,
+              }}>
+                <div style={{ display: 'flex', gap: 2 }}>
+                  {['excellent', 'good', 'fair', 'poor'].map((level, i) => (
+                    <div 
+                      key={level}
+                      style={{
+                        width: 4, 
+                        height: 8 + i * 3,
+                        borderRadius: 2,
+                        background: connectionHealth.quality === 'excellent' ? '#22c55e' :
+                                    connectionHealth.quality === 'good' ? '#84cc16' :
+                                    connectionHealth.quality === 'fair' ? '#eab308' :
+                                    connectionHealth.quality === 'poor' ? '#f97316' : colors.border,
+                        opacity: ['excellent', 'good', 'fair', 'poor'].indexOf(connectionHealth.quality) >= i ? 1 : 0.2,
+                      }}
+                    />
+                  ))}
+                </div>
+                <span>{connectionHealth.latency}ms</span>
+              </div>
+            )}
+            
+            {/* Reconnect Button */}
+            {!isConnected && connectionState !== 'reconnecting' && (
+              <button
+                onClick={() => forceReconnect()}
+                style={{
+                  marginTop: 8, padding: '8px 16px', borderRadius: 8,
+                  background: colors.accent, border: 'none',
+                  color: '#fff', fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Reconnect Now
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -3108,6 +3166,7 @@ export default function DataChatPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes typingDot { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         * { scrollbar-width: thin; scrollbar-color: ${colors.border} transparent; }
         *::-webkit-scrollbar { width: 6px; }
         *::-webkit-scrollbar-track { background: transparent; }
