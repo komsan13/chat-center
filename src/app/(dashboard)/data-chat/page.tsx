@@ -290,6 +290,20 @@ export default function DataChatPage() {
         setMessages(prev => [...prev, result.message]);
         setMessage('');
         setShowQuickReplies(false);
+        setShowEmojiPicker(false);
+        // Update last message in room list
+        setRooms(prev => {
+          const updated = prev.map(r => 
+            r.id === selectedRoom 
+              ? { ...r, lastMessage: result.message, lastMessageAt: result.message.createdAt }
+              : r
+          );
+          return updated.sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return new Date(b.lastMessageAt || b.createdAt).getTime() - new Date(a.lastMessageAt || a.createdAt).getTime();
+          });
+        });
       }
     } catch (error) {
       console.error('Send error:', error);
@@ -354,6 +368,36 @@ export default function DataChatPage() {
 
   // Emoji list for quick selection
   const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😭', '🤔', '😅', '🥰', '💪', '👏', '🙌', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🏧', '💵', '🧧', '🎁'];
+
+  // Map LINE sticker text to emoji
+  const stickerTextToEmoji: { [key: string]: string } = {
+    '(tongue)': '😛', '(smile)': '😊', '(laugh)': '😂', '(cry)': '😢', '(crying)': '😭',
+    '(love)': '❤️', '(heart)': '💕', '(sad)': '😢', '(angry)': '😠', '(wink)': '😉',
+    '(kiss)': '😘', '(hug)': '🤗', '(cool)': '😎', '(sweat)': '😅', '(shy)': '😊',
+    '(surprised)': '😮', '(confused)': '😕', '(sleepy)': '😴', '(tired)': '😩',
+    '(thumbsup)': '👍', '(thumbsdown)': '👎', '(clap)': '👏', '(pray)': '🙏',
+    '(ok)': '👌', '(victory)': '✌️', '(muscle)': '💪', '(wave)': '👋',
+    '(crying cony)': '😭🐰', '(อ้อน)': '🥺', '(ขอร้อง)': '🙏😊', '(รักนะ)': '❤️😊',
+    '(cony)': '🐰', '(brown)': '🐻', '(moon)': '🌙', '(james)': '👨',
+    '(sally)': '🐤', '(boss)': '😎', '(edward)': '🐛', '(leonard)': '🐸',
+  };
+
+  // Convert sticker text content to emoji or display
+  const convertStickerText = (content: string): string => {
+    const lowerContent = content.toLowerCase();
+    // Check direct match
+    if (stickerTextToEmoji[lowerContent]) {
+      return stickerTextToEmoji[lowerContent];
+    }
+    // Check if content contains sticker pattern
+    for (const [pattern, emoji] of Object.entries(stickerTextToEmoji)) {
+      if (lowerContent.includes(pattern.replace(/[()]/g, ''))) {
+        return emoji;
+      }
+    }
+    // Return original if no match
+    return content;
+  };
 
   // Typing indicator component
   const TypingIndicator = () => (
@@ -607,9 +651,26 @@ export default function DataChatPage() {
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: colors.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>
-                      {room.lastMessage?.sender === 'agent' && <span style={{ color: colors.textMuted }}>คุณ: </span>}
-                      {room.lastMessage?.content || 'เริ่มแชท'}
+                    <span style={{ fontSize: 12, color: typingUsers[room.id] ? colors.accent : colors.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, fontStyle: typingUsers[room.id] ? 'italic' : 'normal' }}>
+                      {typingUsers[room.id] ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          กำลังพิมพ์
+                          <span style={{ display: 'inline-flex', gap: 2 }}>
+                            {[0, 1, 2].map((i) => (
+                              <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: colors.accent, animation: `typingBounce 1.4s ease-in-out ${i * 0.2}s infinite`, display: 'inline-block' }} />
+                            ))}
+                          </span>
+                        </span>
+                      ) : (
+                        <>
+                          {room.lastMessage?.sender === 'agent' && <span style={{ color: colors.textMuted }}>คุณ: </span>}
+                          {room.lastMessage?.content 
+                            ? (room.lastMessage.content.startsWith('(') || room.lastMessage.content.startsWith('[sticker'))
+                              ? convertStickerText(room.lastMessage.content)
+                              : room.lastMessage.content
+                            : 'เริ่มแชท'}
+                        </>
+                      )}
                     </span>
                     {room.unreadCount > 0 && (
                       <span style={{
@@ -715,6 +776,11 @@ export default function DataChatPage() {
                             <div style={{ padding: 8 }}>{renderSticker(msg.packageId, msg.stickerId)}</div>
                           ) : msg.messageType === 'image' ? (
                             <img src={msg.mediaUrl} alt="Image" style={{ maxWidth: 280, borderRadius: 14, boxShadow: 'none', border: `1px solid ${colors.border}` }} />
+                          ) : (msg.content.startsWith('(') && msg.content.endsWith(')')) || msg.content.startsWith('[sticker') ? (
+                            // Display sticker text as large emoji
+                            <div style={{ padding: 8, fontSize: 64, lineHeight: 1 }}>
+                              {convertStickerText(msg.content)}
+                            </div>
                           ) : (
                             <div style={{
                               padding: '10px 14px', borderRadius: 16,
