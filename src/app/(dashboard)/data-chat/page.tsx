@@ -150,25 +150,26 @@ export default function DataChatPage() {
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
 
-  // Theme Colors - aligned with main website theme
+  // Theme Colors - Modern clean design
   const colors = useMemo(() => ({
-    bgPrimary: isDark ? '#1D1E24' : '#f8fafc',
-    bgSecondary: isDark ? '#23262B' : '#ffffff',
-    bgTertiary: isDark ? '#2A313C' : '#f1f5f9',
-    bgCard: isDark ? '#23262B' : '#ffffff',
-    bgHover: isDark ? '#2A313C' : '#f1f5f9',
-    bgActive: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-    border: isDark ? '#2A313C' : '#e2e8f0',
-    borderLight: isDark ? '#3A4553' : '#e2e8f0',
-    textPrimary: isDark ? '#ffffff' : '#1e293b',
-    textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b',
-    textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#94a3b8',
-    accent: '#22c55e',
-    accentLight: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.1)',
-    bubbleAgent: '#22c55e',
-    bubbleUser: isDark ? '#2A313C' : '#f1f5f9',
-    online: '#22c55e',
+    bgPrimary: isDark ? '#0f0f10' : '#f8fafc',
+    bgSecondary: isDark ? '#18181b' : '#ffffff',
+    bgTertiary: isDark ? '#27272a' : '#f4f4f5',
+    bgCard: isDark ? '#1f1f23' : '#ffffff',
+    bgHover: isDark ? '#27272a' : '#f4f4f5',
+    bgActive: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
+    border: isDark ? '#27272a' : '#e4e4e7',
+    borderLight: isDark ? '#3f3f46' : '#e4e4e7',
+    textPrimary: isDark ? '#fafafa' : '#18181b',
+    textSecondary: isDark ? '#a1a1aa' : '#71717a',
+    textMuted: isDark ? '#71717a' : '#a1a1aa',
+    accent: '#10b981',
+    accentLight: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+    bubbleAgent: isDark ? '#10b981' : '#10b981',
+    bubbleUser: isDark ? '#27272a' : '#f4f4f5',
+    online: '#10b981',
     warning: '#f59e0b',
+    danger: '#ef4444',
   }), [isDark]);
 
   const fetchRooms = useCallback(async () => {
@@ -654,17 +655,17 @@ export default function DataChatPage() {
       
       {/* LEFT SIDEBAR */}
       <div style={{
-        width: 320,
+        width: 340,
         background: colors.bgSecondary,
         borderRight: `1px solid ${colors.border}`,
         display: 'flex',
         flexDirection: 'column',
       }}>
         {/* Header */}
-        <div style={{ padding: '16px 16px 12px', background: colors.bgSecondary }}>
+        <div style={{ padding: '20px 20px 16px', background: colors.bgSecondary }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: colors.textPrimary, margin: 0, letterSpacing: '-0.01em' }}>LINE OA Chat</h1>
+              <h1 style={{ fontSize: 18, fontWeight: 600, color: colors.textPrimary, margin: 0, letterSpacing: '-0.02em' }}>แชท</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                 <span style={{ fontSize: 12, color: colors.textMuted }}>{rooms.length} การสนทนา</span>
                 <span style={{ fontSize: 10, color: colors.textMuted }}>•</span>
@@ -740,33 +741,36 @@ export default function DataChatPage() {
           </div>
 
           {/* Search */}
-          <div style={{ position: 'relative', marginBottom: 12 }}>
-            <Search style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', width: 18, height: 18, color: colors.textMuted }} />
+          <div style={{ position: 'relative', marginBottom: 16 }}>
+            <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: colors.textMuted }} />
             <input
               type="text"
-              placeholder="ค้นหาการสนทนา..."
+              placeholder="ค้นหา..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
-                width: '100%', height: 40, paddingLeft: 40, paddingRight: 14,
-                borderRadius: 10, border: `1px solid ${colors.border}`,
-                background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, outline: 'none',
+                width: '100%', height: 42, paddingLeft: 38, paddingRight: 14,
+                borderRadius: 12, border: 'none',
+                background: colors.bgTertiary, color: colors.textPrimary, fontSize: 14, outline: 'none',
+                transition: 'box-shadow 0.2s',
               }}
+              onFocus={(e) => e.target.style.boxShadow = `0 0 0 2px ${colors.accent}30`}
+              onBlur={(e) => e.target.style.boxShadow = 'none'}
             />
           </div>
 
           {/* Filter Tabs */}
-          <div style={{ display: 'flex', gap: 6, padding: 4, background: colors.bgTertiary, borderRadius: 10 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
             {(['all', 'unread', 'pinned'] as const).map((filter) => (
               <button
                 key={filter}
                 onClick={() => setFilterStatus(filter)}
                 style={{
-                  flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                  background: filterStatus === filter ? colors.bgCard : 'transparent',
-                  color: filterStatus === filter ? colors.accent : colors.textSecondary,
-                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  boxShadow: 'none',
+                  padding: '8px 16px', borderRadius: 20, border: 'none',
+                  background: filterStatus === filter ? colors.accent : colors.bgTertiary,
+                  color: filterStatus === filter ? '#fff' : colors.textSecondary,
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  transition: 'all 0.2s',
                 }}
               >
                 {filter === 'all' ? 'ทั้งหมด' : filter === 'unread' ? 'ยังไม่อ่าน' : 'ปักหมุด'}
@@ -776,105 +780,93 @@ export default function DataChatPage() {
         </div>
 
         {/* Chat List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 12px 12px' }}>
           {isLoadingRooms ? (
-            <div style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ width: 48, height: 48, borderRadius: 16, background: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <Loader2 size={24} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
-              </div>
-              <p style={{ fontSize: 14, color: colors.textMuted, margin: 0 }}>กำลังโหลด...</p>
+            <div style={{ padding: 60, textAlign: 'center' }}>
+              <Loader2 size={28} style={{ color: colors.accent, animation: 'spin 1s linear infinite', marginBottom: 12 }} />
+              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>กำลังโหลด...</p>
             </div>
           ) : rooms.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ width: 64, height: 64, borderRadius: 20, background: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <MessageCircle size={28} style={{ color: colors.accent }} />
-              </div>
-              <p style={{ fontSize: 15, fontWeight: 600, color: colors.textPrimary, margin: '0 0 8px 0' }}>ไม่มีการสนทนา</p>
-              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>รอข้อความใหม่จากลูกค้า</p>
+            <div style={{ padding: 60, textAlign: 'center' }}>
+              <MessageCircle size={40} style={{ color: colors.textMuted, marginBottom: 16 }} />
+              <p style={{ fontSize: 14, fontWeight: 500, color: colors.textSecondary, margin: '0 0 4px 0' }}>ไม่มีการสนทนา</p>
+              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>รอข้อความใหม่</p>
             </div>
           ) : (
             rooms.map((room) => (
               <div
                 key={room.id}
                 onClick={() => {
-                  // เมื่อคลิกห้องแชท ให้ mark as read ทันที (unreadCount = 0)
                   setRooms(prev => prev.map(r => r.id === room.id ? { ...r, unreadCount: 0 } : r));
                   setSelectedRoom(room.id);
                 }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 10px', cursor: 'pointer',
-                  borderRadius: 10, margin: '4px 0',
+                  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 12px', cursor: 'pointer',
+                  borderRadius: 14, margin: '2px 0',
                   background: selectedRoom === room.id ? colors.bgActive : 'transparent',
-                  border: '1px solid transparent',
-                  borderBottom: `1px solid ${colors.border}`,
-                  transition: 'background 0.15s ease',
+                  transition: 'all 0.15s ease',
                 }}
+                onMouseEnter={(e) => { if (selectedRoom !== room.id) e.currentTarget.style.background = colors.bgHover; }}
+                onMouseLeave={(e) => { if (selectedRoom !== room.id) e.currentTarget.style.background = 'transparent'; }}
               >
                 {/* Avatar */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   {room.pictureUrl ? (
-                    <img src={room.pictureUrl} alt={room.displayName} style={{ width: 48, height: 48, borderRadius: 14, objectFit: 'cover', border: `1px solid ${colors.border}` }} />
+                    <img src={room.pictureUrl} alt={room.displayName} style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{
-                      width: 48, height: 48, borderRadius: 14, 
-                      background: colors.accent,
+                      width: 50, height: 50, borderRadius: '50%', 
+                      background: `linear-gradient(135deg, ${colors.accent} 0%, #059669 100%)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 20, fontWeight: 700,
+                      color: '#fff', fontSize: 18, fontWeight: 600,
                     }}>
                       {room.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div style={{ position: 'absolute', bottom: 0, right: 0, width: 14, height: 14, borderRadius: '50%', background: colors.online, border: `3px solid ${colors.bgSecondary}` }} />
-                  {room.isPinned && (
-                    <div style={{ position: 'absolute', top: -4, right: -4, width: 20, height: 20, borderRadius: '50%', background: colors.warning, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Pin size={10} style={{ color: '#fff', fill: '#fff' }} />
-                    </div>
-                  )}
+                  <div style={{ position: 'absolute', bottom: 2, right: 2, width: 12, height: 12, borderRadius: '50%', background: colors.online, border: `2px solid ${colors.bgSecondary}` }} />
                 </div>
 
                 {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontWeight: 600, color: colors.textPrimary, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
+                      <span style={{ fontWeight: room.unreadCount > 0 ? 600 : 500, color: colors.textPrimary, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }}>
                         {room.displayName}
                       </span>
-                      {room.tags?.includes('VIP') && (
-                        <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: `linear-gradient(135deg, ${colors.warning} 0%, #d97706 100%)`, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>VIP</span>
-                      )}
+                      {room.isPinned && <Pin size={12} style={{ color: colors.warning }} />}
                     </div>
-                      <span style={{ fontSize: 11, color: room.unreadCount > 0 ? colors.accent : colors.textMuted, fontWeight: room.unreadCount > 0 ? 600 : 400 }}>
+                    <span style={{ fontSize: 12, color: room.unreadCount > 0 ? colors.accent : colors.textMuted, fontWeight: room.unreadCount > 0 ? 500 : 400 }}>
                       {room.lastMessageAt && formatTime(room.lastMessageAt)}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: typingUsers[room.id] ? colors.accent : colors.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, fontStyle: typingUsers[room.id] ? 'italic' : 'normal' }}>
+                    <span style={{ fontSize: 13, color: typingUsers[room.id] ? colors.accent : colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200, fontStyle: typingUsers[room.id] ? 'italic' : 'normal' }}>
                       {typingUsers[room.id] ? (
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {typingUsers[room.id].userName} กำลังพิมพ์
+                          กำลังพิมพ์
                           <span style={{ display: 'inline-flex', gap: 2 }}>
                             {[0, 1, 2].map((i) => (
-                              <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: colors.accent, animation: `typingBounce 1.4s ease-in-out ${i * 0.2}s infinite`, display: 'inline-block' }} />
+                              <span key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: colors.accent, animation: `typingBounce 1.4s ease-in-out ${i * 0.2}s infinite`, display: 'inline-block' }} />
                             ))}
                           </span>
                         </span>
                       ) : (
                         <>
-                          {room.lastMessage?.sender === 'agent' && <span style={{ color: colors.textMuted }}>คุณ: </span>}
+                          {room.lastMessage?.sender === 'agent' && <span>คุณ: </span>}
                           {room.lastMessage?.content 
                             ? (room.lastMessage.content.startsWith('(') || room.lastMessage.content.startsWith('[sticker'))
                               ? convertStickerText(room.lastMessage.content)
                               : room.lastMessage.content
-                            : 'เริ่มแชท'}
+                            : 'เริ่มการสนทนา'}
                         </>
                       )}
                     </span>
                     {room.unreadCount > 0 && (
                       <span style={{
-                        minWidth: 20, height: 20, borderRadius: 10,
+                        minWidth: 22, height: 22, borderRadius: 11,
                         background: colors.accent,
-                        color: '#fff', fontSize: 10, fontWeight: 700,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px',
+                        color: '#fff', fontSize: 11, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px',
                       }}>
                         {room.unreadCount > 99 ? '99+' : room.unreadCount}
                       </span>
@@ -893,103 +885,75 @@ export default function DataChatPage() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: colors.bgPrimary }}>
             {/* Chat Header */}
             <div style={{
-              padding: '12px 20px', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}`,
+              padding: '16px 24px', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 {selectedRoomData.pictureUrl ? (
-                  <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 42, height: 42, borderRadius: 12, objectFit: 'cover', border: `1px solid ${colors.border}` }} />
+                  <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{
-                    width: 42, height: 42, borderRadius: 12, 
-                    background: colors.accent,
+                    width: 44, height: 44, borderRadius: '50%', 
+                    background: `linear-gradient(135deg, ${colors.accent} 0%, #059669 100%)`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff', fontSize: 18, fontWeight: 700,
+                    color: '#fff', fontSize: 16, fontWeight: 600,
                   }}>
                     {selectedRoomData.displayName.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 600, color: colors.textPrimary, margin: 0, letterSpacing: '-0.01em' }}>{selectedRoomData.displayName}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.online }} />
-                    <span style={{ fontSize: 13, color: colors.textSecondary, fontWeight: 500 }}>ออนไลน์</span>
-                  </div>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.textPrimary, margin: 0 }}>{selectedRoomData.displayName}</h3>
+                  <span style={{ fontSize: 12, color: colors.accent }}>ออนไลน์</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {/* Search button */}
+              <div style={{ display: 'flex', gap: 6 }}>
                 <button
-                  title="ค้นหาข้อความ"
-                  style={{
-                    width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
-                    background: colors.bgCard, color: colors.textSecondary, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <Search size={18} />
-                </button>
-                {/* Settings button - toggle right panel */}
-                <button 
                   onClick={() => setShowRightPanel(!showRightPanel)}
-                  title="ตั้งค่าแชท"
+                  title="ข้อมูล"
                   style={{
-                    width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
-                    background: showRightPanel ? colors.accentLight : colors.bgCard, 
+                    width: 38, height: 38, borderRadius: '50%', border: 'none',
+                    background: showRightPanel ? colors.accentLight : colors.bgTertiary, 
                     color: showRightPanel ? colors.accent : colors.textSecondary, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s',
                   }}
                 >
-                  <Settings size={18} />
-                </button>
-                {/* Close chat button */}
-                <button 
-                  onClick={() => setSelectedRoom(null)} 
-                  title="ปิดแชท"
-                  style={{
-                    width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
-                    background: colors.bgCard, color: colors.textSecondary, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <X size={18} />
+                  <MoreVertical size={18} />
                 </button>
               </div>
             </div>
 
             {/* Messages */}
             <div style={{ 
-              flex: 1, overflowY: 'auto', padding: 20,
-              background: isDark ? '#1D1E24' : '#f1f5f9',
+              flex: 1, overflowY: 'auto', padding: '24px 24px',
+              background: colors.bgPrimary,
             }}>
               {isLoadingMessages ? (
-                <div style={{ textAlign: 'center', padding: 40 }}>
-                  <Loader2 size={32} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
-                  <p style={{ fontSize: 14, color: colors.textMuted, marginTop: 16 }}>กำลังโหลดข้อความ...</p>
+                <div style={{ textAlign: 'center', padding: 60 }}>
+                  <Loader2 size={24} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
                 </div>
               ) : messages.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 40 }}>
-                  <div style={{ width: 80, height: 80, borderRadius: 24, background: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                    <MessageCircle size={36} style={{ color: colors.accent }} />
-                  </div>
-                  <p style={{ fontSize: 16, fontWeight: 600, color: colors.textPrimary, margin: '0 0 8px 0' }}>เริ่มการสนทนา</p>
-                  <p style={{ fontSize: 14, color: colors.textMuted, margin: 0 }}>ยังไม่มีข้อความในแชทนี้</p>
+                <div style={{ textAlign: 'center', padding: 60 }}>
+                  <p style={{ fontSize: 14, color: colors.textMuted, margin: 0 }}>ยังไม่มีข้อความ</p>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {messages.map((msg, idx) => {
                     const isAgent = msg.sender === 'agent';
                     const showAvatar = !isAgent && (idx === 0 || messages[idx - 1]?.sender !== 'user');
+                    const showTime = idx === messages.length - 1 || 
+                      messages[idx + 1]?.sender !== msg.sender ||
+                      new Date(messages[idx + 1]?.createdAt).getTime() - new Date(msg.createdAt).getTime() > 300000;
                     
                     return (
-                      <div key={msg.id} style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', gap: 10 }}>
+                      <div key={msg.id} style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', gap: 8, marginBottom: showTime ? 12 : 0 }}>
                         {!isAgent && (
-                          <div style={{ width: 36, flexShrink: 0 }}>
+                          <div style={{ width: 32, flexShrink: 0 }}>
                             {showAvatar && (
                               selectedRoomData.pictureUrl ? (
-                                <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 36, height: 36, borderRadius: 12, objectFit: 'cover' }} />
+                                <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
                               ) : (
-                                <div style={{ width: 36, height: 36, borderRadius: 12, background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textSecondary, fontSize: 14, fontWeight: 600 }}>
+                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textSecondary, fontSize: 12, fontWeight: 600 }}>
                                   {selectedRoomData.displayName.charAt(0)}
                                 </div>
                               )
@@ -997,34 +961,35 @@ export default function DataChatPage() {
                           </div>
                         )}
                         
-                        <div style={{ maxWidth: '68%' }}>
+                        <div style={{ maxWidth: '70%' }}>
                           {msg.messageType === 'sticker' ? (
-                            <div style={{ padding: 8 }}>{renderSticker(msg.packageId, msg.stickerId)}</div>
+                            <div>{renderSticker(msg.packageId, msg.stickerId)}</div>
                           ) : msg.messageType === 'image' ? (
-                            <img src={msg.mediaUrl} alt="Image" style={{ maxWidth: 280, borderRadius: 14, boxShadow: 'none', border: `1px solid ${colors.border}` }} />
+                            <img src={msg.mediaUrl} alt="Image" style={{ maxWidth: 260, borderRadius: 16 }} />
                           ) : (msg.content.startsWith('(') && msg.content.endsWith(')')) || msg.content.startsWith('[sticker') ? (
-                            // Display sticker text as large emoji
-                            <div style={{ padding: 8, fontSize: 64, lineHeight: 1 }}>
+                            <div style={{ fontSize: 48, lineHeight: 1 }}>
                               {convertStickerText(msg.content)}
                             </div>
                           ) : (
                             <div style={{
-                              padding: '10px 14px', borderRadius: 16,
-                              borderTopLeftRadius: isAgent ? 16 : 6, borderTopRightRadius: isAgent ? 6 : 16,
+                              padding: '10px 14px', 
+                              borderRadius: 18,
+                              borderBottomLeftRadius: isAgent ? 18 : 4, 
+                              borderBottomRightRadius: isAgent ? 4 : 18,
                               background: isAgent ? colors.bubbleAgent : colors.bubbleUser, 
                               color: isAgent ? '#fff' : colors.textPrimary,
-                              border: isAgent ? 'none' : `1px solid ${colors.border}`,
-                              boxShadow: 'none',
                             }}>
-                              <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5, fontWeight: 400 }}>{msg.content}</p>
+                              <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{msg.content}</p>
                             </div>
                           )}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, justifyContent: isAgent ? 'flex-end' : 'flex-start', paddingLeft: isAgent ? 0 : 4, paddingRight: isAgent ? 4 : 0 }}>
-                            <span style={{ fontSize: 11, color: colors.textMuted }}>
-                              {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {isAgent && <span style={{ color: msg.status === 'read' ? colors.accent : colors.textMuted }}>{msg.status === 'read' ? <CheckCheck size={14} /> : <Check size={14} />}</span>}
-                          </div>
+                          {showTime && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, justifyContent: isAgent ? 'flex-end' : 'flex-start', padding: '0 4px' }}>
+                              <span style={{ fontSize: 11, color: colors.textMuted }}>
+                                {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              {isAgent && <span style={{ color: msg.status === 'read' ? colors.accent : colors.textMuted }}>{msg.status === 'read' ? <CheckCheck size={12} /> : <Check size={12} />}</span>}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -1094,49 +1059,51 @@ export default function DataChatPage() {
             )}
 
             {/* Input */}
-            <div style={{ padding: '12px 20px 14px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: colors.bgCard, borderRadius: 12, padding: '6px 6px 6px 14px', border: `1px solid ${colors.border}` }}>
-                <input
-                  type="text"
-                  value={message}
-                  onChange={handleInputChange}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
-                  placeholder="พิมพ์ข้อความ..."
-                  style={{ flex: 1, height: 40, border: 'none', background: 'transparent', color: colors.textPrimary, fontSize: 14, outline: 'none' }}
-                />
+            <div style={{ padding: '16px 24px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <button onClick={() => setShowQuickReplies(!showQuickReplies)} style={{
-                    width: 34, height: 34, borderRadius: 10, border: 'none',
-                    background: showQuickReplies ? colors.accentLight : 'transparent',
+                    width: 40, height: 40, borderRadius: '50%', border: 'none',
+                    background: showQuickReplies ? colors.accentLight : colors.bgTertiary,
                     color: showQuickReplies ? colors.accent : colors.textMuted, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}><Bookmark size={20} /></button>
-                  <button style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: 'transparent', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Paperclip size={18} /></button>
-                  <button style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: 'transparent', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ImageIcon size={18} /></button>
+                    transition: 'all 0.2s',
+                  }}><Bookmark size={18} /></button>
                   <button 
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                     style={{ 
-                      width: 34, height: 34, borderRadius: 10, border: 'none', 
-                      background: showEmojiPicker ? colors.accentLight : 'transparent', 
+                      width: 40, height: 40, borderRadius: '50%', border: 'none', 
+                      background: showEmojiPicker ? colors.accentLight : colors.bgTertiary, 
                       color: showEmojiPicker ? colors.accent : colors.textMuted, 
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.2s',
                     }}
                   >
                     <Smile size={18} />
                   </button>
+                </div>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: colors.bgTertiary, borderRadius: 24, padding: '4px 4px 4px 18px' }}>
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
+                    placeholder="พิมพ์ข้อความ..."
+                    style={{ flex: 1, height: 40, border: 'none', background: 'transparent', color: colors.textPrimary, fontSize: 14, outline: 'none' }}
+                  />
                   <button
                     onClick={() => sendMessage(message)}
                     disabled={!message.trim() || isSending}
                     style={{
-                      width: 38, height: 38, borderRadius: 10, border: 'none',
-                      background: message.trim() && !isSending ? colors.accent : colors.bgTertiary,
+                      width: 40, height: 40, borderRadius: '50%', border: 'none',
+                      background: message.trim() && !isSending ? colors.accent : 'transparent',
                       color: message.trim() && !isSending ? '#fff' : colors.textMuted,
-                      cursor: message.trim() && !isSending ? 'pointer' : 'not-allowed',
+                      cursor: message.trim() && !isSending ? 'pointer' : 'default',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: 'none',
+                      transition: 'all 0.2s',
                     }}
                   >
-                    {isSending ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={20} />}
+                    {isSending ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={18} />}
                   </button>
                 </div>
               </div>
@@ -1145,132 +1112,101 @@ export default function DataChatPage() {
 
           {/* RIGHT PANEL */}
           {showRightPanel && (
-            <div style={{ width: 300, background: colors.bgSecondary, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-              {/* Panel Header */}
-              <div style={{ padding: '12px 16px', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>ข้อมูลแชท</span>
+            <div style={{ width: 320, background: colors.bgSecondary, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+              {/* Profile Section */}
+              <div style={{ padding: '32px 24px 24px', textAlign: 'center' }}>
                 <button 
                   onClick={() => setShowRightPanel(false)}
                   style={{
-                    width: 32, height: 32, borderRadius: 8, border: 'none',
-                    background: colors.bgTertiary, color: colors.textSecondary, cursor: 'pointer',
+                    position: 'absolute', top: 16, right: 16,
+                    width: 32, height: 32, borderRadius: '50%', border: 'none',
+                    background: colors.bgTertiary, color: colors.textMuted, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
                   <X size={16} />
                 </button>
-              </div>
-              
-              {/* Profile */}
-              <div style={{ padding: 20, textAlign: 'center', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}` }}>
                 <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
                   {selectedRoomData.pictureUrl ? (
-                    <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 80, height: 80, borderRadius: 20, objectFit: 'cover', border: `1px solid ${colors.border}` }} />
+                    <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 88, height: 88, borderRadius: '50%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{
-                      width: 80, height: 80, borderRadius: 20, 
-                      background: colors.accent,
+                      width: 88, height: 88, borderRadius: '50%', 
+                      background: `linear-gradient(135deg, ${colors.accent} 0%, #059669 100%)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 32, fontWeight: 700,
+                      color: '#fff', fontSize: 32, fontWeight: 600,
                     }}>
                       {selectedRoomData.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, borderRadius: '50%', background: colors.online, border: `3px solid ${colors.bgSecondary}` }} />
+                  <div style={{ position: 'absolute', bottom: 4, right: 4, width: 18, height: 18, borderRadius: '50%', background: colors.online, border: `3px solid ${colors.bgSecondary}` }} />
                 </div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: colors.textPrimary, margin: '0 0 4px 0', letterSpacing: '-0.02em' }}>{selectedRoomData.displayName}</h3>
-                <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 16px 0', fontFamily: 'monospace' }}>{selectedRoomData.lineUserId}</p>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-                  <button style={{ padding: '8px 14px', borderRadius: 10, border: `1px solid ${colors.border}`, background: colors.bgCard, color: colors.textPrimary, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Clock size={16} />Follow up
-                  </button>
-                  <button style={{ padding: '8px 14px', borderRadius: 10, border: 'none', background: colors.accent, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: 'none' }}>
-                    <Check size={16} />Resolve
+                <h3 style={{ fontSize: 17, fontWeight: 600, color: colors.textPrimary, margin: '0 0 4px 0' }}>{selectedRoomData.displayName}</h3>
+                <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 20px 0' }}>ออนไลน์</p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                  <button style={{ padding: '10px 20px', borderRadius: 20, border: 'none', background: colors.accent, color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+                    ส่งข้อความ
                   </button>
                 </div>
               </div>
 
               {/* Info Sections */}
-              <div style={{ flex: 1, padding: '8px 16px 16px' }}>
-                {/* Tags */}
-                <div style={{ background: colors.bgCard, borderRadius: 16, padding: 16, marginBottom: 12, border: `1px solid ${colors.border}` }}>
+              <div style={{ flex: 1, padding: '0 16px 16px' }}>
+                {/* Quick Info */}
+                <div style={{ padding: '16px 0', borderBottom: `1px solid ${colors.border}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>แท็ก</span>
-                    <button style={{ background: colors.accentLight, border: 'none', color: colors.accent, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '6px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Plus size={14} /> เพิ่ม
+                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.textMuted }}>LINE ID</span>
+                    <span style={{ fontSize: 13, color: colors.textPrimary, fontFamily: 'monospace' }}>{selectedRoomData.lineUserId.slice(0, 12)}...</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.textMuted }}>สถานะ</span>
+                    <span style={{ fontSize: 13, color: colors.accent }}>● ออนไลน์</span>
+                  </div>
+                </div>
+
+                {/* Tags */}
+                <div style={{ padding: '16px 0', borderBottom: `1px solid ${colors.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: colors.textMuted }}>แท็ก</span>
+                    <button style={{ background: 'none', border: 'none', color: colors.accent, fontSize: 13, cursor: 'pointer', padding: 0 }}>
+                      + เพิ่ม
                     </button>
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {selectedRoomData.tags?.length > 0 ? (
                       selectedRoomData.tags.map((tag, i) => (
-                        <span key={i} style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: tag === 'VIP' ? `${colors.warning}20` : colors.accentLight, color: tag === 'VIP' ? colors.warning : colors.accent }}>{tag}</span>
+                        <span key={i} style={{ padding: '5px 12px', borderRadius: 16, fontSize: 12, fontWeight: 500, background: tag === 'VIP' ? `${colors.warning}20` : colors.bgTertiary, color: tag === 'VIP' ? colors.warning : colors.textPrimary }}>{tag}</span>
                       ))
                     ) : (
-                      <span style={{ fontSize: 13, color: colors.textMuted }}>ยังไม่มีแท็ก</span>
+                      <span style={{ fontSize: 13, color: colors.textMuted }}>ไม่มีแท็ก</span>
                     )}
                   </div>
                 </div>
 
-                {/* Assigned */}
-                <div style={{ background: colors.bgCard, borderRadius: 16, padding: 16, marginBottom: 12, border: `1px solid ${colors.border}` }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 12 }}>ผู้รับผิดชอบ</span>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: colors.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 15, fontWeight: 700 }}>A</div>
-                      <div>
-                        <p style={{ fontSize: 14, color: colors.textPrimary, fontWeight: 600, margin: 0 }}>Admin</p>
-                        <p style={{ fontSize: 12, color: colors.textMuted, margin: 0 }}>ผู้ดูแลระบบ</p>
-                      </div>
-                    </div>
-                    <button style={{ width: 36, height: 36, borderRadius: 10, background: colors.bgTertiary, border: 'none', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Settings size={16} /></button>
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div style={{ background: colors.bgCard, borderRadius: 16, padding: 16, border: `1px solid ${colors.border}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>บันทึก</span>
-                    <span style={{ fontSize: 11, color: colors.textMuted, background: colors.bgTertiary, padding: '4px 8px', borderRadius: 6 }}>0 รายการ</span>
-                  </div>
-                  <div style={{ background: colors.bgTertiary, borderRadius: 12, padding: 16, marginBottom: 12, border: `1px dashed ${colors.border}` }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <FileText size={18} style={{ color: colors.accent }} />
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600, margin: '0 0 4px 0' }}>เก็บบันทึกที่นี่</p>
-                        <p style={{ fontSize: 12, color: colors.textMuted, margin: 0, lineHeight: 1.5 }}>บันทึกข้อมูลสำคัญเกี่ยวกับลูกค้ารายนี้</p>
-                      </div>
-                    </div>
-                  </div>
-                  <button style={{ width: '100%', padding: '12px 0', borderRadius: 12, border: 'none', background: colors.accentLight, color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <Plus size={18} /> เพิ่มบันทึก
-                  </button>
-                </div>
-
-                {/* Settings/Actions Section */}
-                <div style={{ background: colors.bgCard, borderRadius: 16, padding: 16, border: `1px solid ${colors.border}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>การตั้งค่า</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <button style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: 'none', background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <AlertTriangle size={16} style={{ color: colors.warning }} />
-                      </div>
-                      <span>เอาเข้าสแปม</span>
+                {/* Actions */}
+                <div style={{ padding: '16px 0' }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: colors.textMuted, display: 'block', marginBottom: 12 }}>การจัดการ</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <button style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: 'transparent', color: colors.textPrimary, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = colors.bgTertiary}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <VolumeX size={18} style={{ color: colors.textMuted }} />
+                      <span>ปิดเสียงแจ้งเตือน</span>
                     </button>
-                    <button style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: 'none', background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 10, background: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <VolumeX size={16} style={{ color: colors.accent }} />
-                      </div>
-                      <span>ปิดเสียงแชทนี้</span>
+                    <button style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: 'transparent', color: colors.textPrimary, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = colors.bgTertiary}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <AlertTriangle size={18} style={{ color: colors.textMuted }} />
+                      <span>รายงานสแปม</span>
                     </button>
-                    <button style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: 'none', background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Trash2 size={16} style={{ color: '#ef4444' }} />
-                      </div>
-                      <span style={{ color: '#ef4444' }}>ลบแชท</span>
+                    <button style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: 'none', background: 'transparent', color: colors.danger, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <Trash2 size={18} />
+                      <span>ลบการสนทนา</span>
                     </button>
                   </div>
                 </div>
@@ -1282,22 +1218,17 @@ export default function DataChatPage() {
         /* Empty State */
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: isDark ? '#1D1E24' : '#f1f5f9',
+          background: colors.bgPrimary,
           padding: 40,
         }}>
-          <div style={{ width: 120, height: 120, borderRadius: 32, background: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, position: 'relative' }}>
-            <MessageCircle size={56} style={{ color: colors.accent }} />
-            <div style={{ position: 'absolute', top: -4, right: -4, width: 32, height: 32, borderRadius: '50%', background: colors.accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: '#fff', fontSize: 16 }}>💬</span>
-            </div>
-          </div>
-          <h2 style={{ fontSize: 24, fontWeight: 700, color: colors.textPrimary, margin: '0 0 12px 0', letterSpacing: '-0.02em' }}>LINE Chat Center</h2>
-          <p style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center', maxWidth: 320, margin: '0 0 32px 0', lineHeight: 1.6 }}>
-            เลือกการสนทนาจากรายการด้านซ้าย เพื่อเริ่มตอบแชทกับลูกค้า
+          <MessageCircle size={64} style={{ color: colors.textMuted, marginBottom: 20 }} />
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: colors.textPrimary, margin: '0 0 8px 0' }}>เลือกแชท</h2>
+          <p style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', maxWidth: 280, margin: '0 0 24px 0', lineHeight: 1.5 }}>
+            เลือกการสนทนาจากรายการด้านซ้ายเพื่อเริ่มต้น
           </p>
-          <div style={{ padding: '14px 24px', borderRadius: 14, background: colors.bgCard, border: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', gap: 12, boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: isConnected ? colors.online : colors.warning }} />
-            <span style={{ fontSize: 14, color: colors.textSecondary, fontWeight: 500 }}>{isConnected ? 'ระบบพร้อมรับข้อความใหม่' : 'กำลังเชื่อมต่อ...'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: isConnected ? colors.accent : colors.warning }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor' }} />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>{isConnected ? 'เชื่อมต่อแล้ว' : 'กำลังเชื่อมต่อ...'}</span>
           </div>
         </div>
       )}
