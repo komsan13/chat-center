@@ -56,6 +56,15 @@ interface ChatRoom {
   recentMessages?: Message[];
 }
 
+interface LineToken {
+  id: string;
+  name: string;
+  channelId: string;
+  websiteId: string | null;
+  websiteName: string | null;
+  status: 'active' | 'inactive' | 'expired';
+}
+
 const quickReplies = [
   { id: 1, label: 'ดำเนินการฝาก-ถอน รบกวนแอดไลน์นี้นะคะ 🙏', icon: '💳' },
   { id: 2, label: 'กรุณาส่งสลิปด้วยค่ะ', icon: '🧾' },
@@ -82,6 +91,17 @@ export default function DataChatPage() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [chatSearchTerm, setChatSearchTerm] = useState('');
   const [showChatSearch, setShowChatSearch] = useState(false);
+  
+  // LINE Token selection state
+  const [lineTokens, setLineTokens] = useState<LineToken[]>([]);
+  const [selectedTokenIds, setSelectedTokenIds] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('selectedChatTokens');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    }
+    return new Set();
+  });
+  const selectedTokenIdsRef = useRef<Set<string>>(new Set());
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -173,6 +193,25 @@ export default function DataChatPage() {
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
 
+  // Filter rooms based on selected tokens
+  const filteredRooms = useMemo(() => {
+    return rooms.filter(room => {
+      // First filter by status
+      if (filterStatus === 'spam') {
+        if (room.status !== 'spam') return false;
+      } else {
+        if (room.status === 'spam') return false;
+      }
+      
+      // Then filter by selected tokens (only if some tokens are selected)
+      if (selectedTokenIds.size > 0 && room.lineTokenId) {
+        if (!selectedTokenIds.has(room.lineTokenId)) return false;
+      }
+      
+      return true;
+    });
+  }, [rooms, filterStatus, selectedTokenIds]);
+
   // ═══════════════════════════════════════════════════════════════════
   // AUDIO SETUP
   // ═══════════════════════════════════════════════════════════════════
@@ -223,6 +262,64 @@ export default function DataChatPage() {
       }
     };
     fetchCurrentUser();
+  }, []);
+
+  // Fetch LINE Tokens for filtering
+  useEffect(() => {
+    const fetchLineTokens = async () => {
+      try {
+        const response = await fetch('/api/line-tokens');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            // Only show active tokens with websiteName
+            const activeTokens = data.data.filter((t: LineToken) => t.status === 'active');
+            setLineTokens(activeTokens);
+            
+            // If no tokens selected yet, select all by default
+            if (selectedTokenIds.size === 0 && activeTokens.length > 0) {
+              const allIds = new Set(activeTokens.map((t: LineToken) => t.id));
+              setSelectedTokenIds(allIds);
+              selectedTokenIdsRef.current = allIds;
+              localStorage.setItem('selectedChatTokens', JSON.stringify([...allIds]));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch LINE tokens:', error);
+      }
+    };
+    fetchLineTokens();
+  }, []);
+
+  // Sync selectedTokenIds to ref and localStorage
+  useEffect(() => {
+    selectedTokenIdsRef.current = selectedTokenIds;
+    localStorage.setItem('selectedChatTokens', JSON.stringify([...selectedTokenIds]));
+  }, [selectedTokenIds]);
+
+  // Toggle token selection
+  const toggleTokenSelection = useCallback((tokenId: string) => {
+    setSelectedTokenIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(tokenId)) {
+        newSet.delete(tokenId);
+      } else {
+        newSet.add(tokenId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Select all tokens
+  const selectAllTokens = useCallback(() => {
+    const allIds = new Set(lineTokens.map(t => t.id));
+    setSelectedTokenIds(allIds);
+  }, [lineTokens]);
+
+  // Deselect all tokens
+  const deselectAllTokens = useCallback(() => {
+    setSelectedTokenIds(new Set());
   }, []);
 
   // ═══════════════════════════════════════════════════════════════════
@@ -368,11 +465,19 @@ export default function DataChatPage() {
       room.lastMessageAt = msg.createdAt;
       
       // Only increment unread and play sound for incoming user messages
-      // Skip notification for spam rooms
-      if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user' && room.status !== 'spam') {
+      // Skip notification for spam rooms and muted rooms
+      // Skip notification if room's lineTokenId is not in selectedTokenIds
+      if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user' && room.status !== 'spam' && !room.isMuted) {
         // Increment locally for immediate UI feedback
         room.unreadCount = (room.unreadCount || 0) + 1;
-        playSound();
+        
+        // Only play sound if token is selected (or no token filter)
+        const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
+                            !room.lineTokenId || 
+                            selectedTokenIdsRef.current.has(room.lineTokenId);
+        if (shouldNotify) {
+          playSound();
+        }
       }
       
       // Move room to top (but not spam rooms)
@@ -1357,7 +1462,7 @@ export default function DataChatPage() {
           {/* Stats */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>
-              {rooms.length} conversations
+              {filteredRooms.length} conversations
             </span>
             <div style={{ 
               display: 'flex', alignItems: 'center', gap: 6,
@@ -1386,17 +1491,15 @@ export default function DataChatPage() {
             <div style={{ padding: 40, textAlign: 'center' }}>
               <Loader2 size={24} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
             </div>
-          ) : rooms.filter(r => filterStatus === 'spam' ? r.status === 'spam' : r.status !== 'spam').length === 0 ? (
+          ) : filteredRooms.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center' }}>
               <MessageCircle size={32} style={{ color: colors.textMuted, marginBottom: 12 }} />
               <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>
-                {filterStatus === 'spam' ? 'No spam messages' : 'No conversations'}
+                {filterStatus === 'spam' ? 'No spam messages' : selectedTokenIds.size === 0 ? 'Select a channel below' : 'No conversations'}
               </p>
             </div>
           ) : (
-            rooms
-              .filter(room => filterStatus === 'spam' ? room.status === 'spam' : room.status !== 'spam')
-              .map((room) => (
+            filteredRooms.map((room) => (
               <div
                 key={room.id}
                 onClick={() => {
@@ -1553,6 +1656,119 @@ export default function DataChatPage() {
             ))
           )}
         </div>
+        
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* CHANNEL SELECTION - Bottom of Sidebar */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {lineTokens.length > 0 && (
+          <div style={{
+            borderTop: `1px solid ${colors.border}`,
+            padding: '12px 16px',
+            background: colors.bgTertiary,
+          }}>
+            {/* Header with Select All/None */}
+            <div style={{ 
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: 10,
+            }}>
+              <span style={{ 
+                fontSize: 11, fontWeight: 600, color: colors.textMuted,
+                textTransform: 'uppercase', letterSpacing: '0.5px',
+              }}>
+                Channels ({selectedTokenIds.size}/{lineTokens.length})
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={selectAllTokens}
+                  style={{
+                    padding: '3px 8px', borderRadius: 4,
+                    background: selectedTokenIds.size === lineTokens.length ? colors.accentLight : 'transparent',
+                    border: 'none', fontSize: 10, fontWeight: 500,
+                    color: selectedTokenIds.size === lineTokens.length ? colors.accent : colors.textMuted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  All
+                </button>
+                <button
+                  onClick={deselectAllTokens}
+                  style={{
+                    padding: '3px 8px', borderRadius: 4,
+                    background: selectedTokenIds.size === 0 ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                    border: 'none', fontSize: 10, fontWeight: 500,
+                    color: selectedTokenIds.size === 0 ? colors.danger : colors.textMuted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  None
+                </button>
+              </div>
+            </div>
+            
+            {/* Token Checkboxes */}
+            <div style={{ 
+              display: 'flex', flexDirection: 'column', gap: 6,
+              maxHeight: 120, overflowY: 'auto',
+            }}>
+              {lineTokens.map(token => {
+                const isSelected = selectedTokenIds.has(token.id);
+                return (
+                  <label
+                    key={token.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 10px', borderRadius: 8,
+                      background: isSelected ? colors.accentLight : colors.bgSecondary,
+                      border: `1px solid ${isSelected ? colors.accent + '40' : colors.border}`,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {/* Custom Checkbox */}
+                    <div
+                      onClick={(e) => { e.preventDefault(); toggleTokenSelection(token.id); }}
+                      style={{
+                        width: 18, height: 18, borderRadius: 4,
+                        background: isSelected ? colors.accent : 'transparent',
+                        border: `2px solid ${isSelected ? colors.accent : colors.border}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {isSelected && <Check size={12} style={{ color: '#fff' }} />}
+                    </div>
+                    
+                    {/* Token Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ 
+                        fontSize: 12, fontWeight: 500, color: colors.textPrimary,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {token.websiteName || token.name}
+                      </div>
+                      {token.websiteName && token.websiteName !== token.name && (
+                        <div style={{ 
+                          fontSize: 10, color: colors.textMuted,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {token.name}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Notification indicator */}
+                    {isSelected ? (
+                      <Bell size={14} style={{ color: colors.accent, flexShrink: 0 }} />
+                    ) : (
+                      <BellOff size={14} style={{ color: colors.textMuted, flexShrink: 0 }} />
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
