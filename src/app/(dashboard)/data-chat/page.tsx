@@ -278,7 +278,7 @@ export default function DataChatPage() {
             
             // If no tokens selected yet, select all by default
             if (selectedTokenIds.size === 0 && activeTokens.length > 0) {
-              const allIds = new Set(activeTokens.map((t: LineToken) => t.id));
+              const allIds = new Set<string>(activeTokens.map((t: LineToken) => t.id));
               setSelectedTokenIds(allIds);
               selectedTokenIdsRef.current = allIds;
               localStorage.setItem('selectedChatTokens', JSON.stringify([...allIds]));
@@ -313,13 +313,13 @@ export default function DataChatPage() {
 
   // Select all tokens
   const selectAllTokens = useCallback(() => {
-    const allIds = new Set(lineTokens.map(t => t.id));
+    const allIds = new Set<string>(lineTokens.map(t => t.id));
     setSelectedTokenIds(allIds);
   }, [lineTokens]);
 
   // Deselect all tokens
   const deselectAllTokens = useCallback(() => {
-    setSelectedTokenIds(new Set());
+    setSelectedTokenIds(new Set<string>());
   }, []);
 
   // ═══════════════════════════════════════════════════════════════════
