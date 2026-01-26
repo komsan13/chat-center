@@ -75,6 +75,7 @@ export default function DataChatPage() {
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
+  const [isSmallDesktop, setIsSmallDesktop] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(true); // On mobile, show sidebar by default
   
   // Detect screen size
@@ -83,6 +84,7 @@ export default function DataChatPage() {
       const width = window.innerWidth;
       setIsMobile(width < 768);
       setIsTablet(width >= 768 && width < 1024);
+      setIsSmallDesktop(width >= 1024 && width < 1280);
       // On larger screens, always show sidebar
       if (width >= 768) {
         setShowMobileSidebar(true);
@@ -933,8 +935,10 @@ export default function DataChatPage() {
       {/* LEFT SIDEBAR - Chat List */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       <div style={{ 
-        width: isMobile ? '100%' : isTablet ? 300 : 340,
-        minWidth: isMobile ? '100%' : isTablet ? 300 : 340,
+        width: isMobile ? '100%' : isTablet ? 280 : isSmallDesktop ? 300 : 340,
+        minWidth: isMobile ? '100%' : isTablet ? 280 : isSmallDesktop ? 300 : 340,
+        maxWidth: isMobile ? '100%' : isTablet ? 280 : isSmallDesktop ? 300 : 340,
+        flexShrink: 0,
         background: colors.bgSecondary, 
         borderRight: isMobile ? 'none' : `1px solid ${colors.border}`,
         display: isMobile ? (showMobileSidebar ? 'flex' : 'none') : 'flex', 
@@ -1284,7 +1288,7 @@ export default function DataChatPage() {
                     <Search size={14} /> Search
                   </button>
                 )}
-                {!isMobile && !isTablet && (
+                {!isMobile && !isTablet && !isSmallDesktop && (
                   <button
                     onClick={() => setShowRightPanel(!showRightPanel)}
                     style={{
@@ -1581,11 +1585,14 @@ export default function DataChatPage() {
           </div>
 
           {/* ═══════════════════════════════════════════════════════════════ */}
-          {/* RIGHT PANEL - Hidden on mobile/tablet */}
+          {/* RIGHT PANEL - Hidden on mobile/tablet/small desktop */}
           {/* ═══════════════════════════════════════════════════════════════ */}
-          {showRightPanel && !isMobile && !isTablet && (
+          {showRightPanel && !isMobile && !isTablet && !isSmallDesktop && (
             <div style={{ 
-              width: 320, 
+              width: 300, 
+              minWidth: 300,
+              maxWidth: 300,
+              flexShrink: 0,
               background: colors.bgSecondary, 
               borderLeft: `1px solid ${colors.border}`,
               display: 'flex', flexDirection: 'column', 
