@@ -53,7 +53,34 @@ export default function LoginPage() {
         return;
       }
       
-      router.push('/');
+      // Get user permissions and redirect to first allowed route
+      try {
+        const meResponse = await fetch('/api/auth/me');
+        const meData = await meResponse.json();
+        
+        if (meData.authenticated && meData.user?.permissions) {
+          const permissions = meData.user.permissions;
+          const permissionRouteMap = [
+            { permission: 'viewDashboard', route: '/' },
+            { permission: 'manageChat', route: '/data-chat' },
+            { permission: 'viewReports', route: '/reports/daily-summary' },
+            { permission: 'manageData', route: '/data-management/websites' },
+            { permission: 'manageUsers', route: '/users' },
+            { permission: 'managePermissions', route: '/permissions' },
+            { permission: 'manageSettings', route: '/settings' },
+          ];
+          
+          const firstAllowed = permissionRouteMap.find(
+            item => permissions[item.permission as keyof typeof permissions]
+          )?.route;
+          
+          router.push(firstAllowed || '/no-access');
+        } else {
+          router.push('/');
+        }
+      } catch {
+        router.push('/');
+      }
       router.refresh();
     } catch {
       setError(t('login.errorConnection'));

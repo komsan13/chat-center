@@ -23,8 +23,8 @@ const getRequiredPermission = (pathname: string): keyof Permissions | null => {
 const permissionRouteMap: { permission: keyof Permissions; route: string }[] = [
   { permission: 'viewDashboard', route: '/' },
   { permission: 'manageChat', route: '/data-chat' },
-  { permission: 'viewReports', route: '/reports' },
-  { permission: 'manageData', route: '/data-management' },
+  { permission: 'viewReports', route: '/reports/daily-summary' },
+  { permission: 'manageData', route: '/data-management/websites' },
   { permission: 'manageUsers', route: '/users' },
   { permission: 'managePermissions', route: '/permissions' },
   { permission: 'manageSettings', route: '/settings' },
