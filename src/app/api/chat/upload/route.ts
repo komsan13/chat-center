@@ -3,6 +3,22 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import Database from 'better-sqlite3';
 import fs from 'fs';
+import { LineBotService } from '@/lib/line-bot';
+
+interface RoomRecord {
+  id: string;
+  lineUserId: string;
+  lineTokenId: string;
+  displayName: string;
+  status: string;
+}
+
+interface LineTokenRecord {
+  id: string;
+  accessToken: string;
+  channelSecret: string;
+  status: string;
+}
 
 function getDb() {
   const prismaPath = path.join(process.cwd(), 'prisma', 'dev.db');
@@ -15,6 +31,13 @@ function getDb() {
     return new Database(dataPath);
   }
   return new Database(prismaPath);
+}
+
+// Get base URL for public access
+function getBaseUrl(request: NextRequest): string {
+  const host = request.headers.get('host') || 'localhost:3000';
+  const protocol = request.headers.get('x-forwarded-proto') || 'http';
+  return `${protocol}://${host}`;
 }
 
 // POST - Upload file and send as message
@@ -64,16 +87,45 @@ export async function POST(request: NextRequest) {
 
     // Generate public URL
     const mediaUrl = `/uploads/${roomId}/${fileName}`;
+    const baseUrl = getBaseUrl(request);
+    const publicMediaUrl = `${baseUrl}${mediaUrl}`;
+
+    // Get room info for LINE
+    const room = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(roomId) as RoomRecord | undefined;
+
+    // Send to LINE if it's an image and we have room info
+    let lineResult = { success: false, error: 'Not sent to LINE' };
+    
+    if (room && messageType === 'image') {
+      // Get LINE token
+      let lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ? AND status = ?').get(room.lineTokenId, 'active') as LineTokenRecord | undefined;
+      
+      if (!lineToken) {
+        lineToken = db.prepare('SELECT * FROM LineToken WHERE status = ? ORDER BY createdAt DESC LIMIT 1').get('active') as LineTokenRecord | undefined;
+      }
+      
+      if (lineToken) {
+        try {
+          const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
+          lineResult = await botService.sendImage(room.lineUserId, publicMediaUrl);
+          console.log('[Upload API] LINE send result:', lineResult);
+        } catch (error) {
+          console.error('[Upload API] LINE send error:', error);
+          lineResult = { success: false, error: String(error) };
+        }
+      }
+    }
 
     // Create message in database
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const now = new Date().toISOString();
+    const status = lineResult.success ? 'sent' : 'failed';
 
     db.prepare(`
       INSERT INTO LineChatMessage (
         id, roomId, messageType, content, mediaUrl, sender, senderName, status, isDeleted, createdAt
-      ) VALUES (?, ?, ?, ?, ?, 'agent', ?, 'sent', 0, ?)
-    `).run(messageId, roomId, messageType, file.name, mediaUrl, senderName, now);
+      ) VALUES (?, ?, ?, ?, ?, 'agent', ?, ?, 0, ?)
+    `).run(messageId, roomId, messageType, file.name, mediaUrl, senderName, status, now);
 
     // Update room's lastMessageAt
     db.prepare(`
@@ -90,13 +142,14 @@ export async function POST(request: NextRequest) {
       mediaUrl,
       sender: 'agent',
       senderName,
-      status: 'sent',
+      status,
       createdAt: now,
     };
 
     return NextResponse.json({
       success: true,
       message,
+      lineResult,
     });
   } catch (error) {
     console.error('[Upload API] Error:', error);

@@ -123,9 +123,8 @@ export async function GET(request: NextRequest) {
   
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') || 'active';
     const search = searchParams.get('search') || '';
-    const filter = searchParams.get('filter') || 'all'; // all, unread, pinned
+    const filter = searchParams.get('filter') || 'all'; // all, unread, pinned, spam
 
     let query = `
       SELECT r.*, 
@@ -138,9 +137,17 @@ export async function GET(request: NextRequest) {
           'createdAt', m.createdAt
         ) FROM LineChatMessage m WHERE m.roomId = r.id ORDER BY m.createdAt DESC LIMIT 1) as lastMessage
       FROM LineChatRoom r
-      WHERE r.status = ?
+      WHERE 1=1
     `;
-    const params: (string | number)[] = [status];
+    const params: (string | number)[] = [];
+
+    // Handle spam filter - show spam rooms, otherwise show active rooms
+    if (filter === 'spam') {
+      query += ` AND r.status = 'spam'`;
+    } else {
+      // For other filters, show non-spam rooms
+      query += ` AND (r.status = 'active' OR r.status IS NULL)`;
+    }
 
     if (search) {
       query += ` AND r.displayName LIKE ?`;
