@@ -345,18 +345,8 @@ export default function DataChatPage() {
     });
   }, [playSound]);
 
-  // Reference to current user for typing check
-  const currentUserRef = useRef<{ name: string } | null>(null);
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
-
   const handleTypingEvent = useCallback((data: { roomId: string; userName: string; isTyping: boolean }) => {
-    // Don't show typing indicator for yourself
-    if (currentUserRef.current && data.userName === currentUserRef.current.name) {
-      return;
-    }
-    
+    // Server broadcasts to everyone EXCEPT sender, so no need to filter here
     console.log('[Typing Event]', data);
     if (data.isTyping) {
       setTypingUsers(prev => {

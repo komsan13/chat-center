@@ -305,6 +305,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     });
 
     socket.on('user-typing', (data: { roomId: string; userName: string; isTyping: boolean }) => {
+      console.log('[Socket] ⌨️ User typing:', data.userName, data.isTyping ? 'started' : 'stopped', 'in', data.roomId);
       optionsRef.current.onUserTyping?.(data);
     });
 
