@@ -3,17 +3,20 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-// Database connection
+// Database connection - use prisma/dev.db as primary (where LINE webhook saves data)
 function getDb() {
-  const dbPath = path.join(process.cwd(), 'data', 'dev.db');
-  const fallbackPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const prismaPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const dataPath = path.join(process.cwd(), 'data', 'dev.db');
   
-  try {
-    if (fs.existsSync(dbPath)) {
-      return new Database(dbPath);
-    }
-  } catch {}
-  return new Database(fallbackPath);
+  // Prefer prisma/dev.db as it has the LINE chat data
+  if (fs.existsSync(prismaPath)) {
+    return new Database(prismaPath);
+  }
+  if (fs.existsSync(dataPath)) {
+    return new Database(dataPath);
+  }
+  // Create in prisma folder if neither exists
+  return new Database(prismaPath);
 }
 
 // Auto-migrate function to ensure all columns exist
@@ -78,6 +81,34 @@ function ensureSchema(db: Database.Database) {
         updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Create LineChatMessage table if not exists
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS LineChatMessage (
+        id TEXT PRIMARY KEY,
+        roomId TEXT NOT NULL,
+        lineMessageId TEXT,
+        messageType TEXT NOT NULL DEFAULT 'text',
+        content TEXT,
+        mediaUrl TEXT,
+        stickerId TEXT,
+        packageId TEXT,
+        sender TEXT NOT NULL DEFAULT 'user',
+        senderName TEXT,
+        status TEXT DEFAULT 'sent',
+        replyToId TEXT,
+        isDeleted INTEGER DEFAULT 0,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (roomId) REFERENCES LineChatRoom(id)
+      )
+    `);
+    
+    // Create indexes
+    try {
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_linechatmessage_roomid ON LineChatMessage(roomId)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_linechatroom_status ON LineChatRoom(status)`);
+    } catch {}
   } catch (err) {
     console.error('[Schema Migration]', err);
   }

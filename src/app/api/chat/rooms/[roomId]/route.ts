@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
 function getDb() {
-  const dbPath = path.join(process.cwd(), 'data', 'dev.db');
-  const fallbackPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const prismaPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const dataPath = path.join(process.cwd(), 'data', 'dev.db');
   
-  try {
-    return new Database(dbPath);
-  } catch {
-    return new Database(fallbackPath);
+  // Prefer prisma/dev.db as it has the LINE chat data
+  if (fs.existsSync(prismaPath)) {
+    return new Database(prismaPath);
   }
+  if (fs.existsSync(dataPath)) {
+    return new Database(dataPath);
+  }
+  return new Database(prismaPath);
 }
 
 // GET - Get single room with messages

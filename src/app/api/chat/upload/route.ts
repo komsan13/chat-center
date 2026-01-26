@@ -2,16 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import Database from 'better-sqlite3';
+import fs from 'fs';
 
 function getDb() {
-  const dbPath = path.join(process.cwd(), 'data', 'dev.db');
-  const fallbackPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const prismaPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const dataPath = path.join(process.cwd(), 'data', 'dev.db');
   
-  try {
-    return new Database(dbPath);
-  } catch {
-    return new Database(fallbackPath);
+  if (fs.existsSync(prismaPath)) {
+    return new Database(prismaPath);
   }
+  if (fs.existsSync(dataPath)) {
+    return new Database(dataPath);
+  }
+  return new Database(prismaPath);
 }
 
 // POST - Upload file and send as message

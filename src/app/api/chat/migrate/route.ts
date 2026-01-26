@@ -4,15 +4,16 @@ import path from 'path';
 import fs from 'fs';
 
 function getDb() {
-  const dbPath = path.join(process.cwd(), 'data', 'dev.db');
-  const fallbackPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const prismaPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  const dataPath = path.join(process.cwd(), 'data', 'dev.db');
   
-  try {
-    if (fs.existsSync(dbPath)) {
-      return new Database(dbPath);
-    }
-  } catch {}
-  return new Database(fallbackPath);
+  if (fs.existsSync(prismaPath)) {
+    return new Database(prismaPath);
+  }
+  if (fs.existsSync(dataPath)) {
+    return new Database(dataPath);
+  }
+  return new Database(prismaPath);
 }
 
 // This endpoint runs database migrations for chat features
