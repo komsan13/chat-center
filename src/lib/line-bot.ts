@@ -74,10 +74,13 @@ export class LineBotService {
 
   // Send video
   async sendVideo(userId: string, originalContentUrl: string, previewImageUrl?: string): Promise<SendMessageResult> {
+    // LINE requires a separate preview image for video
+    // Use a default video thumbnail if not provided
+    const defaultThumbnail = 'https://via.placeholder.com/240x240.png?text=Video';
     return this.pushMessage(userId, [{
       type: 'video',
       originalContentUrl,
-      previewImageUrl: previewImageUrl || originalContentUrl,
+      previewImageUrl: previewImageUrl || defaultThumbnail,
     }]);
   }
 

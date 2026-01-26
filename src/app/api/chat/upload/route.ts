@@ -97,31 +97,41 @@ export async function POST(request: NextRequest) {
     let lineResult: { success: boolean; error?: string } = { success: false, error: 'Not sent to LINE' };
     
     if (room && (messageType === 'image' || messageType === 'video' || messageType === 'audio')) {
-      // Get LINE token
-      let lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ? AND status = ?').get(room.lineTokenId, 'active') as LineTokenRecord | undefined;
-      
-      if (!lineToken) {
-        lineToken = db.prepare('SELECT * FROM LineToken WHERE status = ? ORDER BY createdAt DESC LIMIT 1').get('active') as LineTokenRecord | undefined;
-      }
-      
-      if (lineToken) {
-        try {
-          const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
-          let sendResult;
-          
-          if (messageType === 'image') {
-            sendResult = await botService.sendImage(room.lineUserId, publicMediaUrl);
-          } else if (messageType === 'video') {
-            sendResult = await botService.sendVideo(room.lineUserId, publicMediaUrl);
-          } else if (messageType === 'audio') {
-            sendResult = await botService.sendAudio(room.lineUserId, publicMediaUrl);
+      // Check video format (LINE only supports MP4)
+      if (messageType === 'video' && !mimeType.includes('mp4')) {
+        console.log('[Upload API] Video format not supported by LINE:', mimeType);
+        lineResult = { success: false, error: 'LINE only supports MP4 video format' };
+      } else {
+        // Get LINE token
+        let lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ? AND status = ?').get(room.lineTokenId, 'active') as LineTokenRecord | undefined;
+        
+        if (!lineToken) {
+          lineToken = db.prepare('SELECT * FROM LineToken WHERE status = ? ORDER BY createdAt DESC LIMIT 1').get('active') as LineTokenRecord | undefined;
+        }
+        
+        if (lineToken) {
+          try {
+            const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
+            let sendResult;
+            
+            // Ensure HTTPS for LINE API
+            const secureMediaUrl = publicMediaUrl.replace('http://', 'https://');
+            console.log('[Upload API] Sending media to LINE:', { messageType, url: secureMediaUrl });
+            
+            if (messageType === 'image') {
+              sendResult = await botService.sendImage(room.lineUserId, secureMediaUrl);
+            } else if (messageType === 'video') {
+              sendResult = await botService.sendVideo(room.lineUserId, secureMediaUrl);
+            } else if (messageType === 'audio') {
+              sendResult = await botService.sendAudio(room.lineUserId, secureMediaUrl);
+            }
+            
+            lineResult = sendResult || { success: false, error: 'Unknown message type' };
+            console.log('[Upload API] LINE send result:', lineResult);
+          } catch (error) {
+            console.error('[Upload API] LINE send error:', error);
+            lineResult = { success: false, error: String(error) };
           }
-          
-          lineResult = sendResult || { success: false, error: 'Unknown message type' };
-          console.log('[Upload API] LINE send result:', lineResult);
-        } catch (error) {
-          console.error('[Upload API] LINE send error:', error);
-          lineResult = { success: false, error: String(error) };
         }
       }
     }
