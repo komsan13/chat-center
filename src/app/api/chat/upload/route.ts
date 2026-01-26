@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
 
-    // Generate public URL
-    const mediaUrl = `/uploads/${roomId}/${fileName}`;
+    // Generate public URL - use API route instead of static file
+    const mediaUrl = `/api/uploads/${roomId}/${fileName}`;
     const baseUrl = getBaseUrl(request);
     const publicMediaUrl = `${baseUrl}${mediaUrl}`;
 
