@@ -277,21 +277,50 @@ export default function DataChatPage() {
   // SOCKET CONNECTION
   // ═══════════════════════════════════════════════════════════════════
   const handleNewMessage = useCallback((msg: Message) => {
+    // Skip if this is a temp message (we already have it locally)
+    if (msg.id?.startsWith('temp-')) return;
+    
+    // Update cache
     if (messagesCacheRef.current.has(msg.roomId)) {
       const cached = messagesCacheRef.current.get(msg.roomId)!;
-      if (!cached.find(m => m.id === msg.id || m.lineMessageId === msg.lineMessageId)) {
+      // Check for duplicates by id or lineMessageId
+      const exists = cached.find(m => 
+        m.id === msg.id || 
+        (m.lineMessageId && m.lineMessageId === msg.lineMessageId) ||
+        (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender)
+      );
+      if (!exists) {
         messagesCacheRef.current.set(msg.roomId, [...cached, msg]);
+      } else if (exists.id?.startsWith('temp-')) {
+        // Replace temp message with real one
+        messagesCacheRef.current.set(msg.roomId, cached.map(m => 
+          m.id === exists.id ? msg : m
+        ));
       }
     }
     
+    // Update messages if viewing this room
     if (selectedRoomRef.current === msg.roomId) {
       setMessages(prev => {
-        if (prev.find(m => m.id === msg.id || m.lineMessageId === msg.lineMessageId)) return prev;
-        return [...prev, msg];
+        // Check for duplicates
+        const exists = prev.find(m => 
+          m.id === msg.id || 
+          (m.lineMessageId && m.lineMessageId === msg.lineMessageId) ||
+          (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender)
+        );
+        if (!exists) {
+          return [...prev, msg];
+        } else if (exists.id?.startsWith('temp-')) {
+          // Replace temp message with real one
+          return prev.map(m => m.id === exists.id ? msg : m);
+        }
+        return prev;
       });
+      // Mark as read
       fetch(`/api/chat/rooms/${msg.roomId}/messages`, { method: 'POST' }).catch(() => {});
     }
     
+    // Update rooms list
     setRooms(prev => {
       const roomIndex = prev.findIndex(r => r.id === msg.roomId);
       if (roomIndex === -1) return prev;
@@ -301,11 +330,13 @@ export default function DataChatPage() {
       room.lastMessage = msg;
       room.lastMessageAt = msg.createdAt;
       
+      // Only increment unread and play sound for incoming user messages
       if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user') {
         room.unreadCount = (room.unreadCount || 0) + 1;
         playSound();
       }
       
+      // Move room to top
       updatedRooms.splice(roomIndex, 1);
       updatedRooms.unshift(room);
       return updatedRooms;
@@ -347,10 +378,47 @@ export default function DataChatPage() {
     }
   }, []);
 
+  // Handle room update from socket - update rooms list when other browsers send messages
+  const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number }) => {
+    setRooms(prev => {
+      const roomIndex = prev.findIndex(r => r.id === data.id);
+      if (roomIndex === -1) return prev;
+      
+      const updatedRooms = [...prev];
+      const room = { ...updatedRooms[roomIndex] };
+      
+      if (data.lastMessage) {
+        room.lastMessage = data.lastMessage;
+      }
+      if (data.lastMessageAt) {
+        room.lastMessageAt = data.lastMessageAt;
+      }
+      if (typeof data.unreadCount === 'number') {
+        // Only update unread count if not currently viewing this room
+        if (selectedRoomRef.current !== data.id) {
+          room.unreadCount = data.unreadCount;
+        }
+      }
+      
+      updatedRooms[roomIndex] = room;
+      
+      // Sort by lastMessageAt
+      updatedRooms.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+        const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+        return timeB - timeA;
+      });
+      
+      return updatedRooms;
+    });
+  }, []);
+
   const { isConnected, connectionState, reconnect, sendTyping, markAsRead } = useSocket({
     onNewMessage: handleNewMessage,
     onUserTyping: handleTypingEvent,
     onRoomReadUpdate: handleRoomReadSync,
+    onRoomUpdate: handleRoomUpdate,
   });
 
   // Store sendTyping in ref

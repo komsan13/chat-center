@@ -21,6 +21,10 @@ declare global {
   var __chatEvents: ChatEvent[];
   // eslint-disable-next-line no-var, @typescript-eslint/no-explicit-any
   var __io: any;
+  // eslint-disable-next-line no-var
+  var __broadcastToRoom: ((roomId: string, event: string, data: unknown) => void) | undefined;
+  // eslint-disable-next-line no-var
+  var __broadcast: ((event: string, data: unknown) => void) | undefined;
 }
 
 if (!global.__chatEvents) {
@@ -34,7 +38,7 @@ interface ChatEvent {
   timestamp: number;
 }
 
-function emitChatEvent(type: string, data: unknown) {
+function emitChatEvent(type: string, data: unknown, roomId?: string) {
   const event: ChatEvent = {
     id: generateId('evt_'),
     type,
@@ -50,8 +54,14 @@ function emitChatEvent(type: string, data: unknown) {
     .filter(e => e.timestamp > fiveMinutesAgo)
     .slice(-100);
   
-  // Emit via Socket.IO if available
-  if (global.__io) {
+  // Emit via Socket.IO - use broadcastToRoom for room-specific events
+  if (roomId && global.__broadcastToRoom) {
+    global.__broadcastToRoom(roomId, type, data);
+    console.log(`[Socket.IO] Broadcast to room ${roomId}: ${type}`);
+  } else if (global.__broadcast) {
+    global.__broadcast(type, data);
+    console.log(`[Socket.IO] Broadcast: ${type}`);
+  } else if (global.__io) {
     global.__io.to('all-rooms').emit(type, data);
     console.log(`[Socket.IO] Emitted: ${type}`);
   }
@@ -337,7 +347,8 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
     createdAt: now,
   };
   
-  emitChatEvent('new-message', messageData);
+  // Broadcast new message to all clients
+  emitChatEvent('new-message', messageData, room.id);
   
   // Also emit room update
   emitChatEvent('room-update', {
@@ -345,7 +356,7 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
     lastMessage: messageData,
     lastMessageAt: now,
     unreadCount: room.unreadCount + 1,
-  });
+  }, room.id);
 
   console.log(`[LINE Webhook] Message saved: ${messageId}`);
 }

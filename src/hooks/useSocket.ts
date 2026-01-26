@@ -38,9 +38,17 @@ interface ChatRoom {
   updatedAt: string;
 }
 
+interface RoomUpdate {
+  id: string;
+  lastMessage?: ChatMessage;
+  lastMessageAt?: string;
+  unreadCount?: number;
+}
+
 interface UseSocketOptions {
   onNewMessage?: (message: ChatMessage) => void;
   onNewRoom?: (room: ChatRoom) => void;
+  onRoomUpdate?: (data: RoomUpdate) => void;
   onMessagesRead?: (data: { roomId: string; messageIds: string[] }) => void;
   onUserTyping?: (data: { roomId: string; userName: string; isTyping: boolean }) => void;
   onRoomReadUpdate?: (data: { roomId: string; readAt: string }) => void;
@@ -284,6 +292,11 @@ export function useSocket(options: UseSocketOptions = {}) {
       console.log('[Socket] 🆕 New room:', room.id);
       playNotificationSound();
       optionsRef.current.onNewRoom?.(room);
+    });
+
+    socket.on('room-update', (data: { id: string; lastMessage?: ChatMessage; lastMessageAt?: string; unreadCount?: number }) => {
+      console.log('[Socket] 🔄 Room update:', data.id);
+      optionsRef.current.onRoomUpdate?.(data);
     });
 
     socket.on('messages-read', (data: { roomId: string; messageIds: string[] }) => {

@@ -14,10 +14,14 @@ function generateId(prefix: string = '') {
   return `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Global event store
+// Global event store and Socket.IO broadcast
 declare global {
   // eslint-disable-next-line no-var
   var __chatEvents: ChatEvent[];
+  // eslint-disable-next-line no-var
+  var __broadcastToRoom: ((roomId: string, event: string, data: unknown) => void) | undefined;
+  // eslint-disable-next-line no-var
+  var __broadcast: ((event: string, data: unknown) => void) | undefined;
 }
 
 interface ChatEvent {
@@ -27,7 +31,7 @@ interface ChatEvent {
   timestamp: number;
 }
 
-function emitChatEvent(type: string, data: unknown) {
+function emitChatEvent(type: string, data: unknown, roomId?: string) {
   if (!global.__chatEvents) {
     global.__chatEvents = [];
   }
@@ -46,6 +50,13 @@ function emitChatEvent(type: string, data: unknown) {
   global.__chatEvents = global.__chatEvents
     .filter(e => e.timestamp > fiveMinutesAgo)
     .slice(-100);
+    
+  // Broadcast via Socket.IO to all clients
+  if (roomId && global.__broadcastToRoom) {
+    global.__broadcastToRoom(roomId, type, data);
+  } else if (global.__broadcast) {
+    global.__broadcast(type, data);
+  }
 }
 
 // POST - Send message to LINE user
@@ -161,19 +172,17 @@ export async function POST(request: NextRequest) {
     // Update LINE token's lastUsed
     db.prepare(`UPDATE LineToken SET lastUsed = ?, updatedAt = ? WHERE id = ?`).run(now, now, activeToken.id);
 
-    // Emit status update
-    emitChatEvent('message-status', {
-      id: messageId,
-      roomId,
-      status: finalStatus,
-    });
+    const finalMessage = { ...messageData, status: finalStatus };
 
-    // Emit room update
+    // Broadcast new message to all clients via Socket.IO
+    emitChatEvent('new-message', finalMessage, roomId);
+
+    // Emit room update to update room list
     emitChatEvent('room-update', {
       id: roomId,
-      lastMessage: { ...messageData, status: finalStatus },
+      lastMessage: finalMessage,
       lastMessageAt: now,
-    });
+    }, roomId);
 
     const response: SendMessageResponse = {
       success: sendResult?.success || false,
