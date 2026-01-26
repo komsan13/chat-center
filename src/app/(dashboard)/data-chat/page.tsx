@@ -125,7 +125,10 @@ export default function DataChatPage() {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
           const data = await response.json();
-          setCurrentUser({ name: data.name || data.username, username: data.username });
+          // API returns { user: { name, email, ... } }
+          const userName = data.user?.name || data.user?.email || data.name || data.username || 'Agent';
+          setCurrentUser({ name: userName, username: data.user?.email || data.username || '' });
+          console.log('[Chat] Current user:', userName);
         }
       } catch (error) {
         console.error('Failed to fetch current user:', error);
