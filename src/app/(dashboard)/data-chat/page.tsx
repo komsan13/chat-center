@@ -456,7 +456,7 @@ export default function DataChatPage() {
         };
         
         console.log('[Chat] Adding new room from update:', newRoom.id, newRoom.displayName);
-        playSound();
+        // Sound is played by handleNewMessage, no need to play here
         return [newRoom, ...prev];
       }
       
@@ -506,9 +506,8 @@ export default function DataChatPage() {
       return [room, ...prev];
     });
     
-    // Play sound for new customer
-    playSound();
-  }, [playSound]);
+    // Sound is played by handleNewMessage when first message arrives
+  }, []);
 
   const { isConnected, connectionState, reconnect, sendTyping, markAsRead, emitRoomRead } = useSocket({
     onNewMessage: handleNewMessage,
