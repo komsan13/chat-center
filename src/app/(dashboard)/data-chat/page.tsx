@@ -407,6 +407,8 @@ export default function DataChatPage() {
     setIsSending(true);
     stopTyping(); // Stop typing when sending message
     
+    const now = new Date().toISOString();
+    
     // Optimistic UI: add message immediately before server confirms
     const tempMessage: Message = {
       id: `temp-${Date.now()}`,
@@ -416,12 +418,26 @@ export default function DataChatPage() {
       sender: 'agent',
       senderName: currentUser?.name || 'Agent',
       status: 'sending',
-      createdAt: new Date().toISOString(),
+      createdAt: now,
     };
     setMessages(prev => [...prev, tempMessage]);
     setMessage('');
     setShowQuickReplies(false);
     setShowEmojiPicker(false);
+    
+    // Move room to top immediately (optimistic)
+    setRooms(prev => {
+      const updated = prev.map(r => 
+        r.id === selectedRoom 
+          ? { ...r, lastMessage: tempMessage, lastMessageAt: now }
+          : r
+      );
+      return updated.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return new Date(b.lastMessageAt || b.createdAt).getTime() - new Date(a.lastMessageAt || a.createdAt).getTime();
+      });
+    });
     
     try {
       const response = await fetch('/api/chat/send', {
