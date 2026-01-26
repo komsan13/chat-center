@@ -98,16 +98,18 @@ app.prepare().then(() => {
     socket.on('typing-start', ({ roomId, userName }) => {
       if (roomId) {
         console.log(`[Socket.IO] Typing start: ${userName} in room ${roomId}`);
-        socket.to(roomId).emit('user-typing', { roomId, userName, isTyping: true });
-        socket.to('all-rooms').emit('user-typing', { roomId, userName, isTyping: true });
+        // Broadcast to all in room including sender for visibility
+        io.to(roomId).emit('user-typing', { roomId, userName, isTyping: true });
+        io.to('all-rooms').emit('user-typing', { roomId, userName, isTyping: true });
       }
     });
 
     socket.on('typing-stop', ({ roomId, userName }) => {
       if (roomId) {
         console.log(`[Socket.IO] Typing stop: ${userName} in room ${roomId}`);
-        socket.to(roomId).emit('user-typing', { roomId, userName, isTyping: false });
-        socket.to('all-rooms').emit('user-typing', { roomId, userName, isTyping: false });
+        // Broadcast to all in room including sender
+        io.to(roomId).emit('user-typing', { roomId, userName, isTyping: false });
+        io.to('all-rooms').emit('user-typing', { roomId, userName, isTyping: false });
       }
     });
 

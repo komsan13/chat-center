@@ -724,7 +724,7 @@ export default function DataChatPage() {
                     <span style={{ fontSize: 12, color: typingUsers[room.id] ? colors.accent : colors.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, fontStyle: typingUsers[room.id] ? 'italic' : 'normal' }}>
                       {typingUsers[room.id] ? (
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          กำลังพิมพ์
+                          {typingUsers[room.id].userName} กำลังพิมพ์
                           <span style={{ display: 'inline-flex', gap: 2 }}>
                             {[0, 1, 2].map((i) => (
                               <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: colors.accent, animation: `typingBounce 1.4s ease-in-out ${i * 0.2}s infinite`, display: 'inline-block' }} />
