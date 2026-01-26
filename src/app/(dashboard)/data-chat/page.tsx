@@ -782,6 +782,18 @@ export default function DataChatPage() {
     const file = e.target.files?.[0];
     if (!file || !selectedRoom || isUploading) return;
 
+    // Check file size before upload
+    const isVideo = file.type.startsWith('video/');
+    const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    
+    if (file.size > maxSize) {
+      alert(`ไฟล์มีขนาดใหญ่เกินไป! ขนาดสูงสุด: ${isVideo ? '50MB' : '10MB'}`);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
     setIsUploading(true);
     
     try {
@@ -795,8 +807,10 @@ export default function DataChatPage() {
         body: formData,
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const { message: uploadedMessage } = await response.json();
+        const { message: uploadedMessage, lineResult } = data;
         setMessages(prev => [...prev, uploadedMessage]);
         
         // Update room's lastMessage
@@ -806,12 +820,22 @@ export default function DataChatPage() {
             : room
         ));
         
+        // Show warning if LINE send failed
+        if (lineResult && !lineResult.success) {
+          console.warn('LINE send failed:', lineResult.error);
+          alert(`บันทึกไฟล์สำเร็จ แต่ส่งไปยัง LINE ไม่สำเร็จ: ${lineResult.error || 'Unknown error'}`);
+        }
+        
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
+      } else {
+        // Show error message
+        alert(`อัพโหลดไม่สำเร็จ: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to upload file:', error);
+      alert('อัพโหลดไม่สำเร็จ: เกิดข้อผิดพลาดในการเชื่อมต่อ');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {

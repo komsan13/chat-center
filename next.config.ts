@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '50mb',
     },
   },
+  // Allow larger uploads through middleware
+  serverExternalPackages: ['better-sqlite3'],
 };
 
 export default nextConfig;

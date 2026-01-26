@@ -5,13 +5,6 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import { LineBotService } from '@/lib/line-bot';
 
-// Allow larger file uploads (50MB for video)
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 // Route segment config for larger uploads
 export const maxDuration = 60; // 60 seconds timeout
 
