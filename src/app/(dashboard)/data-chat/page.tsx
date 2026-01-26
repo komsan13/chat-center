@@ -6,7 +6,7 @@ import {
   Plus, Check, CheckCheck, Pin, X,
   MessageCircle, Settings, Clock,
   Loader2, Paperclip, Image as ImageIcon, FileText, 
-  Phone, Video, Bookmark
+  Phone, Video, Bookmark, VolumeX, Volume2, Trash2, AlertTriangle
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSocket } from '@/hooks/useSocket';
@@ -918,19 +918,30 @@ export default function DataChatPage() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                {[Search, Settings].map((Icon, i) => (
-                  <button
-                    key={i}
-                    onClick={() => i === 1 && setShowRightPanel(!showRightPanel)}
-                    style={{
-                      width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
-                      background: colors.bgCard, color: colors.textSecondary, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    <Icon size={18} />
-                  </button>
-                ))}
+                {/* Search button */}
+                <button
+                  title="ค้นหาข้อความ"
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
+                    background: colors.bgCard, color: colors.textSecondary, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Search size={18} />
+                </button>
+                {/* Settings button - toggle right panel */}
+                <button 
+                  onClick={() => setShowRightPanel(!showRightPanel)}
+                  title="ตั้งค่าแชท"
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
+                    background: showRightPanel ? colors.accentLight : colors.bgCard, 
+                    color: showRightPanel ? colors.accent : colors.textSecondary, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Settings size={18} />
+                </button>
                 {/* Close chat button */}
                 <button 
                   onClick={() => setSelectedRoom(null)} 
@@ -1135,6 +1146,21 @@ export default function DataChatPage() {
           {/* RIGHT PANEL */}
           {showRightPanel && (
             <div style={{ width: 300, background: colors.bgSecondary, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+              {/* Panel Header */}
+              <div style={{ padding: '12px 16px', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>ข้อมูลแชท</span>
+                <button 
+                  onClick={() => setShowRightPanel(false)}
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, border: 'none',
+                    background: colors.bgTertiary, color: colors.textSecondary, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              
               {/* Profile */}
               <div style={{ padding: 20, textAlign: 'center', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}` }}>
                 <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
@@ -1220,6 +1246,33 @@ export default function DataChatPage() {
                   <button style={{ width: '100%', padding: '12px 0', borderRadius: 12, border: 'none', background: colors.accentLight, color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <Plus size={18} /> เพิ่มบันทึก
                   </button>
+                </div>
+
+                {/* Settings/Actions Section */}
+                <div style={{ background: colors.bgCard, borderRadius: 16, padding: 16, border: `1px solid ${colors.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>การตั้งค่า</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: 'none', background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 10, background: colors.warningLight || 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <AlertTriangle size={16} style={{ color: colors.warning }} />
+                      </div>
+                      <span>เอาเข้าสแปม</span>
+                    </button>
+                    <button style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: 'none', background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 10, background: colors.accentLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <VolumeX size={16} style={{ color: colors.accent }} />
+                      </div>
+                      <span>ปิดเสียงแชทนี้</span>
+                    </button>
+                    <button style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: 'none', background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Trash2 size={16} style={{ color: '#ef4444' }} />
+                      </div>
+                      <span style={{ color: '#ef4444' }}>ลบแชท</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
