@@ -403,8 +403,12 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   // Emit room property update - broadcast to all clients (pin, mute, tags, status)
   const emitRoomPropertyUpdate = useCallback((roomId: string, updates: RoomPropertyUpdate) => {
+    console.log('[Socket] Emitting room-property-update:', roomId, updates, 'Connected:', socketRef.current?.connected);
     if (socketRef.current?.connected) {
       socketRef.current.emit('room-property-update', { roomId, updates });
+      console.log('[Socket] Emitted room-property-update successfully');
+    } else {
+      console.warn('[Socket] Cannot emit - socket not connected');
     }
   }, []);
 
