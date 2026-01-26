@@ -56,7 +56,13 @@ export default function DataChatPage() {
   const { isDark } = useTheme();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(() => {
+    // Restore selected room from localStorage on mount
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selectedChatRoom');
+    }
+    return null;
+  });
   const [message, setMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'pinned'>('all');
@@ -115,8 +121,6 @@ export default function DataChatPage() {
       };
     }
   }, []);
-
-  useEffect(() => { selectedRoomRef.current = selectedRoom; }, [selectedRoom]);
 
   // Fetch current user info
   useEffect(() => {
@@ -397,6 +401,18 @@ export default function DataChatPage() {
   useEffect(() => { fetchRooms(); }, [fetchRooms]);
   useEffect(() => { if (selectedRoom) fetchMessages(selectedRoom); }, [selectedRoom, fetchMessages]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  
+  // Save selected room to localStorage and update ref
+  useEffect(() => {
+    selectedRoomRef.current = selectedRoom;
+    if (typeof window !== 'undefined') {
+      if (selectedRoom) {
+        localStorage.setItem('selectedChatRoom', selectedRoom);
+      } else {
+        localStorage.removeItem('selectedChatRoom');
+      }
+    }
+  }, [selectedRoom]);
 
   // LINE Sticker URLs - try multiple formats
   const renderSticker = (packageId?: string, stickerId?: string) => {
