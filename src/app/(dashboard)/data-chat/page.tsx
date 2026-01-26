@@ -6,7 +6,8 @@ import {
   Plus, Check, CheckCheck, Pin, X,
   MessageCircle, Settings, Clock,
   Loader2, Paperclip, Image as ImageIcon, FileText, 
-  Phone, Video, Bookmark, VolumeX, Volume2, Trash2, AlertTriangle
+  Phone, Video, Bookmark, VolumeX, Volume2, Trash2, AlertTriangle,
+  ChevronDown, User, Tag, FileEdit, Bell, BellOff
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSocket } from '@/hooks/useSocket';
@@ -16,7 +17,7 @@ interface Message {
   roomId: string;
   lineMessageId?: string;
   messageType: 'text' | 'image' | 'sticker' | 'video' | 'audio' | 'file' | 'location';
-  content: string;
+  content?: string;
   mediaUrl?: string;
   stickerId?: string;
   packageId?: string;
@@ -43,7 +44,7 @@ interface ChatRoom {
   status: 'active' | 'archived' | 'blocked';
   createdAt: string;
   updatedAt: string;
-  recentMessages?: Message[]; // Preloaded messages from API
+  recentMessages?: Message[];
 }
 
 const quickReplies = [
@@ -58,7 +59,6 @@ export default function DataChatPage() {
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(() => {
-    // Restore selected room from localStorage on mount
     if (typeof window !== 'undefined') {
       return localStorage.getItem('selectedChatRoom');
     }
@@ -75,12 +75,10 @@ export default function DataChatPage() {
   const [typingUsers, setTypingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout } }>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   
-  // Message cache - store messages per room for instant loading
   const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
-  
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // Initialize selectedRoomRef from localStorage immediately
   const selectedRoomRef = useRef<string | null>(
     typeof window !== 'undefined' ? localStorage.getItem('selectedChatRoom') : null
   );
@@ -91,22 +89,67 @@ export default function DataChatPage() {
   const isTypingRef = useRef(false);
   const sendTypingRef = useRef<((roomId: string, userName: string, isTyping: boolean) => void) | null>(null);
 
-  // Initialize notification audio on mount
+  // ═══════════════════════════════════════════════════════════════════
+  // THEME COLORS - Clean Professional Design
+  // ═══════════════════════════════════════════════════════════════════
+  const colors = useMemo(() => ({
+    // Background colors - matching main theme
+    bgPrimary: isDark ? '#1D1E24' : '#f8fafc',
+    bgSecondary: isDark ? '#23262B' : '#ffffff',
+    bgTertiary: isDark ? '#2A313C' : '#f1f5f9',
+    bgHover: isDark ? '#2f353f' : '#f1f5f9',
+    bgActive: isDark ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.08)',
+    bgInput: isDark ? '#1D1E24' : '#ffffff',
+    
+    // Border colors
+    border: isDark ? '#2A313C' : '#e2e8f0',
+    borderLight: isDark ? '#363d4a' : '#f1f5f9',
+    
+    // Text colors
+    textPrimary: isDark ? '#f1f5f9' : '#1e293b',
+    textSecondary: isDark ? '#94a3b8' : '#64748b',
+    textMuted: isDark ? '#64748b' : '#94a3b8',
+    
+    // Brand color - Green (matching main theme #22c55e)
+    accent: '#22c55e',
+    accentHover: '#16a34a',
+    accentLight: isDark ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.08)',
+    
+    // Status colors
+    online: '#22c55e',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    info: '#3b82f6',
+    
+    // Chat bubble colors
+    bubbleOutgoing: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+    bubbleIncoming: isDark ? '#2A313C' : '#ffffff',
+    
+    // Shadow - very subtle
+    shadow: isDark 
+      ? '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)'
+      : '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
+    shadowMd: isDark
+      ? '0 4px 6px rgba(0,0,0,0.12)'
+      : '0 4px 6px rgba(0,0,0,0.04)',
+  }), [isDark]);
+
+  const selectedRoomData = rooms.find(r => r.id === selectedRoom);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // AUDIO SETUP
+  // ═══════════════════════════════════════════════════════════════════
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Create Audio element
       notificationAudioRef.current = new Audio('/notification.mp3');
       notificationAudioRef.current.volume = 0.7;
       notificationAudioRef.current.load();
       
-      // Unlock audio on first user interaction
       const unlockAudio = () => {
         soundUnlockedRef.current = true;
-        // Create AudioContext
         if (!audioContextRef.current) {
           audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
         }
-        // Pre-play to unlock
         if (notificationAudioRef.current) {
           const audio = notificationAudioRef.current;
           audio.volume = 0;
@@ -114,7 +157,6 @@ export default function DataChatPage() {
             audio.pause();
             audio.currentTime = 0;
             audio.volume = 0.7;
-            console.log('[Audio] Sound unlocked!');
           }).catch(() => {});
         }
       };
@@ -129,17 +171,15 @@ export default function DataChatPage() {
     }
   }, []);
 
-  // Fetch current user info
+  // Fetch current user
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
           const data = await response.json();
-          // API returns { user: { name, email, ... } }
           const userName = data.user?.name || data.user?.email || data.name || data.username || 'Agent';
           setCurrentUser({ name: userName, username: data.user?.email || data.username || '' });
-          console.log('[Chat] Current user:', userName);
         }
       } catch (error) {
         console.error('Failed to fetch current user:', error);
@@ -148,58 +188,9 @@ export default function DataChatPage() {
     fetchCurrentUser();
   }, []);
 
-  const selectedRoomData = rooms.find(r => r.id === selectedRoom);
-
-  // Theme Colors - Matching Main Theme Design System
-  const colors = useMemo(() => ({
-    // Backgrounds - Matching main theme exactly
-    bgPrimary: isDark ? '#1D1E24' : '#f8fafc',
-    bgSecondary: isDark ? '#23262B' : '#ffffff',
-    bgTertiary: isDark ? '#2A313C' : '#f1f5f9',
-    bgCard: isDark ? '#23262B' : '#ffffff',
-    bgHover: isDark ? '#2A313C' : '#f1f5f9',
-    bgActive: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)',
-    bgChat: isDark ? '#1D1E24' : '#f1f5f9',
-    bgInput: isDark ? '#1D1E24' : '#ffffff',
-    // Borders - Subtle 1px borders
-    border: isDark ? '#2A313C' : '#e2e8f0',
-    borderLight: isDark ? '#3A414C' : '#cbd5e1',
-    borderAccent: isDark ? 'rgba(34, 197, 94, 0.4)' : 'rgba(34, 197, 94, 0.3)',
-    // Typography - High contrast for readability
-    textPrimary: isDark ? '#ffffff' : '#1e293b',
-    textSecondary: isDark ? 'rgba(255, 255, 255, 0.7)' : '#64748b',
-    textMuted: isDark ? 'rgba(255, 255, 255, 0.5)' : '#94a3b8',
-    // Brand Colors - Green accent (matching main theme #22c55e)
-    accent: '#22c55e',
-    accentHover: '#16a34a',
-    accentLight: isDark ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-    accentGradient: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-    // Chat Bubbles
-    bubbleAgent: isDark 
-      ? 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
-      : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-    bubbleUser: isDark ? '#2A313C' : '#ffffff',
-    bubbleUserBorder: isDark ? '#3A414C' : '#e2e8f0',
-    // Status Colors
-    online: '#22c55e',
-    warning: '#f59e0b',
-    danger: '#ef4444',
-    link: '#3b82f6',
-    // Shadows - Very light and subtle
-    shadow: isDark 
-      ? '0 2px 8px rgba(0,0,0,0.12)'
-      : '0 2px 8px rgba(0,0,0,0.04)',
-    shadowSm: isDark 
-      ? '0 1px 4px rgba(0,0,0,0.08)'
-      : '0 1px 4px rgba(0,0,0,0.03)',
-    shadowLg: isDark 
-      ? '0 4px 12px rgba(0,0,0,0.15)'
-      : '0 4px 12px rgba(0,0,0,0.06)',
-    shadowInset: isDark
-      ? 'inset 0 1px 2px rgba(0,0,0,0.1)'
-      : 'inset 0 1px 2px rgba(0,0,0,0.03)',
-  }), [isDark]);
-
+  // ═══════════════════════════════════════════════════════════════════
+  // API & DATA FETCHING
+  // ═══════════════════════════════════════════════════════════════════
   const fetchRooms = useCallback(async () => {
     try {
       const params = new URLSearchParams({ filter: filterStatus });
@@ -207,14 +198,12 @@ export default function DataChatPage() {
       const response = await fetch(`/api/chat/rooms?${params}`);
       if (response.ok) {
         const data = await response.json();
-        // ถ้ามี selectedRoom อยู่แล้ว ให้ mark as read ทันที (ไม่ต้องรอ effect)
         const currentRoom = selectedRoomRef.current;
         if (currentRoom) {
           setRooms(data.map((r: ChatRoom) => r.id === currentRoom ? { ...r, unreadCount: 0 } : r));
         } else {
           setRooms(data);
         }
-        // Preload cache with recentMessages from API (Telegram-style instant loading)
         data.forEach((room: ChatRoom) => {
           if (room.recentMessages && room.recentMessages.length > 0) {
             messagesCacheRef.current.set(room.id, room.recentMessages);
@@ -229,12 +218,10 @@ export default function DataChatPage() {
   }, [filterStatus, searchTerm]);
 
   const fetchMessages = useCallback(async (roomId: string) => {
-    // Check cache first for instant loading (preloaded from rooms API)
     if (messagesCacheRef.current.has(roomId)) {
       const cached = messagesCacheRef.current.get(roomId)!;
       setMessages(cached);
       setIsLoadingMessages(false);
-      // Fetch full messages in background (may have more than preloaded 15)
       fetch(`/api/chat/rooms/${roomId}/messages`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
@@ -244,7 +231,6 @@ export default function DataChatPage() {
           }
         })
         .catch(() => {});
-      // Mark as read
       fetch(`/api/chat/rooms/${roomId}/messages`, { method: 'POST' }).catch(() => {});
       return;
     }
@@ -254,7 +240,6 @@ export default function DataChatPage() {
       const response = await fetch(`/api/chat/rooms/${roomId}/messages`);
       if (response.ok) {
         const data = await response.json();
-        // Cache the messages
         messagesCacheRef.current.set(roomId, data);
         setMessages(data);
         await fetch(`/api/chat/rooms/${roomId}/messages`, { method: 'POST' });
@@ -267,14 +252,10 @@ export default function DataChatPage() {
     }
   }, []);
 
-  // Play notification sound function with Web Audio fallback
   const playSound = useCallback(() => {
-    // Try HTML5 Audio first
     if (notificationAudioRef.current && soundUnlockedRef.current) {
       notificationAudioRef.current.currentTime = 0;
-      notificationAudioRef.current.play().catch(err => {
-        console.log('MP3 play failed, using beep:', err);
-        // Fallback to Web Audio API beep
+      notificationAudioRef.current.play().catch(() => {
         if (audioContextRef.current) {
           const ctx = audioContextRef.current;
           const oscillator = ctx.createOscillator();
@@ -289,479 +270,388 @@ export default function DataChatPage() {
           oscillator.stop(ctx.currentTime + 0.3);
         }
       });
-    } else if (audioContextRef.current) {
-      // Use Web Audio beep as fallback
-      const ctx = audioContextRef.current;
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 0.3);
     }
   }, []);
 
-  // Handle typing indicator
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMessage(value);
-
-    // Send typing indicator
-    if (selectedRoom && currentUser && sendTypingRef.current) {
-      // If not currently typing, send typing start
-      if (!isTypingRef.current && value.length > 0) {
-        isTypingRef.current = true;
-        sendTypingRef.current(selectedRoom, currentUser.name, true);
-        console.log('[Typing] Started typing:', currentUser.name);
+  // ═══════════════════════════════════════════════════════════════════
+  // SOCKET CONNECTION
+  // ═══════════════════════════════════════════════════════════════════
+  const handleNewMessage = useCallback((msg: Message) => {
+    if (messagesCacheRef.current.has(msg.roomId)) {
+      const cached = messagesCacheRef.current.get(msg.roomId)!;
+      if (!cached.find(m => m.id === msg.id || m.lineMessageId === msg.lineMessageId)) {
+        messagesCacheRef.current.set(msg.roomId, [...cached, msg]);
       }
-
-      // Clear existing timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
+    }
+    
+    if (selectedRoomRef.current === msg.roomId) {
+      setMessages(prev => {
+        if (prev.find(m => m.id === msg.id || m.lineMessageId === msg.lineMessageId)) return prev;
+        return [...prev, msg];
+      });
+      fetch(`/api/chat/rooms/${msg.roomId}/messages`, { method: 'POST' }).catch(() => {});
+    }
+    
+    setRooms(prev => {
+      const roomIndex = prev.findIndex(r => r.id === msg.roomId);
+      if (roomIndex === -1) return prev;
+      
+      const updatedRooms = [...prev];
+      const room = { ...updatedRooms[roomIndex] };
+      room.lastMessage = msg;
+      room.lastMessageAt = msg.createdAt;
+      
+      if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user') {
+        room.unreadCount = (room.unreadCount || 0) + 1;
+        playSound();
       }
+      
+      updatedRooms.splice(roomIndex, 1);
+      updatedRooms.unshift(room);
+      return updatedRooms;
+    });
+  }, [playSound]);
 
-      // Set timeout to stop typing after 2 seconds of no input
-      typingTimeoutRef.current = setTimeout(() => {
-        if (isTypingRef.current && selectedRoom && currentUser && sendTypingRef.current) {
-          isTypingRef.current = false;
-          sendTypingRef.current(selectedRoom, currentUser.name, false);
-          console.log('[Typing] Stopped typing:', currentUser.name);
-        }
-      }, 2000);
-    }
-  }, [selectedRoom, currentUser]);
-
-  // Stop typing when message is sent
-  const stopTyping = useCallback(() => {
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    if (isTypingRef.current && selectedRoom && currentUser && sendTypingRef.current) {
-      isTypingRef.current = false;
-      sendTypingRef.current(selectedRoom, currentUser.name, false);
-    }
-  }, [selectedRoom, currentUser]);
-
-  const { isConnected, connectionState, joinRoom, markAsRead, emitRoomRead, playNotificationSound, reconnect, sendTyping } = useSocket({
-    onNewMessage: (msg) => {
-      const message: Message = { ...msg, content: msg.content || '' };
-      handleNewMessage(message);
-      // Update cache with new message
-      const cached = messagesCacheRef.current.get(msg.roomId);
-      if (cached) {
-        if (!cached.some(m => m.id === msg.id)) {
-          messagesCacheRef.current.set(msg.roomId, [...cached, message]);
-        }
-      }
-    },
-    onNewRoom: (room) => {
-      const newRoom: ChatRoom = {
-        ...room,
-        lastMessage: room.lastMessage ? { ...room.lastMessage, content: room.lastMessage.content || '' } : undefined,
-      };
-      setRooms(prev => prev.some(r => r.id === newRoom.id) ? prev : [newRoom, ...prev]);
-    },
-    onUserTyping: ({ roomId, userName, isTyping }) => {
+  const handleTypingEvent = useCallback((data: { roomId: string; userName: string; isTyping: boolean }) => {
+    if (data.isTyping) {
       setTypingUsers(prev => {
+        if (prev[data.roomId]?.timeout) clearTimeout(prev[data.roomId].timeout);
+        const timeout = setTimeout(() => {
+          setTypingUsers(p => {
+            const newState = { ...p };
+            delete newState[data.roomId];
+            return newState;
+          });
+        }, 3000);
+        return { ...prev, [data.roomId]: { userName: data.userName, timeout } };
+      });
+    } else {
+      setTypingUsers(prev => {
+        if (prev[data.roomId]?.timeout) clearTimeout(prev[data.roomId].timeout);
         const newState = { ...prev };
-        if (isTyping) {
-          // Clear existing timeout
-          if (newState[roomId]?.timeout) {
-            clearTimeout(newState[roomId].timeout);
-          }
-          // Set new timeout to clear typing after 3 seconds
-          const timeout = setTimeout(() => {
-            setTypingUsers(p => {
-              const updated = { ...p };
-              delete updated[roomId];
-              return updated;
-            });
-          }, 3000);
-          newState[roomId] = { userName, timeout };
-        } else {
-          if (newState[roomId]?.timeout) {
-            clearTimeout(newState[roomId].timeout);
-          }
-          delete newState[roomId];
-        }
+        delete newState[data.roomId];
         return newState;
       });
-    },
-    // Real-time sync when another browser marks room as read
-    onRoomReadUpdate: ({ roomId }) => {
-      setRooms(prev => prev.map(r => r.id === roomId ? { ...r, unreadCount: 0 } : r));
-    },
-    enableSound: true,
-    currentRoomId: selectedRoom, // Pass current room to skip sound notification
+    }
+  }, []);
+
+  const handleRoomReadSync = useCallback((data: { roomId: string }) => {
+    setMessages(prev => prev.map(m => 
+      m.roomId === data.roomId && m.sender === 'agent' ? { ...m, status: 'read' } : m
+    ));
+    if (messagesCacheRef.current.has(data.roomId)) {
+      const cached = messagesCacheRef.current.get(data.roomId)!;
+      messagesCacheRef.current.set(data.roomId, cached.map(m => 
+        m.sender === 'agent' ? { ...m, status: 'read' } : m
+      ));
+    }
+  }, []);
+
+  const { isConnected, connectionState, reconnect, sendTyping, markAsRead } = useSocket({
+    onNewMessage: handleNewMessage,
+    onUserTyping: handleTypingEvent,
+    onRoomReadUpdate: handleRoomReadSync,
   });
 
-  // Update sendTypingRef when sendTyping changes
+  // Store sendTyping in ref
   useEffect(() => {
     sendTypingRef.current = sendTyping;
   }, [sendTyping]);
 
-  const handleNewMessage = useCallback((msg: Message) => {
-    if (selectedRoomRef.current === msg.roomId) {
-      setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
-      markAsRead(msg.roomId, [msg.id]);
+  // Initial load
+  useEffect(() => {
+    fetchRooms();
+  }, [fetchRooms]);
+
+  // Load messages when room changes
+  useEffect(() => {
+    if (selectedRoom) {
+      localStorage.setItem('selectedChatRoom', selectedRoom);
+      selectedRoomRef.current = selectedRoom;
+      fetchMessages(selectedRoom);
+      if (markAsRead) markAsRead(selectedRoom, []);
     }
-    setRooms(prev => {
-      const idx = prev.findIndex(r => r.id === msg.roomId);
-      if (idx === -1) { fetchRooms(); return prev; }
-      const updated = [...prev];
-      // Only increment unread count for messages from LINE users, not from agents
-      const shouldIncrementUnread = msg.sender === 'user' && selectedRoomRef.current !== msg.roomId;
-      updated[idx] = {
-        ...updated[idx],
-        lastMessage: msg,
-        lastMessageAt: msg.createdAt,
-        unreadCount: selectedRoomRef.current === msg.roomId ? 0 : (shouldIncrementUnread ? updated[idx].unreadCount + 1 : updated[idx].unreadCount),
-      };
-      return updated.sort((a, b) => {
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        return new Date(b.lastMessageAt || b.createdAt).getTime() - new Date(a.lastMessageAt || a.createdAt).getTime();
-      });
-    });
-  }, [markAsRead, fetchRooms]);
+  }, [selectedRoom, fetchMessages, markAsRead]);
 
-  useEffect(() => { if (selectedRoom) joinRoom(selectedRoom); }, [selectedRoom, joinRoom]);
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
+  // ═══════════════════════════════════════════════════════════════════
+  // TYPING INDICATOR & INPUT HANDLING
+  // ═══════════════════════════════════════════════════════════════════
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+    
+    if (selectedRoom && currentUser && sendTypingRef.current) {
+      if (!isTypingRef.current) {
+        isTypingRef.current = true;
+        sendTypingRef.current(selectedRoom, currentUser.name, true);
+      }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        isTypingRef.current = false;
+        if (sendTypingRef.current && selectedRoom && currentUser) {
+          sendTypingRef.current(selectedRoom, currentUser.name, false);
+        }
+      }, 2000);
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEND MESSAGE
+  // ═══════════════════════════════════════════════════════════════════
   const sendMessage = async (content: string) => {
-    if (!selectedRoom || isSending || !content.trim()) return;
+    if (!content.trim() || !selectedRoom || isSending) return;
     setIsSending(true);
-    stopTyping(); // Stop typing when sending message
     
-    const now = new Date().toISOString();
-    
-    // Optimistic UI: add message immediately before server confirms
+    const tempId = `temp-${Date.now()}`;
     const tempMessage: Message = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       roomId: selectedRoom,
       messageType: 'text',
-      content,
+      content: content.trim(),
       sender: 'agent',
       senderName: currentUser?.name || 'Agent',
       status: 'sending',
-      createdAt: now,
+      createdAt: new Date().toISOString(),
     };
+    
     setMessages(prev => [...prev, tempMessage]);
     setMessage('');
     setShowQuickReplies(false);
     setShowEmojiPicker(false);
     
-    // Move room to top immediately (optimistic)
-    setRooms(prev => {
-      const updated = prev.map(r => 
-        r.id === selectedRoom 
-          ? { ...r, lastMessage: tempMessage, lastMessageAt: now }
-          : r
-      );
-      return updated.sort((a, b) => {
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        return new Date(b.lastMessageAt || b.createdAt).getTime() - new Date(a.lastMessageAt || a.createdAt).getTime();
-      });
-    });
+    if (isTypingRef.current && sendTypingRef.current && currentUser) {
+      isTypingRef.current = false;
+      sendTypingRef.current(selectedRoom, currentUser.name, false);
+    }
     
     try {
       const response = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId: selectedRoom, messageType: 'text', content }),
+        body: JSON.stringify({ roomId: selectedRoom, content: content.trim(), senderName: currentUser?.name || 'Agent' }),
       });
-      const result = await response.json();
-      if (result.success && result.message) {
-        // Replace temp message with real one
-        setMessages(prev => prev.map(m => m.id === tempMessage.id ? result.message : m));
-        // Update cache
-        const cached = messagesCacheRef.current.get(selectedRoom);
-        if (cached) {
-          messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempMessage.id ? result.message : m));
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...data.message, status: 'sent' } : m));
+        if (messagesCacheRef.current.has(selectedRoom)) {
+          const cached = messagesCacheRef.current.get(selectedRoom)!;
+          messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempId ? { ...data.message, status: 'sent' } : m));
         }
-        // Update last message in room list
-        setRooms(prev => {
-          const updated = prev.map(r => 
-            r.id === selectedRoom 
-              ? { ...r, lastMessage: result.message, lastMessageAt: result.message.createdAt }
-              : r
-          );
-          return updated.sort((a, b) => {
-            if (a.isPinned && !b.isPinned) return -1;
-            if (!a.isPinned && b.isPinned) return 1;
-            return new Date(b.lastMessageAt || b.createdAt).getTime() - new Date(a.lastMessageAt || a.createdAt).getTime();
-          });
-        });
       } else {
-        // Remove temp message on failure
-        setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
       }
     } catch (error) {
-      console.error('Send error:', error);
-      // Remove temp message on error
-      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+      console.error('Failed to send message:', error);
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
     } finally {
       setIsSending(false);
     }
   };
 
+  // ═══════════════════════════════════════════════════════════════════
+  // HELPER FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    if (days === 0) return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-    if (days === 1) return 'เมื่อวาน';
-    if (days < 7) return ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'][date.getDay()];
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'now';
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
     return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
   };
 
-  useEffect(() => { fetchRooms(); }, [fetchRooms]);
-  
-  // เมื่อ selectedRoom เปลี่ยน: fetch messages และ mark as read ทันที + broadcast ไป browser อื่น
-  useEffect(() => { 
-    if (selectedRoom) {
-      // Mark as read ทันทีเมื่อเข้าห้อง (optimistic UI)
-      setRooms(prev => prev.map(r => r.id === selectedRoom ? { ...r, unreadCount: 0 } : r));
-      // Fetch messages (uses cache for instant loading)
-      fetchMessages(selectedRoom); 
-      // Broadcast to other browsers that this room has been read
-      emitRoomRead(selectedRoom);
-    }
-  }, [selectedRoom, fetchMessages, emitRoomRead]);
-  
-  // Scroll to latest message เมื่อ messages เปลี่ยน
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
-  
-  // Save selected room to localStorage and update ref
-  useEffect(() => {
-    selectedRoomRef.current = selectedRoom;
-    if (typeof window !== 'undefined') {
-      if (selectedRoom) {
-        localStorage.setItem('selectedChatRoom', selectedRoom);
-      } else {
-        localStorage.removeItem('selectedChatRoom');
-      }
-    }
-  }, [selectedRoom]);
-
-  // LINE Sticker URLs - try multiple formats
   const renderSticker = (packageId?: string, stickerId?: string) => {
     if (!packageId || !stickerId) return null;
-    
-    // LINE sticker CDN URLs
-    const stickerUrls = [
-      `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/iPhone/sticker.png`,
-      `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/android/sticker.png`,
-      `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/PC/sticker.png`,
-      `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/ANDROID/sticker.png`,
-    ];
-    
     return (
-      <div style={{ position: 'relative' }}>
-        <img
-          src={stickerUrls[0]}
-          alt={`Sticker ${packageId}/${stickerId}`}
-          style={{ 
-            width: 144, 
-            height: 144, 
-            objectFit: 'contain',
-            background: 'transparent',
-          }}
-          onError={(e) => {
-            const img = e.target as HTMLImageElement;
-            const currentIndex = stickerUrls.indexOf(img.src);
-            if (currentIndex < stickerUrls.length - 1) {
-              img.src = stickerUrls[currentIndex + 1];
-            } else {
-              // Fallback to emoji representation
-              img.style.display = 'none';
-              img.parentElement!.innerHTML = `<div style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;font-size:48px;background:${colors.bgTertiary};border-radius:16px">📦</div>`;
-            }
-          }}
-        />
-      </div>
+      <img 
+        src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/iPhone/sticker.png`}
+        alt="Sticker"
+        style={{ width: 120, height: 120 }}
+        onError={(e) => { e.currentTarget.src = `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/android/sticker.png`; }}
+      />
     );
   };
 
-  // Emoji list for quick selection
-  const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😭', '🤔', '😅', '🥰', '💪', '👏', '🙌', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🏧', '💵', '🧧', '🎁'];
-
-  // Map LINE sticker text to emoji
-  const stickerTextToEmoji: { [key: string]: string } = {
-    '(tongue)': '😛', '(smile)': '😊', '(laugh)': '😂', '(cry)': '😢', '(crying)': '😭',
-    '(love)': '❤️', '(heart)': '💕', '(sad)': '😢', '(angry)': '😠', '(wink)': '😉',
-    '(kiss)': '😘', '(hug)': '🤗', '(cool)': '😎', '(sweat)': '😅', '(shy)': '😊',
-    '(surprised)': '😮', '(confused)': '😕', '(sleepy)': '😴', '(tired)': '😩',
-    '(thumbsup)': '👍', '(thumbsdown)': '👎', '(clap)': '👏', '(pray)': '🙏',
-    '(ok)': '👌', '(victory)': '✌️', '(muscle)': '💪', '(wave)': '👋',
-    '(crying cony)': '😭🐰', '(อ้อน)': '🥺', '(ขอร้อง)': '🙏😊', '(รักนะ)': '❤️😊',
-    '(cony)': '🐰', '(brown)': '🐻', '(moon)': '🌙', '(james)': '👨',
-    '(sally)': '🐤', '(boss)': '😎', '(edward)': '🐛', '(leonard)': '🐸',
+  const convertStickerText = (text: string): string => {
+    const emojiMap: { [key: string]: string } = {
+      '(ยิ้ม)': '😊', '(หัวเราะ)': '😂', '(ร้องไห้)': '😢', '(โกรธ)': '😠', '(รัก)': '❤️',
+      '(ถูกใจ)': '👍', '(ไม่ถูกใจ)': '👎', '(ตกใจ)': '😱', '(เศร้า)': '😞', '(สับสน)': '😕',
+      '(cool)': '😎', '(kiss)': '😘', '(wink)': '😉', '(happy)': '😄', '(sad)': '😔',
+      '(angry)': '😡', '(love)': '💕', '(heart)': '❤️', '(star)': '⭐', '(fire)': '🔥',
+      '(ok)': '👌', '(pray)': '🙏', '(clap)': '👏', '(muscle)': '💪', '(peace)': '✌️',
+    };
+    let result = text;
+    for (const [pattern, emoji] of Object.entries(emojiMap)) {
+      result = result.replace(new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), emoji);
+    }
+    if (result.startsWith('[sticker')) {
+      const match = result.match(/packageId=(\d+).*?stickerId=(\d+)/);
+      if (match) return `📦 Sticker`;
+    }
+    return result;
   };
 
-  // Convert sticker text content to emoji or display
-  const convertStickerText = (content: string): string => {
-    const lowerContent = content.toLowerCase();
-    // Check direct match
-    if (stickerTextToEmoji[lowerContent]) {
-      return stickerTextToEmoji[lowerContent];
-    }
-    // Check if content contains sticker pattern
-    for (const [pattern, emoji] of Object.entries(stickerTextToEmoji)) {
-      if (lowerContent.includes(pattern.replace(/[()]/g, ''))) {
-        return emoji;
-      }
-    }
-    // Return original if no match
-    return content;
-  };
+  // Emoji list
+  const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😱', '🤔', '👏', '💪', '🙌', '😎', '🥳', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🧾', '📝', '🎁', '🏆'];
 
   // Typing indicator component
   const TypingIndicator = () => (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      gap: 10,
-      padding: '8px 16px',
-      marginBottom: 8,
-    }}>
-      <div style={{ width: 36, height: 36, borderRadius: 12, background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {selectedRoomData?.pictureUrl ? (
-          <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 36, height: 36, borderRadius: 12, objectFit: 'cover' }} />
-        ) : (
-          <span style={{ fontSize: 14, fontWeight: 600, color: colors.textSecondary }}>
-            {selectedRoomData?.displayName.charAt(0)}
-          </span>
-        )}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+      <div style={{ width: 36, height: 36, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <User size={16} style={{ color: colors.textMuted }} />
       </div>
-      <div style={{
-        background: colors.bubbleUser,
-        boxShadow: colors.shadowSm,
-        borderRadius: 16,
-        borderTopLeftRadius: 6,
-        padding: '12px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 4,
-      }}>
-        <span style={{ fontSize: 13, color: colors.textSecondary, marginRight: 4 }}>กำลังพิมพ์</span>
-        <div style={{ display: 'flex', gap: 3 }}>
+      <div style={{ padding: '12px 16px', borderRadius: 18, background: colors.bubbleIncoming, border: `1px solid ${colors.border}` }}>
+        <div style={{ display: 'flex', gap: 4 }}>
           {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: colors.accent,
-                animation: `typingBounce 1.4s ease-in-out ${i * 0.2}s infinite`,
-              }}
-            />
+            <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: colors.textMuted, animation: `typingDot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
           ))}
         </div>
       </div>
     </div>
   );
 
+  // ═══════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════
   return (
-    <div style={{
-      display: 'flex',
-      height: 'calc(100vh - 118px)',
+    <div style={{ 
+      display: 'flex', 
+      height: 'calc(100vh - 118px)', 
       background: colors.bgPrimary,
-      borderRadius: 16,
+      borderRadius: 12,
       overflow: 'hidden',
       border: `1px solid ${colors.border}`,
-      boxShadow: colors.shadowSm,
+      boxShadow: colors.shadow,
     }}>
       
-      {/* LEFT SIDEBAR */}
-      <div style={{
-        width: 360,
-        background: colors.bgSecondary,
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* LEFT SIDEBAR - Chat List */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      <div style={{ 
+        width: 340, 
+        background: colors.bgSecondary, 
         borderRight: `1px solid ${colors.border}`,
-        display: 'flex',
+        display: 'flex', 
         flexDirection: 'column',
-        zIndex: 2,
       }}>
-        {/* Header - Premium Design */}
-        <div style={{ 
-          padding: '16px 20px', 
-          background: colors.bgSecondary, 
-          borderBottom: `1px solid ${colors.border}`,
-        }}>
-          {/* Filter Row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-            <button style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
-              background: colors.bgTertiary, border: `1px solid ${colors.border}`, borderRadius: 10,
-              color: colors.textPrimary, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.accent; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
-            >
-              <Filter size={16} style={{ color: colors.accent }} />
-              <span>All</span>
-            </button>
+        {/* Header */}
+        <div style={{ padding: 20 }}>
+          {/* Filter & Search */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            {/* Filter Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 14px', borderRadius: 8,
+                  background: colors.bgTertiary,
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textPrimary,
+                  fontSize: 14, fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <Filter size={15} style={{ color: colors.accent }} />
+                <span>{filterStatus === 'all' ? 'All' : filterStatus === 'unread' ? 'Unread' : 'Pinned'}</span>
+                <ChevronDown size={14} style={{ color: colors.textMuted }} />
+              </button>
+              
+              {showFilterDropdown && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, marginTop: 4,
+                  background: colors.bgSecondary, border: `1px solid ${colors.border}`,
+                  borderRadius: 8, boxShadow: colors.shadowMd, zIndex: 100,
+                  minWidth: 120, overflow: 'hidden',
+                }}>
+                  {['all', 'unread', 'pinned'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => { setFilterStatus(status as 'all' | 'unread' | 'pinned'); setShowFilterDropdown(false); }}
+                      style={{
+                        display: 'block', width: '100%', padding: '10px 14px',
+                        background: filterStatus === status ? colors.accentLight : 'transparent',
+                        border: 'none', color: filterStatus === status ? colors.accent : colors.textPrimary,
+                        fontSize: 13, textAlign: 'left', cursor: 'pointer',
+                      }}
+                    >
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Search Input */}
             <div style={{ flex: 1, position: 'relative' }}>
-              <Search style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: colors.textMuted }} />
+              <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: colors.textMuted }} />
               <input
                 type="text"
-                placeholder="Search conversations..."
+                placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  width: '100%', height: 42, paddingLeft: 42, paddingRight: 16,
-                  borderRadius: 10, border: `1px solid ${colors.border}`,
-                  background: colors.bgInput, color: colors.textPrimary, fontSize: 14, outline: 'none',
-                  transition: 'all 0.2s ease',
+                  width: '100%', height: 40, paddingLeft: 38, paddingRight: 14,
+                  borderRadius: 8, border: `1px solid ${colors.border}`,
+                  background: colors.bgInput, color: colors.textPrimary,
+                  fontSize: 13, outline: 'none',
+                  transition: 'border-color 0.15s ease',
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; }}
+                onFocus={(e) => e.currentTarget.style.borderColor = colors.accent}
+                onBlur={(e) => e.currentTarget.style.borderColor = colors.border}
               />
             </div>
           </div>
-          {/* Connection Status */}
+          
+          {/* Stats */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, color: colors.textMuted, fontWeight: 500 }}>{rooms.length} conversations</span>
-            <div 
-              style={{ 
-                display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px',
-                borderRadius: 20, cursor: connectionState !== 'connected' ? 'pointer' : 'default',
-                background: connectionState === 'connected' ? 'rgba(34, 197, 94, 0.1)' : connectionState === 'reconnecting' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                transition: 'all 0.2s ease',
-              }}
-              onClick={() => { if (connectionState !== 'connected') reconnect(); }}
-            >
+            <span style={{ fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>
+              {rooms.length} conversations
+            </span>
+            <div style={{ 
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '4px 10px', borderRadius: 12,
+              background: connectionState === 'connected' 
+                ? 'rgba(34, 197, 94, 0.1)' 
+                : 'rgba(245, 158, 11, 0.1)',
+            }}>
               <div style={{ 
-                width: 8, height: 8, borderRadius: '50%', 
-                background: connectionState === 'connected' ? '#22c55e' : connectionState === 'reconnecting' ? '#f59e0b' : '#ef4444',
-                animation: connectionState === 'reconnecting' ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                width: 6, height: 6, borderRadius: '50%',
+                background: connectionState === 'connected' ? colors.online : colors.warning,
               }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: connectionState === 'connected' ? '#22c55e' : connectionState === 'reconnecting' ? '#f59e0b' : '#ef4444' }}>
-                {connectionState === 'connected' ? 'Live' : connectionState === 'reconnecting' ? 'Reconnecting...' : 'Offline'}
+              <span style={{ 
+                fontSize: 11, fontWeight: 600,
+                color: connectionState === 'connected' ? colors.online : colors.warning,
+              }}>
+                {connectionState === 'connected' ? 'Live' : 'Connecting...'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Chat List - LINE OA Style */}
+        {/* Chat List */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {isLoadingRooms ? (
-            <div style={{ padding: 60, textAlign: 'center' }}>
-              <Loader2 size={28} style={{ color: colors.accent, animation: 'spin 1s linear infinite', marginBottom: 12 }} />
-              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>กำลังโหลด...</p>
+            <div style={{ padding: 40, textAlign: 'center' }}>
+              <Loader2 size={24} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
             </div>
           ) : rooms.length === 0 ? (
-            <div style={{ padding: 60, textAlign: 'center' }}>
-              <MessageCircle size={40} style={{ color: colors.textMuted, marginBottom: 16 }} />
-              <p style={{ fontSize: 14, fontWeight: 500, color: colors.textSecondary, margin: '0 0 4px 0' }}>ไม่มีการสนทนา</p>
-              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>รอข้อความใหม่</p>
+            <div style={{ padding: 40, textAlign: 'center' }}>
+              <MessageCircle size={32} style={{ color: colors.textMuted, marginBottom: 12 }} />
+              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>No conversations</p>
             </div>
           ) : (
             rooms.map((room) => (
@@ -772,114 +662,87 @@ export default function DataChatPage() {
                   setSelectedRoom(room.id);
                 }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', cursor: 'pointer',
-                  background: selectedRoom === room.id ? colors.bgActive : colors.bgSecondary,
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 20px', cursor: 'pointer',
+                  background: selectedRoom === room.id ? colors.bgActive : 'transparent',
                   borderLeft: selectedRoom === room.id ? `3px solid ${colors.accent}` : '3px solid transparent',
-                  transition: 'all 0.2s ease',
-                  marginBottom: 2,
+                  transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={(e) => { 
-                  if (selectedRoom !== room.id) {
-                    e.currentTarget.style.background = colors.bgHover;
-                    e.currentTarget.style.borderLeftColor = colors.accentLight;
-                  }
+                onMouseEnter={(e) => {
+                  if (selectedRoom !== room.id) e.currentTarget.style.background = colors.bgHover;
                 }}
-                onMouseLeave={(e) => { 
-                  if (selectedRoom !== room.id) {
-                    e.currentTarget.style.background = colors.bgSecondary;
-                    e.currentTarget.style.borderLeftColor = 'transparent';
-                  }
+                onMouseLeave={(e) => {
+                  if (selectedRoom !== room.id) e.currentTarget.style.background = 'transparent';
                 }}
               >
-                {/* Avatar - Premium Design with Ring */}
+                {/* Avatar */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   {room.pictureUrl ? (
-                    <div style={{ 
-                      padding: 2, 
-                      borderRadius: '50%', 
-                      background: room.unreadCount > 0 ? colors.accentGradient : 'transparent',
-                    }}>
-                      <img src={room.pictureUrl} alt={room.displayName} style={{ 
-                        width: 50, height: 50, borderRadius: '50%', objectFit: 'cover',
-                        border: `2px solid ${colors.bgSecondary}`,
-                      }} />
-                    </div>
+                    <img src={room.pictureUrl} alt="" style={{ 
+                      width: 48, height: 48, borderRadius: '50%', objectFit: 'cover',
+                      border: room.unreadCount > 0 ? `2px solid ${colors.accent}` : `2px solid transparent`,
+                    }} />
                   ) : (
                     <div style={{
-                      width: 54, height: 54, borderRadius: '50%', 
+                      width: 48, height: 48, borderRadius: '50%',
                       background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 20, fontWeight: 600,
-                      boxShadow: colors.shadowSm,
+                      color: '#fff', fontSize: 18, fontWeight: 600,
                     }}>
                       {room.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  {/* Online Indicator */}
                   <div style={{
-                    position: 'absolute', bottom: 2, right: 2,
-                    width: 14, height: 14, borderRadius: '50%',
+                    position: 'absolute', bottom: 0, right: 0,
+                    width: 12, height: 12, borderRadius: '50%',
                     background: colors.online,
                     border: `2px solid ${colors.bgSecondary}`,
                   }} />
                 </div>
 
-                {/* Content - Premium Design */}
+                {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ 
-                      fontWeight: room.unreadCount > 0 ? 700 : 500, 
-                      color: colors.textPrimary, 
-                      fontSize: 15, 
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 170,
-                      letterSpacing: '-0.01em',
+                      fontWeight: room.unreadCount > 0 ? 600 : 500,
+                      color: colors.textPrimary, fontSize: 14,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      maxWidth: 160,
                     }}>
                       {room.displayName}
                     </span>
                     <span style={{ 
-                      fontSize: 12, 
-                      color: room.unreadCount > 0 ? colors.accent : colors.textMuted, 
-                      flexShrink: 0,
+                      fontSize: 11, 
+                      color: room.unreadCount > 0 ? colors.accent : colors.textMuted,
                       fontWeight: room.unreadCount > 0 ? 600 : 400,
                     }}>
                       {room.lastMessageAt && formatTime(room.lastMessageAt)}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ 
-                      fontSize: 13, 
-                      color: typingUsers[room.id] ? colors.accent : colors.textMuted, 
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', 
+                      fontSize: 12, color: colors.textMuted,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       flex: 1,
-                      fontWeight: room.unreadCount > 0 ? 500 : 400,
                     }}>
                       {typingUsers[room.id] ? (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: colors.accent }}>
-                          <span style={{ fontStyle: 'italic' }}>typing</span>
-                          <span style={{ display: 'inline-flex', gap: 3 }}>
-                            {[0, 1, 2].map((i) => (
-                              <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: colors.accent, animation: `typingBounce 1.4s ease-in-out ${i * 0.15}s infinite`, display: 'inline-block' }} />
-                            ))}
-                          </span>
-                        </span>
+                        <span style={{ color: colors.accent, fontStyle: 'italic' }}>typing...</span>
                       ) : (
                         <>
-                          {room.lastMessage?.sender === 'agent' && <span style={{ color: colors.accent, marginRight: 4 }}>You:</span>}
+                          {room.lastMessage?.sender === 'agent' && <span style={{ color: colors.accent }}>You: </span>}
                           {room.lastMessage?.content 
-                            ? (room.lastMessage.content.startsWith('(') || room.lastMessage.content.startsWith('[sticker'))
-                              ? convertStickerText(room.lastMessage.content)
-                              : room.lastMessage.content
+                            ? convertStickerText(room.lastMessage.content).substring(0, 30)
                             : 'Start conversation'}
                         </>
                       )}
                     </span>
                     {room.unreadCount > 0 && (
                       <span style={{
-                        minWidth: 22, height: 22, borderRadius: 11,
-                        background: colors.accentGradient,
-                        color: '#fff', fontSize: 11, fontWeight: 700,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px',
-                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
+                        minWidth: 20, height: 20, borderRadius: 10,
+                        background: colors.accent, color: '#fff',
+                        fontSize: 11, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: '0 6px', marginLeft: 8,
                       }}>
                         {room.unreadCount > 99 ? '99+' : room.unreadCount}
                       </span>
@@ -892,119 +755,106 @@ export default function DataChatPage() {
         </div>
       </div>
 
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {/* MAIN CHAT AREA */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
       {selectedRoom && selectedRoomData ? (
         <>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: colors.bgPrimary }}>
-            {/* Chat Header - Premium Design */}
+            {/* Chat Header */}
             <div style={{
-              padding: '16px 24px', 
-              background: colors.bgSecondary, 
+              padding: '14px 20px',
+              background: colors.bgSecondary,
+              borderBottom: `1px solid ${colors.border}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
-              zIndex: 1,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {selectedRoomData.pictureUrl ? (
-                  <div style={{ position: 'relative' }}>
-                    <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ 
-                      width: 44, height: 44, borderRadius: '50%', objectFit: 'cover',
-                      boxShadow: colors.shadowSm,
-                    }} />
-                    <div style={{
-                      position: 'absolute', bottom: 0, right: 0,
-                      width: 12, height: 12, borderRadius: '50%',
-                      background: colors.online,
-                      border: `2px solid ${colors.bgSecondary}`,
-                    }} />
-                  </div>
+                  <img src={selectedRoomData.pictureUrl} alt="" style={{ 
+                    width: 40, height: 40, borderRadius: '50%', objectFit: 'cover',
+                  }} />
                 ) : (
                   <div style={{
-                    width: 44, height: 44, borderRadius: '50%', 
-                    background: colors.accentGradient,
+                    width: 40, height: 40, borderRadius: '50%',
+                    background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff', fontSize: 18, fontWeight: 600,
-                    boxShadow: colors.shadowSm,
+                    color: '#fff', fontSize: 16, fontWeight: 600,
                   }}>
                     {selectedRoomData.displayName.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 600, color: colors.textPrimary, margin: 0, letterSpacing: '-0.01em' }}>{selectedRoomData.displayName}</h3>
-                    {!selectedRoomData.isMuted && <Volume2 size={16} style={{ color: colors.textMuted }} />}
-                    {selectedRoomData.isMuted && <VolumeX size={16} style={{ color: colors.textMuted }} />}
-                  </div>
-                  <p style={{ fontSize: 12, color: colors.online, margin: '2px 0 0 0', fontWeight: 500 }}>● Online now</p>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.textPrimary, margin: 0 }}>
+                    {selectedRoomData.displayName}
+                  </h3>
+                  <p style={{ fontSize: 12, color: colors.online, margin: 0, fontWeight: 500 }}>
+                    ● Online
+                  </p>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {/* Action Buttons - Premium Design */}
+              
+              <div style={{ display: 'flex', gap: 8 }}>
                 <button style={{
-                  padding: '10px 18px', borderRadius: 10, border: `1px solid ${colors.border}`,
-                  background: colors.bgTertiary, color: colors.link, fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                  transition: 'all 0.2s ease',
+                  padding: '8px 14px', borderRadius: 6,
+                  background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                  color: colors.info, fontSize: 12, fontWeight: 500,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.link; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
+                onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
                 >
-                  <Clock size={15} />
-                  Follow up
+                  <Clock size={14} /> Follow up
                 </button>
                 <button style={{
-                  padding: '10px 18px', borderRadius: 10, border: `1px solid ${colors.border}`,
-                  background: colors.bgTertiary, color: colors.accent, fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                  transition: 'all 0.2s ease',
+                  padding: '8px 14px', borderRadius: 6,
+                  background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                  color: colors.accent, fontSize: 12, fontWeight: 500,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = colors.accentLight; e.currentTarget.style.borderColor = colors.accent; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
+                onMouseEnter={(e) => e.currentTarget.style.background = colors.accentLight}
+                onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
                 >
-                  <Check size={15} />
-                  Resolve
+                  <Check size={14} /> Resolve
                 </button>
                 <button style={{
-                  padding: '10px 18px', borderRadius: 10, border: `1px solid ${colors.border}`,
-                  background: colors.bgTertiary, color: colors.textSecondary, fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                  transition: 'all 0.2s ease',
+                  padding: '8px 14px', borderRadius: 6,
+                  background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                  color: colors.textSecondary, fontSize: 12, fontWeight: 500,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.textMuted; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
+                onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
                 >
-                  <Search size={15} />
-                  Search
+                  <Search size={14} /> Search
                 </button>
                 <button
                   onClick={() => setShowRightPanel(!showRightPanel)}
                   style={{
-                    width: 42, height: 42, borderRadius: 10, border: `1px solid ${colors.border}`,
-                    background: showRightPanel ? colors.accentLight : colors.bgTertiary, 
-                    color: showRightPanel ? colors.accent : colors.textSecondary, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s ease',
+                    width: 36, height: 36, borderRadius: 6,
+                    background: showRightPanel ? colors.accentLight : colors.bgTertiary,
+                    border: `1px solid ${colors.border}`,
+                    color: showRightPanel ? colors.accent : colors.textSecondary,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.15s ease',
                   }}
-                  onMouseEnter={(e) => { if (!showRightPanel) { e.currentTarget.style.background = colors.bgHover; } }}
-                  onMouseLeave={(e) => { if (!showRightPanel) { e.currentTarget.style.background = colors.bgTertiary; } }}
                 >
-                  <MoreVertical size={20} />
+                  <MoreVertical size={18} />
                 </button>
               </div>
             </div>
 
-            {/* Messages - LINE OA Style */}
-            <div style={{ 
-              flex: 1, overflowY: 'auto', padding: '20px 24px',
-              background: colors.bgChat,
-            }}>
+            {/* Messages */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: colors.bgPrimary }}>
               {isLoadingMessages ? (
-                <div style={{ textAlign: 'center', padding: 60 }}>
+                <div style={{ textAlign: 'center', padding: 40 }}>
                   <Loader2 size={24} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
                 </div>
               ) : messages.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 60 }}>
-                  <p style={{ fontSize: 14, color: colors.textMuted, margin: 0 }}>ยังไม่มีข้อความ</p>
+                <div style={{ textAlign: 'center', padding: 40 }}>
+                  <p style={{ fontSize: 13, color: colors.textMuted }}>No messages yet</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1014,20 +864,17 @@ export default function DataChatPage() {
                     const showTime = idx === messages.length - 1 || 
                       messages[idx + 1]?.sender !== msg.sender ||
                       new Date(messages[idx + 1]?.createdAt).getTime() - new Date(msg.createdAt).getTime() > 300000;
-                    const isAutoResponse = isAgent && msg.senderName === 'Auto-response';
                     
                     return (
-                      <div key={msg.id} style={{ marginBottom: showTime ? 16 : 4 }}>
-                        {/* Message Row */}
+                      <div key={msg.id} style={{ marginBottom: showTime ? 12 : 2 }}>
                         <div style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: 8 }}>
-                          {/* User Avatar */}
                           {!isAgent && (
-                            <div style={{ width: 36, flexShrink: 0 }}>
+                            <div style={{ width: 32, flexShrink: 0 }}>
                               {showAvatar && (
                                 selectedRoomData.pictureUrl ? (
-                                  <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                                  <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
                                 ) : (
-                                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textMuted, fontSize: 14, fontWeight: 500 }}>
+                                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textMuted, fontSize: 12 }}>
                                     {selectedRoomData.displayName.charAt(0)}
                                   </div>
                                 )
@@ -1035,66 +882,46 @@ export default function DataChatPage() {
                             </div>
                           )}
                           
-                          {/* Agent Label (Auto-response) */}
-                          {isAgent && isAutoResponse && (
-                            <span style={{ fontSize: 11, color: colors.textMuted, marginRight: 4, alignSelf: 'flex-start', marginTop: 4 }}>Auto-response</span>
-                          )}
-                          
-                          {/* Message Bubble */}
                           <div style={{ maxWidth: '65%' }}>
                             {msg.messageType === 'sticker' ? (
                               <div>{renderSticker(msg.packageId, msg.stickerId)}</div>
                             ) : msg.messageType === 'image' ? (
-                              <img src={msg.mediaUrl} alt="Image" style={{ maxWidth: 260, borderRadius: 12 }} />
-                            ) : (msg.content.startsWith('(') && msg.content.endsWith(')')) || msg.content.startsWith('[sticker') ? (
-                              <div style={{ fontSize: 48, lineHeight: 1 }}>
-                                {convertStickerText(msg.content)}
-                              </div>
+                              <img src={msg.mediaUrl} alt="" style={{ maxWidth: 240, borderRadius: 12 }} />
+                            ) : (msg.content?.startsWith('(') && msg.content?.endsWith(')')) || msg.content?.startsWith('[sticker') ? (
+                              <div style={{ fontSize: 40 }}>{convertStickerText(msg.content || '')}</div>
                             ) : (
                               <div style={{
-                                padding: '12px 16px', 
-                                borderRadius: isAgent ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
-                                background: isAgent ? colors.bubbleAgent : colors.bubbleUser, 
+                                padding: '10px 14px',
+                                borderRadius: isAgent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                                background: isAgent ? colors.bubbleOutgoing : colors.bubbleIncoming,
+                                border: isAgent ? 'none' : `1px solid ${colors.border}`,
                                 color: isAgent ? '#fff' : colors.textPrimary,
-                                boxShadow: isAgent ? '0 4px 12px rgba(16, 185, 129, 0.25)' : colors.shadowSm,
+                                boxShadow: colors.shadow,
                               }}>
-                                <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6, letterSpacing: '0.01em' }}>{msg.content}</p>
+                                <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{msg.content || ''}</p>
                               </div>
                             )}
                           </div>
                           
-                          {/* Time & Status for Agent messages */}
                           {isAgent && showTime && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginLeft: 4 }}>
-                              <span style={{ fontSize: 11, color: msg.status === 'read' ? colors.textMuted : colors.textMuted }}>
-                                {msg.status === 'read' ? 'Read' : ''}
-                              </span>
-                              <span style={{ fontSize: 11, color: colors.textMuted }}>
-                                {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                              <span style={{ fontSize: 10, color: colors.textMuted }}>
+                                {msg.status === 'read' ? 'Read' : msg.status === 'sent' ? 'Sent' : ''}
                               </span>
                             </div>
                           )}
                         </div>
                         
-                        {/* Time for User messages */}
-                        {!isAgent && showTime && (
-                          <div style={{ marginLeft: 44, marginTop: 4 }}>
-                            <span style={{ fontSize: 11, color: colors.textMuted }}>
+                        {showTime && (
+                          <div style={{ marginTop: 4, marginLeft: isAgent ? 0 : 40, textAlign: isAgent ? 'right' : 'left' }}>
+                            <span style={{ fontSize: 10, color: colors.textMuted }}>
                               {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
                             </span>
-                          </div>
-                        )}
-                        
-                        {/* Agent name label */}
-                        {isAgent && showTime && !isAutoResponse && msg.senderName && (
-                          <div style={{ textAlign: 'right', marginTop: 4, marginRight: 60 }}>
-                            <span style={{ fontSize: 11, color: colors.textMuted }}>{msg.senderName}</span>
                           </div>
                         )}
                       </div>
                     );
                   })}
-                  {/* Typing Indicator */}
                   {selectedRoom && typingUsers[selectedRoom] && <TypingIndicator />}
                   <div ref={messagesEndRef} />
                 </div>
@@ -1103,24 +930,23 @@ export default function DataChatPage() {
 
             {/* Quick Replies */}
             {showQuickReplies && (
-              <div style={{ padding: '12px 24px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ข้อความด่วน</span>
-                  <button onClick={() => setShowQuickReplies(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer', padding: 4 }}><X size={16} /></button>
+              <div style={{ padding: '12px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>Quick Replies</span>
+                  <button onClick={() => setShowQuickReplies(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {quickReplies.map((reply) => (
                     <button key={reply.id} onClick={() => sendMessage(reply.label)} style={{
-                      padding: '10px 16px', borderRadius: 12, border: `1px solid ${colors.border}`,
-                      background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      transition: 'all 0.2s ease',
+                      padding: '8px 12px', borderRadius: 8,
+                      background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                      color: colors.textPrimary, fontSize: 12, cursor: 'pointer',
+                      transition: 'all 0.15s ease',
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.accent; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
                     >
-                      <span>{reply.icon}</span>
-                      <span>{reply.label.length > 35 ? reply.label.substring(0, 35) + '...' : reply.label}</span>
+                      {reply.icon} {reply.label.substring(0, 30)}...
                     </button>
                   ))}
                 </div>
@@ -1129,30 +955,23 @@ export default function DataChatPage() {
 
             {/* Emoji Picker */}
             {showEmojiPicker && (
-              <div style={{ 
-                padding: '12px 20px', 
-                background: colors.bgSecondary, 
-                borderTop: `1px solid ${colors.border}`,
-              }}>
+              <div style={{ padding: '12px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Emoji</span>
-                  <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer', padding: 4 }}><X size={16} /></button>
+                  <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>Emoji</span>
+                  <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {commonEmojis.map((emoji, i) => (
                     <button 
                       key={i} 
-                      onClick={() => {
-                        setMessage(prev => prev + emoji);
-                        setShowEmojiPicker(false);
-                      }}
+                      onClick={() => { setMessage(prev => prev + emoji); setShowEmojiPicker(false); }}
                       style={{
-                        width: 36, height: 36, borderRadius: 8, border: 'none',
-                        background: colors.bgTertiary, fontSize: 20, cursor: 'pointer',
+                        width: 32, height: 32, borderRadius: 6, border: 'none',
+                        background: colors.bgTertiary, fontSize: 18, cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transition: 'transform 0.1s',
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
                       onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                     >
                       {emoji}
@@ -1162,250 +981,182 @@ export default function DataChatPage() {
               </div>
             )}
 
-            {/* Input - Premium Design */}
-            <div style={{ padding: '16px 24px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
-              {/* Hint text */}
-              <div style={{ marginBottom: 10, fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>
-                <span style={{ color: colors.textSecondary }}>Enter</span> to send • <span style={{ color: colors.textSecondary }}>Shift + Enter</span> for new line
+            {/* Input Area */}
+            <div style={{ padding: '14px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+              <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>
+                <kbd style={{ padding: '2px 6px', background: colors.bgTertiary, borderRadius: 4, fontSize: 10 }}>Enter</kbd> to send
+                <span style={{ margin: '0 6px' }}>•</span>
+                <kbd style={{ padding: '2px 6px', background: colors.bgTertiary, borderRadius: 4, fontSize: 10 }}>Shift + Enter</kbd> for new line
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
-                {/* Input Field */}
-                <div style={{ flex: 1, position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+                <div style={{ flex: 1 }}>
                   <input
                     type="text"
                     value={message}
                     onChange={handleInputChange}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
                     placeholder="Type your message..."
-                    style={{ 
-                      width: '100%', minHeight: 48, padding: '14px 18px',
-                      border: `1px solid ${colors.border}`, borderRadius: 12,
-                      background: colors.bgInput, color: colors.textPrimary, fontSize: 14, outline: 'none',
-                      resize: 'none',
-                      transition: 'all 0.2s ease',
+                    style={{
+                      width: '100%', height: 44, padding: '0 14px',
+                      borderRadius: 8, border: `1px solid ${colors.border}`,
+                      background: colors.bgInput, color: colors.textPrimary,
+                      fontSize: 14, outline: 'none',
+                      transition: 'border-color 0.15s ease',
                     }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = colors.accent}
+                    onBlur={(e) => e.currentTarget.style.borderColor = colors.border}
                   />
                 </div>
-                {/* Send Button */}
                 <button
                   onClick={() => sendMessage(message)}
                   disabled={!message.trim() || isSending}
                   style={{
-                    padding: '14px 28px', borderRadius: 12, border: 'none',
-                    background: message.trim() && !isSending ? colors.accentGradient : colors.bgTertiary,
+                    padding: '12px 20px', borderRadius: 8, border: 'none',
+                    background: message.trim() && !isSending ? colors.accent : colors.bgTertiary,
                     color: message.trim() && !isSending ? '#fff' : colors.textMuted,
-                    fontSize: 14, fontWeight: 600,
+                    fontSize: 13, fontWeight: 600,
                     cursor: message.trim() && !isSending ? 'pointer' : 'default',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    transition: 'all 0.2s ease',
-                    boxShadow: message.trim() && !isSending ? '0 4px 12px rgba(34, 197, 94, 0.25)' : 'none',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    transition: 'all 0.15s ease',
                   }}
-                  onMouseEnter={(e) => { if (message.trim() && !isSending) e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
-                  {isSending ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <><Send size={16} /> Send</>}
+                  {isSending ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <><Send size={15} /> Send</>}
                 </button>
               </div>
+              
               {/* Action Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   style={{ 
-                    width: 38, height: 38, borderRadius: 10, border: 'none', 
-                    background: showEmojiPicker ? colors.accentLight : 'transparent', 
-                    color: showEmojiPicker ? colors.accent : colors.textMuted, 
+                    width: 34, height: 34, borderRadius: 6, border: 'none',
+                    background: showEmojiPicker ? colors.accentLight : 'transparent',
+                    color: showEmojiPicker ? colors.accent : colors.textMuted,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s ease',
                   }}
-                  onMouseEnter={(e) => { if (!showEmojiPicker) e.currentTarget.style.background = colors.bgHover; }}
-                  onMouseLeave={(e) => { if (!showEmojiPicker) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <Smile size={22} />
+                  <Smile size={18} />
                 </button>
-                <button style={{ 
-                  width: 38, height: 38, borderRadius: 10, border: 'none', 
-                  background: 'transparent', color: colors.textMuted, 
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <Paperclip size={22} />
+                <button style={{ width: 34, height: 34, borderRadius: 6, border: 'none', background: 'transparent', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Paperclip size={18} />
                 </button>
                 <button 
-                  onClick={() => setShowQuickReplies(!showQuickReplies)} 
+                  onClick={() => setShowQuickReplies(!showQuickReplies)}
                   style={{ 
-                    width: 38, height: 38, borderRadius: 10, border: 'none', 
-                    background: showQuickReplies ? colors.accentLight : 'transparent', 
-                    color: showQuickReplies ? colors.accent : colors.textMuted, 
+                    width: 34, height: 34, borderRadius: 6, border: 'none',
+                    background: showQuickReplies ? colors.accentLight : 'transparent',
+                    color: showQuickReplies ? colors.accent : colors.textMuted,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s ease',
                   }}
-                  onMouseEnter={(e) => { if (!showQuickReplies) e.currentTarget.style.background = colors.bgHover; }}
-                  onMouseLeave={(e) => { if (!showQuickReplies) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <Plus size={22} />
-                </button>
-                <button style={{ 
-                  width: 38, height: 38, borderRadius: 10, border: 'none', 
-                  background: 'transparent', color: colors.textMuted, 
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <Bookmark size={20} />
+                  <Plus size={18} />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* RIGHT PANEL - Premium Design */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* RIGHT PANEL */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
           {showRightPanel && (
-            <div style={{ width: 360, background: colors.bgSecondary, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto', zIndex: 2 }}>
-              {/* Profile Section - Premium Design */}
-              <div style={{ 
-                padding: '32px 24px', 
-                textAlign: 'center', 
-                background: colors.bgSecondary,
-              }}>
-                <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
-                  {selectedRoomData.pictureUrl ? (
-                    <div style={{ position: 'relative' }}>
-                      <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ 
-                        width: 88, height: 88, borderRadius: '50%', objectFit: 'cover',
-                        border: `3px solid ${colors.accent}`,
-                        boxShadow: '0 4px 12px rgba(34, 197, 94, 0.15)',
-                      }} />
-                      <div style={{
-                        position: 'absolute', bottom: 4, right: 4,
-                        width: 20, height: 20, borderRadius: '50%',
-                        background: colors.online,
-                        border: `3px solid ${colors.bgSecondary}`,
-                      }} />
-                    </div>
-                  ) : (
-                    <div style={{
-                      width: 88, height: 88, borderRadius: '50%', 
-                      background: colors.accentGradient,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 32, fontWeight: 700,
-                      boxShadow: '0 4px 12px rgba(34, 197, 94, 0.2)',
-                    }}>
-                      {selectedRoomData.displayName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 }}>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: colors.textPrimary, margin: 0, letterSpacing: '-0.02em' }}>{selectedRoomData.displayName}</h3>
-                  <button style={{ 
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 4, 
-                    color: colors.accent, display: 'flex', alignItems: 'center',
+            <div style={{ 
+              width: 320, 
+              background: colors.bgSecondary, 
+              borderLeft: `1px solid ${colors.border}`,
+              display: 'flex', flexDirection: 'column', 
+              overflowY: 'auto',
+            }}>
+              {/* Profile Section */}
+              <div style={{ padding: '28px 20px', textAlign: 'center', borderBottom: `1px solid ${colors.border}` }}>
+                {selectedRoomData.pictureUrl ? (
+                  <img src={selectedRoomData.pictureUrl} alt="" style={{ 
+                    width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
+                    border: `3px solid ${colors.accent}`, marginBottom: 14,
+                  }} />
+                ) : (
+                  <div style={{
+                    width: 80, height: 80, borderRadius: '50%', margin: '0 auto 14px',
+                    background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontSize: 28, fontWeight: 600,
                   }}>
-                    ✏️
-                  </button>
-                </div>
-                <p style={{ fontSize: 13, color: colors.textSecondary, margin: 0, fontWeight: 500 }}>({selectedRoomData.statusMessage || 'LINE User'})</p>
+                    {selectedRoomData.displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: colors.textPrimary, margin: '0 0 4px 0' }}>
+                  {selectedRoomData.displayName}
+                </h3>
+                <p style={{ fontSize: 12, color: colors.textMuted, margin: 0 }}>
+                  {selectedRoomData.statusMessage || 'LINE User'}
+                </p>
               </div>
 
-              {/* Tags Section - Premium Design */}
-              <div style={{ padding: '20px 24px' }}>
+              {/* Tags Section */}
+              <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}` }}>
                 <div style={{ 
-                  padding: '16px 20px', borderRadius: 12, 
-                  border: `2px dashed ${colors.borderAccent}`,
+                  padding: 16, borderRadius: 8,
+                  border: `1px dashed ${colors.border}`,
                   background: colors.bgPrimary, textAlign: 'center',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.background = colors.accentLight; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = colors.borderAccent; e.currentTarget.style.background = colors.bgPrimary; }}
-                >
-                  <p style={{ fontSize: 13, color: colors.textSecondary, margin: '0 0 10px 0', lineHeight: 1.5 }}>Using tags can help you sort chats.</p>
+                }}>
+                  <Tag size={20} style={{ color: colors.textMuted, marginBottom: 8 }} />
+                  <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 10px 0' }}>
+                    Use tags to organize chats
+                  </p>
                   <button style={{ 
-                    background: colors.accentGradient, border: 'none', color: '#fff', 
-                    fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '8px 16px',
-                    borderRadius: 20, display: 'inline-flex', alignItems: 'center', gap: 6,
-                    boxShadow: '0 2px 8px rgba(34, 197, 94, 0.2)',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
+                    background: colors.accent, border: 'none', color: '#fff',
+                    fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                    padding: '6px 14px', borderRadius: 6,
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}>
                     <Plus size={14} /> Add tags
                   </button>
                 </div>
               </div>
 
-              {/* Assign Section - Premium Design */}
-              <div style={{ padding: '20px 24px' }}>
+              {/* Assign Section */}
+              <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>Assigned to</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Assigned to</span>
                   <div style={{ 
-                    display: 'flex', alignItems: 'center', gap: 10, 
-                    padding: '8px 12px', borderRadius: 10, 
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 10px', borderRadius: 6,
                     background: colors.bgTertiary,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
-                  onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
-                  >
+                  }}>
                     <div style={{ 
-                      width: 32, height: 32, borderRadius: '50%', 
-                      background: colors.accentGradient,
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: colors.accent,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 13, fontWeight: 700,
-                      boxShadow: '0 2px 6px rgba(34, 197, 94, 0.2)',
+                      color: '#fff', fontSize: 11, fontWeight: 600,
                     }}>
                       {currentUser?.name?.charAt(0) || 'A'}
                     </div>
-                    <span style={{ fontSize: 14, color: colors.textPrimary, fontWeight: 500 }}>{currentUser?.name || 'Agent'}</span>
-                    <span style={{ fontSize: 12, color: colors.textMuted }}>✏️</span>
+                    <span style={{ fontSize: 13, color: colors.textPrimary }}>{currentUser?.name || 'Agent'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Notes Section - Premium Design */}
-              <div style={{ padding: '20px 24px', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>Notes</span>
-                    <span style={{ 
-                      fontSize: 12, color: colors.textMuted, 
-                      background: colors.bgTertiary, padding: '2px 8px', borderRadius: 10, 
-                    }}>0/1</span>
-                  </div>
+              {/* Notes Section */}
+              <div style={{ padding: 20, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Notes</span>
                   <button style={{ 
-                    width: 32, height: 32, borderRadius: 8, border: 'none',
-                    background: colors.bgTertiary, color: colors.accent, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = colors.accentLight; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; }}
-                  >
-                    <Plus size={18} />
+                    width: 28, height: 28, borderRadius: 6, border: 'none',
+                    background: colors.bgTertiary, color: colors.accent,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Plus size={16} />
                   </button>
                 </div>
                 <div style={{ 
-                  padding: '20px', borderRadius: 12, border: `1px solid ${colors.border}`,
-                  background: colors.bgPrimary,
+                  padding: 16, borderRadius: 8,
+                  background: colors.bgPrimary, border: `1px solid ${colors.border}`,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
-                    <div style={{ 
-                      width: 32, height: 32, borderRadius: 8, 
-                      background: 'rgba(59, 130, 246, 0.1)', 
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <span style={{ fontSize: 16 }}>📝</span>
-                    </div>
-                    <span style={{ fontSize: 15, fontWeight: 600, color: colors.textPrimary }}>Keep records in Notes</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+                    <FileEdit size={18} style={{ color: colors.info, flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Keep records</span>
                   </div>
-                  <p style={{ fontSize: 13, color: colors.textSecondary, margin: 0, lineHeight: 1.6 }}>
-                    Record info on this user and your interactions with them, and leave handoff notes for your team. Notes aren't visible to the user; only account members can view and edit them.
+                  <p style={{ fontSize: 12, color: colors.textMuted, margin: 0, lineHeight: 1.5 }}>
+                    Record info about this user and leave notes for your team.
                   </p>
                 </div>
               </div>
@@ -1415,32 +1166,36 @@ export default function DataChatPage() {
       ) : (
         /* Empty State */
         <div style={{
-          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          flex: 1, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
           background: colors.bgPrimary,
-          padding: 40,
         }}>
-          <MessageCircle size={64} style={{ color: colors.textMuted, marginBottom: 20 }} />
-          <h2 style={{ fontSize: 20, fontWeight: 600, color: colors.textPrimary, margin: '0 0 8px 0' }}>เลือกแชท</h2>
-          <p style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', maxWidth: 280, margin: '0 0 24px 0', lineHeight: 1.5 }}>
-            เลือกการสนทนาจากรายการด้านซ้ายเพื่อเริ่มต้น
+          <MessageCircle size={48} style={{ color: colors.textMuted, marginBottom: 16 }} />
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: colors.textPrimary, margin: '0 0 8px 0' }}>
+            Select a conversation
+          </h2>
+          <p style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', maxWidth: 240, margin: '0 0 20px 0' }}>
+            Choose a chat from the list to start messaging
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: isConnected ? colors.accent : colors.warning }}>
+          <div style={{ 
+            display: 'flex', alignItems: 'center', gap: 6,
+            color: isConnected ? colors.accent : colors.warning,
+          }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor' }} />
-            <span style={{ fontSize: 13, fontWeight: 500 }}>{isConnected ? 'เชื่อมต่อแล้ว' : 'กำลังเชื่อมต่อ...'}</span>
+            <span style={{ fontSize: 12, fontWeight: 500 }}>
+              {isConnected ? 'Connected' : 'Connecting...'}
+            </span>
           </div>
         </div>
       )}
       
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes typingDot { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
         * { scrollbar-width: thin; scrollbar-color: ${colors.border} transparent; }
         *::-webkit-scrollbar { width: 6px; }
         *::-webkit-scrollbar-track { background: transparent; }
         *::-webkit-scrollbar-thumb { background: ${colors.border}; border-radius: 3px; }
-        *::-webkit-scrollbar-thumb:hover { background: ${colors.textMuted}; }
       `}} />
     </div>
   );
