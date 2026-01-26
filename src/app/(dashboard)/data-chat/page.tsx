@@ -636,18 +636,16 @@ export default function DataChatPage() {
       <div style={{ width: 36, height: 36, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <User size={16} style={{ color: colors.textMuted }} />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {userName && (
-          <span style={{ fontSize: 11, color: colors.textMuted, marginLeft: 4 }}>{userName}</span>
-        )}
-        <div style={{ padding: '12px 16px', borderRadius: 18, background: colors.bubbleIncoming, border: `1px solid ${colors.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 12, color: colors.textMuted }}>กำลังพิมพ์</span>
-            <div style={{ display: 'flex', gap: 3 }}>
-              {[0, 1, 2].map((i) => (
-                <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: colors.accent, animation: `typingDot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
-              ))}
-            </div>
+      <div style={{ padding: '12px 16px', borderRadius: 18, background: colors.bubbleIncoming, border: `1px solid ${colors.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {userName && (
+            <span style={{ fontSize: 12, color: colors.accent, fontWeight: 600 }}>{userName}</span>
+          )}
+          <span style={{ fontSize: 12, color: colors.textMuted }}>กำลังพิมพ์</span>
+          <div style={{ display: 'flex', gap: 3 }}>
+            {[0, 1, 2].map((i) => (
+              <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: colors.accent, animation: `typingDot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
+            ))}
           </div>
         </div>
       </div>
