@@ -150,12 +150,14 @@ export async function GET(request: NextRequest) {
     `;
     const params: (string | number)[] = [];
 
-    // Handle spam filter - show spam rooms, otherwise show active rooms
+    // Handle spam filter - show spam rooms, otherwise show non-spam rooms
     if (filter === 'spam') {
       query += ` AND r.status = 'spam'`;
+    } else if (filter === 'archived') {
+      query += ` AND r.status = 'archived'`;
     } else {
-      // For other filters, show non-spam rooms
-      query += ` AND (r.status = 'active' OR r.status IS NULL)`;
+      // For other filters, show all non-spam rooms (active, archived, null)
+      query += ` AND (r.status != 'spam' OR r.status IS NULL)`;
     }
 
     if (search) {

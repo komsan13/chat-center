@@ -70,7 +70,7 @@ export default function DataChatPage() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null); // Start with no room selected
   const [message, setMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'pinned' | 'spam'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'pinned' | 'archived' | 'spam'>('all');
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -1223,7 +1223,7 @@ export default function DataChatPage() {
                 }}
               >
                 <Filter size={isMobile ? 14 : 15} style={{ color: colors.accent }} />
-                <span>{filterStatus === 'all' ? 'All' : filterStatus === 'unread' ? 'Unread' : filterStatus === 'pinned' ? 'Pinned' : 'Spam'}</span>
+                <span>{filterStatus === 'all' ? 'All' : filterStatus === 'unread' ? 'Unread' : filterStatus === 'pinned' ? 'Pinned' : filterStatus === 'archived' ? 'Archived' : 'Spam'}</span>
                 <ChevronDown size={isMobile ? 12 : 14} style={{ color: colors.textMuted }} />
               </button>
               
@@ -1234,14 +1234,14 @@ export default function DataChatPage() {
                   borderRadius: 8, boxShadow: colors.shadowMd, zIndex: 100,
                   minWidth: 120, overflow: 'hidden',
                 }}>
-                  {['all', 'unread', 'pinned', 'spam'].map((status) => (
+                  {['all', 'unread', 'pinned', 'archived', 'spam'].map((status) => (
                     <button
                       key={status}
-                      onClick={() => { setFilterStatus(status as 'all' | 'unread' | 'pinned' | 'spam'); setShowFilterDropdown(false); }}
+                      onClick={() => { setFilterStatus(status as 'all' | 'unread' | 'pinned' | 'archived' | 'spam'); setShowFilterDropdown(false); }}
                       style={{
                         display: 'block', width: '100%', padding: '10px 14px',
                         background: filterStatus === status ? colors.accentLight : 'transparent',
-                        border: 'none', color: filterStatus === status ? colors.accent : status === 'spam' ? colors.warning : colors.textPrimary,
+                        border: 'none', color: filterStatus === status ? colors.accent : status === 'spam' ? colors.warning : status === 'archived' ? colors.textMuted : colors.textPrimary,
                         fontSize: 13, textAlign: 'left', cursor: 'pointer',
                       }}
                     >
