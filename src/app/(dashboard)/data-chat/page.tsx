@@ -127,7 +127,7 @@ export default function DataChatPage() {
     }
   }, []);
 
-  const { isConnected, joinRoom, markAsRead } = useSocket({
+  const { isConnected, connectionState, joinRoom, markAsRead, playNotificationSound, reconnect } = useSocket({
     onNewMessage: (msg) => {
       const message: Message = { ...msg, content: msg.content || '' };
       handleNewMessage(message);
@@ -139,6 +139,7 @@ export default function DataChatPage() {
       };
       setRooms(prev => prev.some(r => r.id === newRoom.id) ? prev : [newRoom, ...prev]);
     },
+    enableSound: true,
   });
 
   const handleNewMessage = useCallback((msg: Message) => {
@@ -241,9 +242,65 @@ export default function DataChatPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <div>
               <h1 style={{ fontSize: 20, fontWeight: 700, color: colors.textPrimary, margin: 0, letterSpacing: '-0.01em' }}>LINE OA Chat</h1>
-              <p style={{ fontSize: 12, color: colors.textMuted, margin: '4px 0 0 0' }}>{rooms.length} การสนทนา</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <span style={{ fontSize: 12, color: colors.textMuted }}>{rooms.length} การสนทนา</span>
+                <span style={{ fontSize: 10, color: colors.textMuted }}>•</span>
+                <div 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 5,
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                    background: connectionState === 'connected' 
+                      ? 'rgba(34, 197, 94, 0.15)' 
+                      : connectionState === 'reconnecting'
+                        ? 'rgba(245, 158, 11, 0.15)'
+                        : 'rgba(239, 68, 68, 0.15)',
+                    cursor: connectionState !== 'connected' ? 'pointer' : 'default',
+                  }}
+                  onClick={() => { if (connectionState !== 'connected') reconnect(); }}
+                  title={connectionState !== 'connected' ? 'คลิกเพื่อเชื่อมต่อใหม่' : 'เชื่อมต่อแล้ว'}
+                >
+                  <div style={{ 
+                    width: 6, 
+                    height: 6, 
+                    borderRadius: '50%', 
+                    background: connectionState === 'connected' 
+                      ? '#22c55e' 
+                      : connectionState === 'reconnecting'
+                        ? '#f59e0b'
+                        : '#ef4444',
+                    animation: connectionState === 'reconnecting' ? 'pulse 1.5s infinite' : 'none',
+                  }} />
+                  <span style={{ 
+                    fontSize: 11, 
+                    fontWeight: 500,
+                    color: connectionState === 'connected' 
+                      ? '#22c55e' 
+                      : connectionState === 'reconnecting'
+                        ? '#f59e0b'
+                        : '#ef4444',
+                  }}>
+                    {connectionState === 'connected' 
+                      ? 'เชื่อมต่อแล้ว' 
+                      : connectionState === 'reconnecting'
+                        ? 'กำลังเชื่อมต่อ...'
+                        : 'ขาดการเชื่อมต่อ'}
+                  </span>
+                </div>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
+              <button 
+                onClick={playNotificationSound}
+                title="ทดสอบเสียงแจ้งเตือน"
+                style={{
+                  width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
+                  background: colors.bgCard, color: colors.textSecondary, 
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: 'none',
+                }}>🔔</button>
               <button style={{
                 width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
                 background: colors.bgCard, color: colors.textSecondary, 

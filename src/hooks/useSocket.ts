@@ -1,4 +1,4 @@
-// Socket.IO Client Hook for React
+// Socket.IO Client Hook for React with Stability and Notification Sound
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -45,46 +45,145 @@ interface UseSocketOptions {
   onUserTyping?: (data: { roomId: string; userName: string; isTyping: boolean }) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
+  onConnectionChange?: (connected: boolean) => void;
+  enableSound?: boolean;
 }
+
+// Connection state type
+type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 
 export function useSocket(options: UseSocketOptions = {}) {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const optionsRef = useRef(options);
+  const heartbeatInterval = useRef<NodeJS.Timeout | null>(null);
+  const lastPongTime = useRef<number>(Date.now());
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   // Keep options ref updated
   useEffect(() => {
     optionsRef.current = options;
   }, [options]);
 
+  // Initialize audio for notification sound
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      audioRef.current = new Audio('/notification.mp3');
+      audioRef.current.volume = 0.5;
+      audioRef.current.load();
+    }
+    return () => {
+      audioRef.current = null;
+    };
+  }, []);
+
+  // Play notification sound
+  const playNotificationSound = useCallback(() => {
+    if (audioRef.current && optionsRef.current.enableSound !== false) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch((err) => {
+        // Audio play failed - usually needs user interaction first
+        console.log('[Socket] Audio play blocked:', err.message);
+      });
+    }
+  }, []);
+
+  // Start heartbeat to monitor connection
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatInterval.current) {
+      clearInterval(heartbeatInterval.current);
+    }
+    
+    heartbeatInterval.current = setInterval(() => {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('ping-server');
+        
+        // Check if we haven't received pong in 30 seconds
+        if (Date.now() - lastPongTime.current > 30000) {
+          console.log('[Socket] No pong received, reconnecting...');
+          socketRef.current.disconnect();
+          socketRef.current.connect();
+        }
+      }
+    }, 10000);
+  }, []);
+
+  // Stop heartbeat
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatInterval.current) {
+      clearInterval(heartbeatInterval.current);
+      heartbeatInterval.current = null;
+    }
+  }, []);
+
   // Initialize socket connection
   useEffect(() => {
-    const socket = io({
+    setConnectionState('connecting');
+    
+    const socketUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    
+    const socket = io(socketUrl, {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
+      reconnectionDelayMax: 10000,
+      timeout: 45000,
+      forceNew: false,
+      autoConnect: true,
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('[Socket] Connected:', socket.id);
+      console.log('[Socket] ✅ Connected:', socket.id);
       setIsConnected(true);
+      setConnectionState('connected');
       setConnectionError(null);
+      setReconnectAttempts(0);
+      lastPongTime.current = Date.now();
+      
       // Auto join all-rooms channel
       socket.emit('join-all-rooms');
+      
+      // Start heartbeat
+      startHeartbeat();
+      
       optionsRef.current.onConnect?.();
+      optionsRef.current.onConnectionChange?.(true);
     });
 
     socket.on('disconnect', (reason) => {
-      console.log('[Socket] Disconnected:', reason);
+      console.log('[Socket] ❌ Disconnected:', reason);
       setIsConnected(false);
+      setConnectionState('disconnected');
+      stopHeartbeat();
+      
       optionsRef.current.onDisconnect?.();
+      optionsRef.current.onConnectionChange?.(false);
+      
+      // Auto reconnect for certain disconnect reasons
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        setTimeout(() => {
+          socket.connect();
+        }, 1000);
+      }
+    });
+
+    socket.on('reconnect_attempt', (attempt) => {
+      console.log('[Socket] 🔄 Reconnecting... attempt:', attempt);
+      setConnectionState('reconnecting');
+      setReconnectAttempts(attempt);
+    });
+
+    socket.on('reconnect', (attempt) => {
+      console.log('[Socket] ✅ Reconnected after', attempt, 'attempts');
+      setConnectionState('connected');
+      setReconnectAttempts(0);
     });
 
     socket.on('connect_error', (error) => {
@@ -93,18 +192,36 @@ export function useSocket(options: UseSocketOptions = {}) {
       setIsConnected(false);
     });
 
+    // Pong from server
+    socket.on('pong-server', () => {
+      lastPongTime.current = Date.now();
+    });
+
+    // Connection success from server
+    socket.on('connection-success', (data) => {
+      console.log('[Socket] Server confirmed connection:', data);
+    });
+
     // Chat events
     socket.on('new-message', (message: ChatMessage) => {
-      console.log('[Socket] New message:', message.id);
+      console.log('[Socket] 📨 New message:', message.id);
+      
+      // Play notification sound for incoming messages from LINE users
+      if (message.sender === 'user') {
+        playNotificationSound();
+      }
+      
       optionsRef.current.onNewMessage?.(message);
     });
 
     socket.on('new-room', (room: ChatRoom) => {
-      console.log('[Socket] New room:', room.id);
+      console.log('[Socket] 🆕 New room:', room.id);
+      playNotificationSound();
       optionsRef.current.onNewRoom?.(room);
     });
 
     socket.on('messages-read', (data: { roomId: string; messageIds: string[] }) => {
+      console.log('[Socket] ✓ Messages read:', data.roomId);
       optionsRef.current.onMessagesRead?.(data);
     });
 
@@ -112,40 +229,89 @@ export function useSocket(options: UseSocketOptions = {}) {
       optionsRef.current.onUserTyping?.(data);
     });
 
+    // Visibility change handler - reconnect when page becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !socket.connected) {
+        console.log('[Socket] Page visible, reconnecting...');
+        socket.connect();
+      }
+    };
+
+    // Online/offline handlers
+    const handleOnline = () => {
+      console.log('[Socket] Network online, reconnecting...');
+      if (!socket.connected) {
+        socket.connect();
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('[Socket] Network offline');
+      setConnectionState('disconnected');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      stopHeartbeat();
+      socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;
     };
-  }, []);
+  }, [startHeartbeat, stopHeartbeat, playNotificationSound]);
 
   // Join a specific room
   const joinRoom = useCallback((roomId: string) => {
-    socketRef.current?.emit('join-room', roomId);
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('join-room', roomId);
+    }
   }, []);
 
   // Leave a specific room
   const leaveRoom = useCallback((roomId: string) => {
-    socketRef.current?.emit('leave-room', roomId);
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('leave-room', roomId);
+    }
   }, []);
 
   // Send typing indicator
   const sendTyping = useCallback((roomId: string, userName: string, isTyping: boolean) => {
-    socketRef.current?.emit(isTyping ? 'typing-start' : 'typing-stop', { roomId, userName });
+    if (socketRef.current?.connected) {
+      socketRef.current.emit(isTyping ? 'typing-start' : 'typing-stop', { roomId, userName });
+    }
   }, []);
 
   // Mark messages as read
   const markAsRead = useCallback((roomId: string, messageIds: string[]) => {
-    socketRef.current?.emit('message-read', { roomId, messageIds });
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('message-read', { roomId, messageIds });
+    }
+  }, []);
+
+  // Manual reconnect
+  const reconnect = useCallback(() => {
+    if (socketRef.current && !socketRef.current.connected) {
+      socketRef.current.connect();
+    }
   }, []);
 
   return {
     socket: socketRef.current,
     isConnected,
+    connectionState,
     connectionError,
+    reconnectAttempts,
     joinRoom,
     leaveRoom,
     sendTyping,
     markAsRead,
+    reconnect,
+    playNotificationSound,
   };
 }
 
