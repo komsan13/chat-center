@@ -518,12 +518,24 @@ export default function DataChatPage() {
     // Sound is played by handleNewMessage when first message arrives
   }, []);
 
-  const { isConnected, connectionState, reconnect, sendTyping, markAsRead, emitRoomRead } = useSocket({
+  // Handle room property changes from other browsers (pin, mute, tags, status)
+  const handleRoomPropertyChanged = useCallback((data: { roomId: string; updates: {
+    isPinned?: boolean;
+    isMuted?: boolean;
+    tags?: string[];
+    status?: 'active' | 'archived' | 'blocked' | 'spam';
+  }; updatedAt: string }) => {
+    console.log('[Chat] Room property changed:', data.roomId, data.updates);
+    setRooms(prev => prev.map(r => r.id === data.roomId ? { ...r, ...data.updates } : r));
+  }, []);
+
+  const { isConnected, connectionState, reconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate } = useSocket({
     onNewMessage: handleNewMessage,
     onNewRoom: handleNewRoom,
     onUserTyping: handleTypingEvent,
     onRoomReadUpdate: handleRoomReadSync,
     onRoomUpdate: handleRoomUpdate,
+    onRoomPropertyChanged: handleRoomPropertyChanged,
   });
 
   // Store sendTyping in ref
@@ -705,8 +717,10 @@ export default function DataChatPage() {
       });
       
       if (response.ok) {
-        const { room } = await response.json();
+        // Update local state immediately
         setRooms(prev => prev.map(r => r.id === roomId ? { ...r, ...updates } : r));
+        // Broadcast to all other browsers via socket
+        emitRoomPropertyUpdate(roomId, updates);
         return true;
       }
       return false;

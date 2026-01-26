@@ -103,6 +103,15 @@ app.prepare().then(() => {
       }
     });
 
+    // Room property update (pin, mute, tags, status) - broadcast to ALL clients
+    socket.on('room-property-update', ({ roomId, updates }) => {
+      if (roomId && updates) {
+        console.log(`[Socket.IO] Room property update: ${roomId}`, updates);
+        // Broadcast to ALL clients including sender
+        io.emit('room-property-changed', { roomId, updates, updatedAt: new Date().toISOString() });
+      }
+    });
+
     // Typing indicators
     socket.on('typing-start', ({ roomId, userName }) => {
       if (roomId) {

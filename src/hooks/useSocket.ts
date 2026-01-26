@@ -52,11 +52,20 @@ interface UseSocketOptions {
   onMessagesRead?: (data: { roomId: string; messageIds: string[] }) => void;
   onUserTyping?: (data: { roomId: string; userName: string; isTyping: boolean }) => void;
   onRoomReadUpdate?: (data: { roomId: string; readAt: string }) => void;
+  onRoomPropertyChanged?: (data: { roomId: string; updates: RoomPropertyUpdate; updatedAt: string }) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onConnectionChange?: (connected: boolean) => void;
   enableSound?: boolean;
   currentRoomId?: string | null; // Current room being viewed - won't play sound for this room
+}
+
+// Room property update type
+interface RoomPropertyUpdate {
+  isPinned?: boolean;
+  isMuted?: boolean;
+  tags?: string[];
+  status?: 'active' | 'archived' | 'blocked' | 'spam';
 }
 
 // Connection state type
@@ -315,6 +324,12 @@ export function useSocket(options: UseSocketOptions = {}) {
       optionsRef.current.onRoomReadUpdate?.(data);
     });
 
+    // Room property changed - when room is pinned, muted, tagged, or status changed
+    socket.on('room-property-changed', (data: { roomId: string; updates: RoomPropertyUpdate; updatedAt: string }) => {
+      console.log('[Socket] 📌 Room property changed:', data.roomId, data.updates);
+      optionsRef.current.onRoomPropertyChanged?.(data);
+    });
+
     // Visibility change handler - reconnect when page becomes visible
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !socket.connected) {
@@ -386,6 +401,13 @@ export function useSocket(options: UseSocketOptions = {}) {
     }
   }, []);
 
+  // Emit room property update - broadcast to all clients (pin, mute, tags, status)
+  const emitRoomPropertyUpdate = useCallback((roomId: string, updates: RoomPropertyUpdate) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('room-property-update', { roomId, updates });
+    }
+  }, []);
+
   // Manual reconnect
   const reconnect = useCallback(() => {
     if (socketRef.current && !socketRef.current.connected) {
@@ -404,6 +426,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     sendTyping,
     markAsRead,
     emitRoomRead,
+    emitRoomPropertyUpdate,
     reconnect,
     playNotificationSound,
   };
