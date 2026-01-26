@@ -199,14 +199,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse JSON fields and attach recent messages
-    const parsedRooms = rooms.map(room => ({
-      ...room,
-      tags: JSON.parse(room.tags || '[]'),
-      isPinned: !!room.isPinned,
-      isMuted: !!room.isMuted,
-      lastMessage: room.lastMessage ? JSON.parse(room.lastMessage) : null,
-      recentMessages: recentMessagesMap[room.id] || [], // Preloaded messages
-    }));
+    const parsedRooms = rooms.map(room => {
+      const lastMessage = room.lastMessage ? JSON.parse(room.lastMessage) : null;
+      // Parse emojis in lastMessage if it's a string
+      if (lastMessage && typeof lastMessage.emojis === 'string') {
+        lastMessage.emojis = JSON.parse(lastMessage.emojis);
+      }
+      // Parse emojis in recentMessages
+      const recentMessages = (recentMessagesMap[room.id] || []).map(msg => ({
+        ...msg,
+        emojis: msg.emojis ? JSON.parse(msg.emojis as string) : null,
+      }));
+      
+      return {
+        ...room,
+        tags: JSON.parse(room.tags || '[]'),
+        isPinned: !!room.isPinned,
+        isMuted: !!room.isMuted,
+        lastMessage,
+        recentMessages,
+      };
+    });
 
     return NextResponse.json(parsedRooms);
   } catch (error) {
@@ -307,4 +320,5 @@ interface MessageRecord {
   isDeleted: number;
   readAt?: string;
   createdAt: string;
+  emojis?: string;
 }
