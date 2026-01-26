@@ -72,6 +72,24 @@ export class LineBotService {
     }]);
   }
 
+  // Send video
+  async sendVideo(userId: string, originalContentUrl: string, previewImageUrl?: string): Promise<SendMessageResult> {
+    return this.pushMessage(userId, [{
+      type: 'video',
+      originalContentUrl,
+      previewImageUrl: previewImageUrl || originalContentUrl,
+    }]);
+  }
+
+  // Send audio
+  async sendAudio(userId: string, originalContentUrl: string, duration: number = 60000): Promise<SendMessageResult> {
+    return this.pushMessage(userId, [{
+      type: 'audio',
+      originalContentUrl,
+      duration, // Duration in milliseconds
+    }]);
+  }
+
   // Send multiple messages (up to 5)
   async sendMessages(userId: string, messages: LineMessage[]): Promise<SendMessageResult> {
     return this.pushMessage(userId, messages.slice(0, 5));

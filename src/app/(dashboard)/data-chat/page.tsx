@@ -1426,7 +1426,29 @@ export default function DataChatPage() {
                                   }}
                                 />
                               </div>
-                            ) : (msg.messageType === 'audio' || msg.messageType === 'file') && msg.mediaUrl ? (
+                            ) : msg.messageType === 'audio' && msg.mediaUrl ? (
+                              <div style={{
+                                borderRadius: 12,
+                                overflow: 'hidden',
+                                background: colors.bgTertiary,
+                                border: `1px solid ${colors.border}`,
+                                padding: '8px 12px',
+                              }}>
+                                <audio 
+                                  src={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl}
+                                  controls
+                                  style={{ 
+                                    width: isMobile ? 200 : 250,
+                                    height: 40,
+                                  }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLAudioElement;
+                                    target.style.display = 'none';
+                                    target.parentElement!.innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 12px;">ไม่สามารถโหลดเสียงได้</div>';
+                                  }}
+                                />
+                              </div>
+                            ) : msg.messageType === 'file' && msg.mediaUrl ? (
                               <div style={{
                                 padding: '12px 16px',
                                 borderRadius: 12,
@@ -1436,16 +1458,14 @@ export default function DataChatPage() {
                                 alignItems: 'center',
                                 gap: 8,
                               }}>
-                                <span style={{ fontSize: 24 }}>
-                                  {msg.messageType === 'audio' ? '🎵' : '📎'}
-                                </span>
+                                <span style={{ fontSize: 24 }}>📎</span>
                                 <a 
                                   href={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   style={{ color: colors.accent, textDecoration: 'none' }}
                                 >
-                                  {msg.messageType === 'audio' ? 'ฟังเสียง' : 'ดาวน์โหลดไฟล์'}
+                                  ดาวน์โหลดไฟล์
                                 </a>
                               </div>
                             ) : msg.content?.startsWith('[sticker') ? (

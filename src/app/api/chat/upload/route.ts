@@ -93,10 +93,10 @@ export async function POST(request: NextRequest) {
     // Get room info for LINE
     const room = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(roomId) as RoomRecord | undefined;
 
-    // Send to LINE if it's an image and we have room info
+    // Send to LINE if it's media and we have room info
     let lineResult: { success: boolean; error?: string } = { success: false, error: 'Not sent to LINE' };
     
-    if (room && messageType === 'image') {
+    if (room && (messageType === 'image' || messageType === 'video' || messageType === 'audio')) {
       // Get LINE token
       let lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ? AND status = ?').get(room.lineTokenId, 'active') as LineTokenRecord | undefined;
       
@@ -107,8 +107,17 @@ export async function POST(request: NextRequest) {
       if (lineToken) {
         try {
           const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
-          const sendResult = await botService.sendImage(room.lineUserId, publicMediaUrl);
-          lineResult = sendResult;
+          let sendResult;
+          
+          if (messageType === 'image') {
+            sendResult = await botService.sendImage(room.lineUserId, publicMediaUrl);
+          } else if (messageType === 'video') {
+            sendResult = await botService.sendVideo(room.lineUserId, publicMediaUrl);
+          } else if (messageType === 'audio') {
+            sendResult = await botService.sendAudio(room.lineUserId, publicMediaUrl);
+          }
+          
+          lineResult = sendResult || { success: false, error: 'Unknown message type' };
           console.log('[Upload API] LINE send result:', lineResult);
         } catch (error) {
           console.error('[Upload API] LINE send error:', error);
