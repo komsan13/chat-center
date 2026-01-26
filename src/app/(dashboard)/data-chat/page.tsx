@@ -103,6 +103,7 @@ export default function DataChatPage() {
   });
   const selectedTokenIdsRef = useRef<Set<string>>(new Set());
   const [expandedWebsites, setExpandedWebsites] = useState<Set<string>>(new Set());
+  const [showChannelModal, setShowChannelModal] = useState(false);
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -1450,6 +1451,35 @@ export default function DataChatPage() {
         <div style={{ padding: isMobile ? 16 : 20 }}>
           {/* Filter & Search */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            {/* Settings Button */}
+            <button
+              onClick={() => setShowChannelModal(true)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 40, height: 40, borderRadius: 8,
+                background: selectedTokenIds.size < lineTokens.length ? colors.accentLight : colors.bgTertiary,
+                border: `1px solid ${selectedTokenIds.size < lineTokens.length ? colors.accent + '40' : colors.border}`,
+                color: selectedTokenIds.size < lineTokens.length ? colors.accent : colors.textMuted,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                position: 'relative',
+              }}
+              title="Channel Settings"
+            >
+              <Settings size={18} />
+              {selectedTokenIds.size < lineTokens.length && lineTokens.length > 0 && (
+                <div style={{
+                  position: 'absolute', top: -4, right: -4,
+                  width: 16, height: 16, borderRadius: '50%',
+                  background: colors.accent, color: '#fff',
+                  fontSize: 9, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {selectedTokenIds.size}
+                </div>
+              )}
+            </button>
+            
             {/* Filter Dropdown */}
             <div style={{ position: 'relative' }}>
               <button
@@ -1713,59 +1743,164 @@ export default function DataChatPage() {
             ))
           )}
         </div>
-        
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* CHANNEL SELECTION - Bottom of Sidebar */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {lineTokens.length > 0 && (
-          <div style={{
-            borderTop: `1px solid ${colors.border}`,
-            padding: '12px 16px',
-            background: colors.bgTertiary,
-          }}>
-            {/* Header with Select All/None */}
-            <div style={{ 
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              marginBottom: 10,
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* CHANNEL SETTINGS MODAL */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {showChannelModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(4px)',
+            animation: 'fadeIn 0.2s ease',
+          }}
+          onClick={() => setShowChannelModal(false)}
+        >
+          <style>{`
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slideUp { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+            @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+          `}</style>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: 520,
+              maxHeight: '85vh',
+              background: colors.bgSecondary,
+              borderRadius: 20,
+              boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+              overflow: 'hidden',
+              animation: 'slideUp 0.25s ease',
+              display: 'flex', flexDirection: 'column',
+              margin: 16,
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '24px 28px 20px',
+              background: `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}05)`,
+              borderBottom: `1px solid ${colors.border}`,
             }}>
-              <span style={{ 
-                fontSize: 11, fontWeight: 600, color: colors.textMuted,
-                textTransform: 'uppercase', letterSpacing: '0.5px',
-              }}>
-                Channels ({selectedTokenIds.size}/{lineTokens.length})
-              </span>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 14,
+                    background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent}cc)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: `0 4px 14px ${colors.accent}40`,
+                  }}>
+                    <Settings size={24} style={{ color: '#fff' }} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: colors.textPrimary }}>
+                      Channel Settings
+                    </h2>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: colors.textMuted }}>
+                      Select channels to receive messages and notifications
+                    </p>
+                  </div>
+                </div>
                 <button
-                  onClick={selectAllTokens}
+                  onClick={() => setShowChannelModal(false)}
                   style={{
-                    padding: '3px 8px', borderRadius: 4,
-                    background: selectedTokenIds.size === lineTokens.length ? colors.accentLight : 'transparent',
-                    border: 'none', fontSize: 10, fontWeight: 500,
-                    color: selectedTokenIds.size === lineTokens.length ? colors.accent : colors.textMuted,
-                    cursor: 'pointer',
+                    width: 40, height: 40, borderRadius: 12,
+                    background: colors.bgTertiary, border: 'none',
+                    color: colors.textMuted, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = colors.danger + '20';
+                    e.currentTarget.style.color = colors.danger;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = colors.bgTertiary;
+                    e.currentTarget.style.color = colors.textMuted;
                   }}
                 >
-                  All
-                </button>
-                <button
-                  onClick={deselectAllTokens}
-                  style={{
-                    padding: '3px 8px', borderRadius: 4,
-                    background: selectedTokenIds.size === 0 ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-                    border: 'none', fontSize: 10, fontWeight: 500,
-                    color: selectedTokenIds.size === 0 ? colors.danger : colors.textMuted,
-                    cursor: 'pointer',
-                  }}
-                >
-                  None
+                  <X size={20} />
                 </button>
               </div>
+
+              {/* Quick Stats Bar */}
+              <div style={{
+                display: 'flex', gap: 12, marginTop: 20,
+                padding: '14px 16px', borderRadius: 12,
+                background: colors.bgSecondary,
+                border: `1px solid ${colors.border}`,
+              }}>
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: colors.accent }}>
+                    {selectedTokenIds.size}
+                  </div>
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>Selected</div>
+                </div>
+                <div style={{ width: 1, background: colors.border }} />
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: colors.textPrimary }}>
+                    {lineTokens.length}
+                  </div>
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>Total</div>
+                </div>
+                <div style={{ width: 1, background: colors.border }} />
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#10b981' }}>
+                    {Object.keys(tokensByWebsite).length}
+                  </div>
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>Websites</div>
+                </div>
+              </div>
             </div>
-            
-            {/* Websites with nested tokens */}
-            <div style={{ 
-              display: 'flex', flexDirection: 'column', gap: 4,
-              maxHeight: 200, overflowY: 'auto',
+
+            {/* Quick Actions */}
+            <div style={{
+              display: 'flex', gap: 10, padding: '16px 28px',
+              borderBottom: `1px solid ${colors.border}`,
+            }}>
+              <button
+                onClick={selectAllTokens}
+                style={{
+                  flex: 1, padding: '12px 16px', borderRadius: 10,
+                  background: selectedTokenIds.size === lineTokens.length 
+                    ? `linear-gradient(135deg, ${colors.accent}, ${colors.accent}cc)` 
+                    : colors.bgTertiary,
+                  border: `1px solid ${selectedTokenIds.size === lineTokens.length ? 'transparent' : colors.border}`,
+                  color: selectedTokenIds.size === lineTokens.length ? '#fff' : colors.textPrimary,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'all 0.2s ease',
+                  boxShadow: selectedTokenIds.size === lineTokens.length ? `0 4px 12px ${colors.accent}40` : 'none',
+                }}
+              >
+                <Check size={16} />
+                Select All
+              </button>
+              <button
+                onClick={deselectAllTokens}
+                style={{
+                  flex: 1, padding: '12px 16px', borderRadius: 10,
+                  background: selectedTokenIds.size === 0 
+                    ? `linear-gradient(135deg, ${colors.danger}, ${colors.danger}cc)` 
+                    : colors.bgTertiary,
+                  border: `1px solid ${selectedTokenIds.size === 0 ? 'transparent' : colors.border}`,
+                  color: selectedTokenIds.size === 0 ? '#fff' : colors.textPrimary,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'all 0.2s ease',
+                  boxShadow: selectedTokenIds.size === 0 ? `0 4px 12px ${colors.danger}40` : 'none',
+                }}
+              >
+                <X size={16} />
+                Deselect All
+              </button>
+            </div>
+
+            {/* Channel List */}
+            <div style={{
+              flex: 1, overflowY: 'auto', padding: '16px 28px 24px',
             }}>
               {Object.entries(tokensByWebsite).map(([websiteKey, { websiteName, tokens }]) => {
                 const isExpanded = expandedWebsites.has(websiteKey);
@@ -1774,82 +1909,109 @@ export default function DataChatPage() {
                 const selectedCount = tokens.filter(t => selectedTokenIds.has(t.id)).length;
                 
                 return (
-                  <div key={websiteKey}>
-                    {/* Website Header */}
+                  <div key={websiteKey} style={{ marginBottom: 12 }}>
+                    {/* Website Card Header */}
                     <div
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '10px 12px', borderRadius: 8,
-                        background: isFullySelected ? colors.accentLight : isPartiallySelected ? colors.bgSecondary : colors.bgSecondary,
-                        border: `1px solid ${isFullySelected ? colors.accent + '40' : colors.border}`,
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        padding: '14px 18px', borderRadius: 14,
+                        background: isFullySelected 
+                          ? `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}08)` 
+                          : colors.bgTertiary,
+                        border: `2px solid ${isFullySelected ? colors.accent : isPartiallySelected ? colors.accent + '50' : colors.border}`,
                         cursor: 'pointer',
-                        transition: 'all 0.15s ease',
+                        transition: 'all 0.2s ease',
                       }}
+                      onClick={() => toggleWebsiteExpand(websiteKey)}
                     >
-                      {/* Checkbox for website */}
+                      {/* Animated Checkbox */}
                       <div
                         onClick={(e) => { 
                           e.stopPropagation(); 
                           toggleWebsiteTokens(websiteKey, !isFullySelected);
                         }}
                         style={{
-                          width: 18, height: 18, borderRadius: 4,
-                          background: isFullySelected ? colors.accent : isPartiallySelected ? colors.accent : 'transparent',
+                          width: 24, height: 24, borderRadius: 8,
+                          background: isFullySelected 
+                            ? `linear-gradient(135deg, ${colors.accent}, ${colors.accent}cc)` 
+                            : isPartiallySelected 
+                              ? colors.accent 
+                              : colors.bgSecondary,
                           border: `2px solid ${isFullySelected || isPartiallySelected ? colors.accent : colors.border}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           flexShrink: 0,
-                          transition: 'all 0.15s ease',
+                          transition: 'all 0.2s ease',
+                          boxShadow: isFullySelected ? `0 2px 8px ${colors.accent}40` : 'none',
                         }}
                       >
-                        {isFullySelected && <Check size={12} style={{ color: '#fff' }} />}
+                        {isFullySelected && <Check size={14} style={{ color: '#fff' }} />}
                         {isPartiallySelected && !isFullySelected && (
-                          <div style={{ width: 8, height: 2, background: '#fff', borderRadius: 1 }} />
+                          <div style={{ width: 10, height: 3, background: '#fff', borderRadius: 2 }} />
                         )}
                       </div>
                       
-                      {/* Website Name */}
-                      <div 
-                        onClick={() => toggleWebsiteExpand(websiteKey)}
-                        style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}
-                      >
-                        <span style={{ 
-                          fontSize: 12, fontWeight: 600, color: colors.textPrimary,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      {/* Website Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ 
+                            fontSize: 15, fontWeight: 600, color: colors.textPrimary,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {websiteName}
+                          </span>
+                          <span style={{ 
+                            fontSize: 12, fontWeight: 600,
+                            color: isFullySelected ? colors.accent : colors.textMuted,
+                            padding: '3px 10px', borderRadius: 20,
+                            background: isFullySelected ? colors.accent + '20' : colors.bgSecondary,
+                          }}>
+                            {selectedCount}/{tokens.length}
+                          </span>
+                        </div>
+                        <div style={{ 
+                          fontSize: 12, color: colors.textMuted, marginTop: 4,
+                          display: 'flex', alignItems: 'center', gap: 6,
                         }}>
-                          {websiteName}
-                        </span>
-                        <span style={{ 
-                          fontSize: 10, color: colors.textMuted,
-                          padding: '2px 6px', borderRadius: 10,
-                          background: colors.bgTertiary,
-                        }}>
-                          {selectedCount}/{tokens.length}
-                        </span>
+                          {isFullySelected ? (
+                            <>
+                              <Bell size={12} style={{ color: colors.accent }} />
+                              <span style={{ color: colors.accent }}>All notifications enabled</span>
+                            </>
+                          ) : isPartiallySelected ? (
+                            <>
+                              <Bell size={12} />
+                              <span>{selectedCount} channel{selectedCount > 1 ? 's' : ''} enabled</span>
+                            </>
+                          ) : (
+                            <>
+                              <BellOff size={12} />
+                              <span>Notifications disabled</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                       
-                      {/* Expand/Collapse button */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleWebsiteExpand(websiteKey); }}
+                      {/* Expand Arrow */}
+                      <div
                         style={{
-                          padding: 4, borderRadius: 4,
-                          background: 'transparent', border: 'none',
-                          color: colors.textMuted, cursor: 'pointer',
+                          width: 32, height: 32, borderRadius: 8,
+                          background: colors.bgSecondary,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.2s ease',
+                          transition: 'transform 0.25s ease',
                         }}
                       >
-                        <ChevronDown size={16} />
-                      </button>
+                        <ChevronDown size={18} style={{ color: colors.textMuted }} />
+                      </div>
                     </div>
                     
-                    {/* Nested Tokens (when expanded) */}
+                    {/* Expanded Token List */}
                     {isExpanded && (
                       <div style={{ 
-                        marginLeft: 16, marginTop: 4,
-                        display: 'flex', flexDirection: 'column', gap: 4,
-                        borderLeft: `2px solid ${colors.border}`,
-                        paddingLeft: 12,
+                        marginTop: 8, marginLeft: 20,
+                        borderLeft: `3px solid ${colors.accent}30`,
+                        paddingLeft: 20,
+                        display: 'flex', flexDirection: 'column', gap: 6,
                       }}>
                         {tokens.map(token => {
                           const isSelected = selectedTokenIds.has(token.id);
@@ -1858,43 +2020,68 @@ export default function DataChatPage() {
                               key={token.id}
                               onClick={() => toggleTokenSelection(token.id)}
                               style={{
-                                display: 'flex', alignItems: 'center', gap: 10,
-                                padding: '8px 10px', borderRadius: 6,
-                                background: isSelected ? colors.accentLight : 'transparent',
+                                display: 'flex', alignItems: 'center', gap: 14,
+                                padding: '12px 16px', borderRadius: 12,
+                                background: isSelected ? colors.accent + '10' : colors.bgTertiary,
+                                border: `1px solid ${isSelected ? colors.accent + '40' : 'transparent'}`,
                                 cursor: 'pointer',
                                 transition: 'all 0.15s ease',
                               }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected) {
+                                  e.currentTarget.style.background = colors.bgSecondary;
+                                  e.currentTarget.style.borderColor = colors.border;
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected) {
+                                  e.currentTarget.style.background = colors.bgTertiary;
+                                  e.currentTarget.style.borderColor = 'transparent';
+                                }
+                              }}
                             >
-                              {/* Checkbox */}
+                              {/* Token Checkbox */}
                               <div
                                 style={{
-                                  width: 16, height: 16, borderRadius: 4,
-                                  background: isSelected ? colors.accent : 'transparent',
+                                  width: 22, height: 22, borderRadius: 6,
+                                  background: isSelected ? colors.accent : colors.bgSecondary,
                                   border: `2px solid ${isSelected ? colors.accent : colors.border}`,
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   flexShrink: 0,
                                   transition: 'all 0.15s ease',
                                 }}
                               >
-                                {isSelected && <Check size={10} style={{ color: '#fff' }} />}
+                                {isSelected && <Check size={12} style={{ color: '#fff' }} />}
                               </div>
                               
                               {/* Token Name */}
                               <span style={{ 
-                                fontSize: 11, color: isSelected ? colors.textPrimary : colors.textMuted,
+                                flex: 1, fontSize: 14, 
+                                color: isSelected ? colors.textPrimary : colors.textMuted,
                                 fontWeight: isSelected ? 500 : 400,
                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                flex: 1,
                               }}>
                                 {token.name}
                               </span>
                               
-                              {/* Notification indicator */}
-                              {isSelected ? (
-                                <Bell size={12} style={{ color: colors.accent, flexShrink: 0 }} />
-                              ) : (
-                                <BellOff size={12} style={{ color: colors.textMuted, flexShrink: 0, opacity: 0.5 }} />
-                              )}
+                              {/* Status Icon */}
+                              <div style={{
+                                padding: '6px 10px', borderRadius: 8,
+                                background: isSelected ? colors.accent + '20' : colors.bgSecondary,
+                                display: 'flex', alignItems: 'center', gap: 6,
+                              }}>
+                                {isSelected ? (
+                                  <>
+                                    <Bell size={13} style={{ color: colors.accent }} />
+                                    <span style={{ fontSize: 11, fontWeight: 500, color: colors.accent }}>ON</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <BellOff size={13} style={{ color: colors.textMuted }} />
+                                    <span style={{ fontSize: 11, fontWeight: 500, color: colors.textMuted }}>OFF</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -1903,10 +2090,56 @@ export default function DataChatPage() {
                   </div>
                 );
               })}
+
+              {lineTokens.length === 0 && (
+                <div style={{
+                  padding: 40, textAlign: 'center',
+                  color: colors.textMuted,
+                }}>
+                  <MessageCircle size={48} style={{ opacity: 0.3, marginBottom: 16 }} />
+                  <p style={{ margin: 0, fontSize: 15 }}>No channels available</p>
+                  <p style={{ margin: '8px 0 0', fontSize: 13, opacity: 0.7 }}>
+                    Add LINE tokens in Data Management
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '16px 28px 20px',
+              background: colors.bgTertiary,
+              borderTop: `1px solid ${colors.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <div style={{ fontSize: 13, color: colors.textMuted }}>
+                💡 Selected channels will show chats and sound notifications
+              </div>
+              <button
+                onClick={() => setShowChannelModal(false)}
+                style={{
+                  padding: '12px 28px', borderRadius: 10,
+                  background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent}cc)`,
+                  border: 'none', color: '#fff',
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  boxShadow: `0 4px 14px ${colors.accent}40`,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = `0 6px 20px ${colors.accent}50`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = `0 4px 14px ${colors.accent}40`;
+                }}
+              >
+                Done
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* MAIN CHAT AREA */}
