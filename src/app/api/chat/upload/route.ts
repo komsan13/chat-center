@@ -5,6 +5,16 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import { LineBotService } from '@/lib/line-bot';
 
+// Allow larger file uploads (50MB for video)
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+// Route segment config for larger uploads
+export const maxDuration = 60; // 60 seconds timeout
+
 interface RoomRecord {
   id: string;
   lineUserId: string;
@@ -54,13 +64,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File and roomId are required' }, { status: 400 });
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File size exceeds 10MB limit' }, { status: 400 });
+    // Validate file size (max 50MB for video, 10MB for others)
+    const mimeType = file.type;
+    const isVideo = mimeType.startsWith('video/');
+    const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    
+    if (file.size > maxSize) {
+      return NextResponse.json({ 
+        error: `File size exceeds ${isVideo ? '50MB' : '10MB'} limit` 
+      }, { status: 400 });
     }
 
-    // Determine file type and message type
-    const mimeType = file.type;
+    // Determine message type
     let messageType: 'image' | 'video' | 'audio' | 'file' = 'file';
     
     if (mimeType.startsWith('image/')) {
