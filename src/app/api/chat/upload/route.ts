@@ -3,6 +3,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import Database from 'better-sqlite3';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import { LineBotService } from '@/lib/line-bot';
 
 // Route segment config for larger uploads
@@ -98,14 +99,36 @@ export async function POST(request: NextRequest) {
     const baseUrl = getBaseUrl(request);
     const publicMediaUrl = `${baseUrl}${mediaUrl}`;
 
+    // Generate thumbnail for video files using ffmpeg
+    let thumbnailUrl = '';
+    if (messageType === 'video') {
+      try {
+        const thumbnailName = `${Date.now()}_thumb.jpg`;
+        const thumbnailPath = path.join(uploadsDir, thumbnailName);
+        
+        // Use ffmpeg to extract first frame as thumbnail
+        execSync(`ffmpeg -i "${filePath}" -ss 00:00:01 -vframes 1 -vf "scale=480:-1" "${thumbnailPath}" -y`, {
+          timeout: 30000, // 30 second timeout
+        });
+        
+        if (fs.existsSync(thumbnailPath)) {
+          thumbnailUrl = `/api/uploads/${roomId}/${thumbnailName}`;
+          console.log('[Upload API] Generated video thumbnail:', thumbnailUrl);
+        }
+      } catch (error) {
+        console.error('[Upload API] Failed to generate thumbnail:', error);
+        // Continue without thumbnail - will use default
+      }
+    }
+
     // Get room info for LINE
     const room = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(roomId) as RoomRecord | undefined;
 
     // Send to LINE if it's media and we have room info
     let lineResult: { success: boolean; error?: string } = { success: false, error: 'Not sent to LINE' };
     
-    // Only send images to LINE (video/audio not reliably supported due to preview requirements)
-    if (room && messageType === 'image') {
+    // Send images and videos to LINE
+    if (room && (messageType === 'image' || messageType === 'video')) {
       // Get LINE token
       let lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ? AND status = ?').get(room.lineTokenId, 'active') as LineTokenRecord | undefined;
       
@@ -119,19 +142,31 @@ export async function POST(request: NextRequest) {
           
           // Ensure HTTPS for LINE API
           const secureMediaUrl = publicMediaUrl.replace('http://', 'https://');
-          console.log('[Upload API] Sending image to LINE:', { messageType, url: secureMediaUrl });
+          console.log('[Upload API] Sending to LINE:', { messageType, url: secureMediaUrl });
           
-          const sendResult = await botService.sendImage(room.lineUserId, secureMediaUrl);
-          lineResult = sendResult || { success: false, error: 'Failed to send' };
+          if (messageType === 'image') {
+            const sendResult = await botService.sendImage(room.lineUserId, secureMediaUrl);
+            lineResult = sendResult || { success: false, error: 'Failed to send' };
+          } else if (messageType === 'video') {
+            // Use generated thumbnail or create one from first frame
+            const secureThumbnailUrl = thumbnailUrl 
+              ? `${baseUrl}${thumbnailUrl}`.replace('http://', 'https://')
+              : secureMediaUrl.replace(/\.[^.]+$/, '_thumb.jpg');
+            
+            console.log('[Upload API] Sending video with thumbnail:', { video: secureMediaUrl, thumbnail: secureThumbnailUrl });
+            const sendResult = await botService.sendVideo(room.lineUserId, secureMediaUrl, secureThumbnailUrl);
+            lineResult = sendResult || { success: false, error: 'Failed to send' };
+          }
+          
           console.log('[Upload API] LINE send result:', lineResult);
         } catch (error) {
           console.error('[Upload API] LINE send error:', error);
           lineResult = { success: false, error: String(error) };
         }
       }
-    } else if (messageType === 'video' || messageType === 'audio') {
-      // Video/Audio not sent to LINE - saved locally only
-      lineResult = { success: false, error: 'Video/Audio ไม่รองรับการส่งไป LINE (บันทึกในระบบแล้ว)' };
+    } else if (messageType === 'audio') {
+      // Audio not sent to LINE - saved locally only
+      lineResult = { success: false, error: 'Audio ไม่รองรับการส่งไป LINE (บันทึกในระบบแล้ว)' };
     }
 
     // Create message in database
