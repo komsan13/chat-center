@@ -427,7 +427,7 @@ export default function DataChatPage() {
   }, []);
 
   // Handle room update from socket - update rooms list when other browsers send messages
-  const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number; displayName?: string; pictureUrl?: string; status?: string }) => {
+  const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number; displayName?: string; pictureUrl?: string; status?: 'active' | 'spam' | 'archived' | 'blocked' }) => {
     console.log('[Chat] Room update received:', data.id);
     
     setRooms(prev => {
