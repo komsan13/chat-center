@@ -1022,8 +1022,51 @@ export default function DataChatPage() {
                           <div style={{ maxWidth: '65%' }}>
                             {msg.messageType === 'sticker' ? (
                               <div>{renderSticker(msg.packageId, msg.stickerId)}</div>
-                            ) : msg.messageType === 'image' ? (
-                              <img src={msg.mediaUrl} alt="" style={{ maxWidth: 240, borderRadius: 12 }} />
+                            ) : msg.messageType === 'image' && msg.mediaUrl ? (
+                              <div style={{ 
+                                borderRadius: 12, 
+                                overflow: 'hidden',
+                                background: colors.bgTertiary,
+                                border: `1px solid ${colors.border}`,
+                              }}>
+                                <img 
+                                  src={msg.mediaUrl} 
+                                  alt="รูปภาพ" 
+                                  style={{ 
+                                    maxWidth: 240, 
+                                    maxHeight: 320,
+                                    display: 'block',
+                                    objectFit: 'contain',
+                                  }} 
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.parentElement!.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">ไม่สามารถโหลดรูปภาพได้</div>';
+                                  }}
+                                />
+                              </div>
+                            ) : (msg.messageType === 'video' || msg.messageType === 'audio' || msg.messageType === 'file') && msg.mediaUrl ? (
+                              <div style={{
+                                padding: '12px 16px',
+                                borderRadius: 12,
+                                background: colors.bubbleIncoming,
+                                border: `1px solid ${colors.border}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                              }}>
+                                <span style={{ fontSize: 24 }}>
+                                  {msg.messageType === 'video' ? '🎬' : msg.messageType === 'audio' ? '🎵' : '📎'}
+                                </span>
+                                <a 
+                                  href={msg.mediaUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  style={{ color: colors.accent, textDecoration: 'none' }}
+                                >
+                                  {msg.messageType === 'video' ? 'ดูวิดีโอ' : msg.messageType === 'audio' ? 'ฟังเสียง' : 'ดาวน์โหลดไฟล์'}
+                                </a>
+                              </div>
                             ) : msg.content?.startsWith('[sticker') ? (
                               <div style={{ fontSize: 40 }}>{convertStickerText(msg.content || '')}</div>
                             ) : msg.content && /^\([a-zA-Z\s]+\)(\([a-zA-Z\s]+\))*$/.test(msg.content.trim()) ? (
