@@ -102,6 +102,7 @@ export default function DataChatPage() {
     return new Set();
   });
   const selectedTokenIdsRef = useRef<Set<string>>(new Set());
+  const [expandedWebsites, setExpandedWebsites] = useState<Set<string>>(new Set());
   
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -310,6 +311,62 @@ export default function DataChatPage() {
       return newSet;
     });
   }, []);
+
+  // Toggle website expansion
+  const toggleWebsiteExpand = useCallback((websiteKey: string) => {
+    setExpandedWebsites(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(websiteKey)) {
+        newSet.delete(websiteKey);
+      } else {
+        newSet.add(websiteKey);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Group tokens by website
+  const tokensByWebsite = useMemo(() => {
+    const groups: Record<string, { websiteName: string; tokens: LineToken[] }> = {};
+    lineTokens.forEach(token => {
+      const key = token.websiteId || 'no-website';
+      const name = token.websiteName || 'ไม่ระบุเว็บไซต์';
+      if (!groups[key]) {
+        groups[key] = { websiteName: name, tokens: [] };
+      }
+      groups[key].tokens.push(token);
+    });
+    return groups;
+  }, [lineTokens]);
+
+  // Toggle all tokens in a website
+  const toggleWebsiteTokens = useCallback((websiteKey: string, select: boolean) => {
+    const tokens = tokensByWebsite[websiteKey]?.tokens || [];
+    setSelectedTokenIds(prev => {
+      const newSet = new Set(prev);
+      tokens.forEach(t => {
+        if (select) {
+          newSet.add(t.id);
+        } else {
+          newSet.delete(t.id);
+        }
+      });
+      return newSet;
+    });
+  }, [tokensByWebsite]);
+
+  // Check if all tokens in a website are selected
+  const isWebsiteFullySelected = useCallback((websiteKey: string) => {
+    const tokens = tokensByWebsite[websiteKey]?.tokens || [];
+    return tokens.length > 0 && tokens.every(t => selectedTokenIds.has(t.id));
+  }, [tokensByWebsite, selectedTokenIds]);
+
+  // Check if some (but not all) tokens in a website are selected
+  const isWebsitePartiallySelected = useCallback((websiteKey: string) => {
+    const tokens = tokensByWebsite[websiteKey]?.tokens || [];
+    const selectedCount = tokens.filter(t => selectedTokenIds.has(t.id)).length;
+    return selectedCount > 0 && selectedCount < tokens.length;
+  }, [tokensByWebsite, selectedTokenIds]);
 
   // Select all tokens
   const selectAllTokens = useCallback(() => {
@@ -1705,65 +1762,145 @@ export default function DataChatPage() {
               </div>
             </div>
             
-            {/* Token Checkboxes */}
+            {/* Websites with nested tokens */}
             <div style={{ 
-              display: 'flex', flexDirection: 'column', gap: 6,
-              maxHeight: 120, overflowY: 'auto',
+              display: 'flex', flexDirection: 'column', gap: 4,
+              maxHeight: 200, overflowY: 'auto',
             }}>
-              {lineTokens.map(token => {
-                const isSelected = selectedTokenIds.has(token.id);
+              {Object.entries(tokensByWebsite).map(([websiteKey, { websiteName, tokens }]) => {
+                const isExpanded = expandedWebsites.has(websiteKey);
+                const isFullySelected = isWebsiteFullySelected(websiteKey);
+                const isPartiallySelected = isWebsitePartiallySelected(websiteKey);
+                const selectedCount = tokens.filter(t => selectedTokenIds.has(t.id)).length;
+                
                 return (
-                  <label
-                    key={token.id}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 10px', borderRadius: 8,
-                      background: isSelected ? colors.accentLight : colors.bgSecondary,
-                      border: `1px solid ${isSelected ? colors.accent + '40' : colors.border}`,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {/* Custom Checkbox */}
+                  <div key={websiteKey}>
+                    {/* Website Header */}
                     <div
-                      onClick={(e) => { e.preventDefault(); toggleTokenSelection(token.id); }}
                       style={{
-                        width: 18, height: 18, borderRadius: 4,
-                        background: isSelected ? colors.accent : 'transparent',
-                        border: `2px solid ${isSelected ? colors.accent : colors.border}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0,
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '10px 12px', borderRadius: 8,
+                        background: isFullySelected ? colors.accentLight : isPartiallySelected ? colors.bgSecondary : colors.bgSecondary,
+                        border: `1px solid ${isFullySelected ? colors.accent + '40' : colors.border}`,
+                        cursor: 'pointer',
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      {isSelected && <Check size={12} style={{ color: '#fff' }} />}
-                    </div>
-                    
-                    {/* Token Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ 
-                        fontSize: 12, fontWeight: 500, color: colors.textPrimary,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {token.websiteName || token.name}
+                      {/* Checkbox for website */}
+                      <div
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          toggleWebsiteTokens(websiteKey, !isFullySelected);
+                        }}
+                        style={{
+                          width: 18, height: 18, borderRadius: 4,
+                          background: isFullySelected ? colors.accent : isPartiallySelected ? colors.accent : 'transparent',
+                          border: `2px solid ${isFullySelected || isPartiallySelected ? colors.accent : colors.border}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {isFullySelected && <Check size={12} style={{ color: '#fff' }} />}
+                        {isPartiallySelected && !isFullySelected && (
+                          <div style={{ width: 8, height: 2, background: '#fff', borderRadius: 1 }} />
+                        )}
                       </div>
-                      {token.websiteName && token.websiteName !== token.name && (
-                        <div style={{ 
-                          fontSize: 10, color: colors.textMuted,
+                      
+                      {/* Website Name */}
+                      <div 
+                        onClick={() => toggleWebsiteExpand(websiteKey)}
+                        style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <span style={{ 
+                          fontSize: 12, fontWeight: 600, color: colors.textPrimary,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
-                          {token.name}
-                        </div>
-                      )}
+                          {websiteName}
+                        </span>
+                        <span style={{ 
+                          fontSize: 10, color: colors.textMuted,
+                          padding: '2px 6px', borderRadius: 10,
+                          background: colors.bgTertiary,
+                        }}>
+                          {selectedCount}/{tokens.length}
+                        </span>
+                      </div>
+                      
+                      {/* Expand/Collapse button */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleWebsiteExpand(websiteKey); }}
+                        style={{
+                          padding: 4, borderRadius: 4,
+                          background: 'transparent', border: 'none',
+                          color: colors.textMuted, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                        }}
+                      >
+                        <ChevronDown size={16} />
+                      </button>
                     </div>
                     
-                    {/* Notification indicator */}
-                    {isSelected ? (
-                      <Bell size={14} style={{ color: colors.accent, flexShrink: 0 }} />
-                    ) : (
-                      <BellOff size={14} style={{ color: colors.textMuted, flexShrink: 0 }} />
+                    {/* Nested Tokens (when expanded) */}
+                    {isExpanded && (
+                      <div style={{ 
+                        marginLeft: 16, marginTop: 4,
+                        display: 'flex', flexDirection: 'column', gap: 4,
+                        borderLeft: `2px solid ${colors.border}`,
+                        paddingLeft: 12,
+                      }}>
+                        {tokens.map(token => {
+                          const isSelected = selectedTokenIds.has(token.id);
+                          return (
+                            <div
+                              key={token.id}
+                              onClick={() => toggleTokenSelection(token.id)}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '8px 10px', borderRadius: 6,
+                                background: isSelected ? colors.accentLight : 'transparent',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {/* Checkbox */}
+                              <div
+                                style={{
+                                  width: 16, height: 16, borderRadius: 4,
+                                  background: isSelected ? colors.accent : 'transparent',
+                                  border: `2px solid ${isSelected ? colors.accent : colors.border}`,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  flexShrink: 0,
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                {isSelected && <Check size={10} style={{ color: '#fff' }} />}
+                              </div>
+                              
+                              {/* Token Name */}
+                              <span style={{ 
+                                fontSize: 11, color: isSelected ? colors.textPrimary : colors.textMuted,
+                                fontWeight: isSelected ? 500 : 400,
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                flex: 1,
+                              }}>
+                                {token.name}
+                              </span>
+                              
+                              {/* Notification indicator */}
+                              {isSelected ? (
+                                <Bell size={12} style={{ color: colors.accent, flexShrink: 0 }} />
+                              ) : (
+                                <BellOff size={12} style={{ color: colors.textMuted, flexShrink: 0, opacity: 0.5 }} />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
-                  </label>
+                  </div>
                 );
               })}
             </div>
