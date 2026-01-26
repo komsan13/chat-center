@@ -1,16 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
 // Database connection
 function getDb() {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  return new Database(dbPath);
+  const dbPath = path.join(process.cwd(), 'data', 'dev.db');
+  const fallbackPath = path.join(process.cwd(), 'prisma', 'dev.db');
+  
+  try {
+    if (fs.existsSync(dbPath)) {
+      return new Database(dbPath);
+    }
+  } catch {}
+  return new Database(fallbackPath);
+}
+
+// Auto-migrate function to ensure all columns exist
+function ensureSchema(db: Database.Database) {
+  try {
+    // Check if table exists
+    const tableExists = db.prepare(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name='LineChatRoom'
+    `).get();
+    
+    if (!tableExists) {
+      // Create table if not exists
+      db.exec(`
+        CREATE TABLE LineChatRoom (
+          id TEXT PRIMARY KEY,
+          lineUserId TEXT NOT NULL,
+          lineTokenId TEXT,
+          displayName TEXT NOT NULL,
+          pictureUrl TEXT,
+          statusMessage TEXT,
+          lastMessageAt TEXT,
+          unreadCount INTEGER DEFAULT 0,
+          isPinned INTEGER DEFAULT 0,
+          isMuted INTEGER DEFAULT 0,
+          tags TEXT DEFAULT '[]',
+          status TEXT DEFAULT 'active',
+          assignedTo TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      return;
+    }
+    
+    // Add missing columns
+    const columns = db.prepare(`PRAGMA table_info(LineChatRoom)`).all() as { name: string }[];
+    const columnNames = columns.map(c => c.name);
+    
+    const migrations = [
+      { column: 'isPinned', sql: 'ALTER TABLE LineChatRoom ADD COLUMN isPinned INTEGER DEFAULT 0' },
+      { column: 'isMuted', sql: 'ALTER TABLE LineChatRoom ADD COLUMN isMuted INTEGER DEFAULT 0' },
+      { column: 'tags', sql: "ALTER TABLE LineChatRoom ADD COLUMN tags TEXT DEFAULT '[]'" },
+      { column: 'status', sql: "ALTER TABLE LineChatRoom ADD COLUMN status TEXT DEFAULT 'active'" },
+      { column: 'assignedTo', sql: 'ALTER TABLE LineChatRoom ADD COLUMN assignedTo TEXT' },
+    ];
+    
+    for (const m of migrations) {
+      if (!columnNames.includes(m.column)) {
+        try { db.exec(m.sql); } catch {}
+      }
+    }
+    
+    // Create ChatNote table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS ChatNote (
+        id TEXT PRIMARY KEY,
+        roomId TEXT NOT NULL,
+        content TEXT NOT NULL,
+        createdBy TEXT,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (err) {
+    console.error('[Schema Migration]', err);
+  }
 }
 
 // GET - Get all chat rooms with recent messages (Telegram-style preload)
 export async function GET(request: NextRequest) {
   const db = getDb();
+  
+  // Auto-migrate schema on first request
+  ensureSchema(db);
   
   try {
     const { searchParams } = new URL(request.url);
