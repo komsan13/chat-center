@@ -500,6 +500,21 @@ export default function DataChatPage() {
     fetchRooms();
   }, [fetchRooms]);
 
+  // Fallback polling when socket is disconnected - poll every 5 seconds
+  useEffect(() => {
+    if (!isConnected) {
+      console.log('[Chat] Socket disconnected, starting fallback polling');
+      const pollInterval = setInterval(() => {
+        fetchRooms();
+        if (selectedRoomRef.current) {
+          fetchMessages(selectedRoomRef.current);
+        }
+      }, 5000);
+      
+      return () => clearInterval(pollInterval);
+    }
+  }, [isConnected, fetchRooms, fetchMessages]);
+
   // Load messages when room changes
   useEffect(() => {
     if (selectedRoom) {
