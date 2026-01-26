@@ -334,6 +334,7 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
   // Get updated unread count from database
   const updatedRoom = db.prepare('SELECT unreadCount FROM LineChatRoom WHERE id = ?').get(room.id) as { unreadCount: number } | undefined;
   const newUnreadCount = updatedRoom?.unreadCount || 1;
+  console.log(`[LINE Webhook] Room ${room.id} unreadCount updated to: ${newUnreadCount}`);
 
   // Emit new message event
   const messageData = {
@@ -355,6 +356,7 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
   emitChatEvent('new-message', messageData, room.id);
   
   // Also emit room update with correct unreadCount from database
+  console.log(`[LINE Webhook] Broadcasting room-update with unreadCount: ${newUnreadCount}`);
   emitChatEvent('room-update', {
     id: room.id,
     lastMessage: messageData,
