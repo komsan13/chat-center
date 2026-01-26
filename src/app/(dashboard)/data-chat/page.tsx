@@ -1255,7 +1255,7 @@ export default function DataChatPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <button style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: 'none', background: colors.bgTertiary, color: colors.textPrimary, fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}>
-                      <div style={{ width: 32, height: 32, borderRadius: 10, background: colors.warningLight || 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <AlertTriangle size={16} style={{ color: colors.warning }} />
                       </div>
                       <span>เอาเข้าสแปม</span>
