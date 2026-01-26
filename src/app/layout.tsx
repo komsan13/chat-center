@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Urbanist } from "next/font/google";
+import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 
-const urbanist = Urbanist({
-  variable: "--font-urbanist",
-  subsets: ["latin"],
+const notoSansThai = Noto_Sans_Thai({
+  variable: "--font-noto-sans",
+  subsets: ["latin", "thai"],
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
@@ -20,10 +20,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="th">
       <body
-        className={`${urbanist.variable} font-sans antialiased bg-background`}
-        style={{ fontFamily: 'var(--font-urbanist), sans-serif' }}
+        className={`${notoSansThai.variable} font-sans antialiased bg-background`}
+        style={{ fontFamily: 'var(--font-noto-sans), sans-serif' }}
       >
         {children}
       </body>
