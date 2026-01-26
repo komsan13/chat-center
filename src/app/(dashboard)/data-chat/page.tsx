@@ -276,7 +276,6 @@ export default function DataChatPage() {
     onNewMessage: (msg) => {
       const message: Message = { ...msg, content: msg.content || '' };
       handleNewMessage(message);
-      // Play sound for messages from users (useSocket handles sound internally)
     },
     onNewRoom: (room) => {
       const newRoom: ChatRoom = {
@@ -284,7 +283,6 @@ export default function DataChatPage() {
         lastMessage: room.lastMessage ? { ...room.lastMessage, content: room.lastMessage.content || '' } : undefined,
       };
       setRooms(prev => prev.some(r => r.id === newRoom.id) ? prev : [newRoom, ...prev]);
-      // Sound is handled by useSocket
     },
     onUserTyping: ({ roomId, userName, isTyping }) => {
       setTypingUsers(prev => {
@@ -313,6 +311,7 @@ export default function DataChatPage() {
       });
     },
     enableSound: true,
+    currentRoomId: selectedRoom, // Pass current room to skip sound notification
   });
 
   // Update sendTypingRef when sendTyping changes
@@ -793,6 +792,18 @@ export default function DataChatPage() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
+                {/* Close chat button */}
+                <button 
+                  onClick={() => setSelectedRoom(null)} 
+                  title="ปิดแชท"
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,
+                    background: colors.bgCard, color: colors.textSecondary, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <X size={18} />
+                </button>
                 {[Phone, Video, Search, MoreVertical].map((Icon, i) => (
                   <button key={i} onClick={() => i === 3 && setShowRightPanel(!showRightPanel)} style={{
                     width: 36, height: 36, borderRadius: 10, border: `1px solid ${colors.border}`,

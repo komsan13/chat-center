@@ -47,6 +47,7 @@ interface UseSocketOptions {
   onDisconnect?: () => void;
   onConnectionChange?: (connected: boolean) => void;
   enableSound?: boolean;
+  currentRoomId?: string | null; // Current room being viewed - won't play sound for this room
 }
 
 // Connection state type
@@ -269,7 +270,9 @@ export function useSocket(options: UseSocketOptions = {}) {
       console.log('[Socket] 📨 New message:', message.id);
       
       // Play notification sound for incoming messages from LINE users
-      if (message.sender === 'user') {
+      // But only if not currently viewing that room
+      const currentRoom = optionsRef.current.currentRoomId;
+      if (message.sender === 'user' && message.roomId !== currentRoom) {
         playNotificationSound();
       }
       
