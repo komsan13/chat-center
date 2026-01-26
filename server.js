@@ -32,7 +32,7 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  // Initialize Socket.IO with enterprise-grade settings
+  // Initialize Socket.IO with AGGRESSIVE keep-alive settings for background tabs
   const io = new Server(server, {
     cors: {
       origin: '*',
@@ -41,16 +41,16 @@ app.prepare().then(() => {
     },
     path: '/socket.io',
     transports: ['websocket', 'polling'],
-    // Enterprise stability settings
-    pingTimeout: 20000,        // 20 seconds to wait for pong
-    pingInterval: 5000,        // Ping every 5 seconds (matches client)
-    upgradeTimeout: 30000,     // 30 seconds for transport upgrade
-    maxHttpBufferSize: 1e7,    // 10MB max message size
-    connectTimeout: 30000,     // 30 seconds connection timeout
-    allowEIO3: true,           // Allow Engine.IO v3 clients
+    // CRITICAL: Very aggressive ping settings to survive Chrome tab throttling
+    pingTimeout: 60000,        // 60 seconds - very lenient timeout
+    pingInterval: 3000,        // Ping every 3 seconds 
+    upgradeTimeout: 30000,
+    maxHttpBufferSize: 1e7,
+    connectTimeout: 20000,
+    allowEIO3: true,
     // Performance settings
     perMessageDeflate: {
-      threshold: 1024,         // Compress messages larger than 1KB
+      threshold: 1024,
     },
   });
 
