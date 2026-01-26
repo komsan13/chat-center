@@ -8,7 +8,7 @@ function getDb() {
   return new Database(dbPath);
 }
 
-// GET - Get all chat rooms
+// GET - Get all chat rooms with recent messages (Telegram-style preload)
 export async function GET(request: NextRequest) {
   const db = getDb();
   
@@ -48,13 +48,39 @@ export async function GET(request: NextRequest) {
 
     const rooms = db.prepare(query).all(...params) as ChatRoomRecord[];
 
-    // Parse JSON fields
+    // Preload recent messages for all rooms (Telegram-style instant loading)
+    const roomIds = rooms.map(r => r.id);
+    const recentMessagesMap: { [roomId: string]: MessageRecord[] } = {};
+    
+    if (roomIds.length > 0) {
+      // Get 15 recent messages per room in a single query using UNION ALL
+      const messagesQuery = roomIds.map(roomId => `
+        SELECT * FROM (
+          SELECT * FROM LineChatMessage 
+          WHERE roomId = '${roomId}' AND isDeleted = 0
+          ORDER BY createdAt DESC LIMIT 15
+        )
+      `).join(' UNION ALL ') + ' ORDER BY createdAt ASC';
+      
+      const allMessages = db.prepare(messagesQuery).all() as MessageRecord[];
+      
+      // Group messages by roomId
+      allMessages.forEach(msg => {
+        if (!recentMessagesMap[msg.roomId]) {
+          recentMessagesMap[msg.roomId] = [];
+        }
+        recentMessagesMap[msg.roomId].push(msg);
+      });
+    }
+
+    // Parse JSON fields and attach recent messages
     const parsedRooms = rooms.map(room => ({
       ...room,
       tags: JSON.parse(room.tags || '[]'),
       isPinned: !!room.isPinned,
       isMuted: !!room.isMuted,
       lastMessage: room.lastMessage ? JSON.parse(room.lastMessage) : null,
+      recentMessages: recentMessagesMap[room.id] || [], // Preloaded messages
     }));
 
     return NextResponse.json(parsedRooms);
@@ -138,4 +164,22 @@ interface ChatRoomRecord {
   createdAt: string;
   updatedAt: string;
   lastMessage?: string;
+}
+
+interface MessageRecord {
+  id: string;
+  roomId: string;
+  lineMessageId?: string;
+  messageType: string;
+  content: string;
+  mediaUrl?: string;
+  stickerId?: string;
+  packageId?: string;
+  sender: string;
+  senderName?: string;
+  status: string;
+  replyToId?: string;
+  isDeleted: number;
+  readAt?: string;
+  createdAt: string;
 }

@@ -43,6 +43,7 @@ interface ChatRoom {
   status: 'active' | 'archived' | 'blocked';
   createdAt: string;
   updatedAt: string;
+  recentMessages?: Message[]; // Preloaded messages from API
 }
 
 const quickReplies = [
@@ -184,6 +185,12 @@ export default function DataChatPage() {
         } else {
           setRooms(data);
         }
+        // Preload cache with recentMessages from API (Telegram-style instant loading)
+        data.forEach((room: ChatRoom) => {
+          if (room.recentMessages && room.recentMessages.length > 0) {
+            messagesCacheRef.current.set(room.id, room.recentMessages);
+          }
+        });
       }
     } catch (error) {
       console.error('Failed to fetch rooms:', error);
@@ -192,17 +199,17 @@ export default function DataChatPage() {
     }
   }, [filterStatus, searchTerm]);
 
-  const fetchMessages = useCallback(async (roomId: string, useCache = true) => {
-    // Check cache first for instant loading
-    if (useCache && messagesCacheRef.current.has(roomId)) {
+  const fetchMessages = useCallback(async (roomId: string) => {
+    // Check cache first for instant loading (preloaded from rooms API)
+    if (messagesCacheRef.current.has(roomId)) {
       const cached = messagesCacheRef.current.get(roomId)!;
       setMessages(cached);
       setIsLoadingMessages(false);
-      // Still fetch in background to get latest
+      // Fetch full messages in background (may have more than preloaded 15)
       fetch(`/api/chat/rooms/${roomId}/messages`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
-          if (data) {
+          if (data && data.length > cached.length) {
             messagesCacheRef.current.set(roomId, data);
             setMessages(data);
           }
