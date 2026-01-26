@@ -52,6 +52,24 @@ interface UseSocketOptions {
 // Connection state type
 type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 
+// Simple beep sound generator using Web Audio API
+function createBeepSound(audioContext: AudioContext) {
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // 800Hz tone
+  
+  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+  
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + 0.3);
+}
+
 export function useSocket(options: UseSocketOptions = {}) {
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -62,6 +80,8 @@ export function useSocket(options: UseSocketOptions = {}) {
   const heartbeatInterval = useRef<NodeJS.Timeout | null>(null);
   const lastPongTime = useRef<number>(Date.now());
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const soundEnabledRef = useRef(false);
   
   // Keep options ref updated
   useEffect(() => {
@@ -71,9 +91,38 @@ export function useSocket(options: UseSocketOptions = {}) {
   // Initialize audio for notification sound
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      // Try to create Audio element for MP3
       audioRef.current = new Audio('/notification.mp3');
-      audioRef.current.volume = 0.5;
+      audioRef.current.volume = 0.7;
       audioRef.current.load();
+      
+      // Enable sound after any user interaction
+      const enableSound = () => {
+        soundEnabledRef.current = true;
+        // Initialize AudioContext
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        }
+        // Pre-play audio at 0 volume to unlock
+        if (audioRef.current) {
+          audioRef.current.volume = 0;
+          audioRef.current.play().then(() => {
+            audioRef.current!.pause();
+            audioRef.current!.currentTime = 0;
+            audioRef.current!.volume = 0.7;
+          }).catch(() => {});
+        }
+      };
+      
+      document.addEventListener('click', enableSound, { once: true });
+      document.addEventListener('keydown', enableSound, { once: true });
+      document.addEventListener('touchstart', enableSound, { once: true });
+      
+      return () => {
+        document.removeEventListener('click', enableSound);
+        document.removeEventListener('keydown', enableSound);
+        document.removeEventListener('touchstart', enableSound);
+      };
     }
     return () => {
       audioRef.current = null;
@@ -82,12 +131,25 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   // Play notification sound
   const playNotificationSound = useCallback(() => {
-    if (audioRef.current && optionsRef.current.enableSound !== false) {
+    if (optionsRef.current.enableSound === false) return;
+    
+    // Try HTML5 Audio first
+    if (audioRef.current && soundEnabledRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play().catch((err) => {
-        // Audio play failed - usually needs user interaction first
-        console.log('[Socket] Audio play blocked:', err.message);
+        console.log('[Socket] MP3 play failed, trying Web Audio:', err.message);
+        // Fallback to Web Audio API beep
+        if (audioContextRef.current) {
+          createBeepSound(audioContextRef.current);
+        }
       });
+    } else if (audioContextRef.current) {
+      // Use Web Audio API beep as fallback
+      try {
+        createBeepSound(audioContextRef.current);
+      } catch (err) {
+        console.log('[Socket] Web Audio failed:', err);
+      }
     }
   }, []);
 

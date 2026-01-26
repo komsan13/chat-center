@@ -65,9 +65,52 @@ export default function DataChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout } }>({});
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedRoomRef = useRef<string | null>(null);
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const soundUnlockedRef = useRef(false);
+
+  // Initialize notification audio on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Create Audio element
+      notificationAudioRef.current = new Audio('/notification.mp3');
+      notificationAudioRef.current.volume = 0.7;
+      notificationAudioRef.current.load();
+      
+      // Unlock audio on first user interaction
+      const unlockAudio = () => {
+        soundUnlockedRef.current = true;
+        // Create AudioContext
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        }
+        // Pre-play to unlock
+        if (notificationAudioRef.current) {
+          const audio = notificationAudioRef.current;
+          audio.volume = 0;
+          audio.play().then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = 0.7;
+            console.log('[Audio] Sound unlocked!');
+          }).catch(() => {});
+        }
+      };
+      
+      document.addEventListener('click', unlockAudio, { once: true });
+      document.addEventListener('keydown', unlockAudio, { once: true });
+      
+      return () => {
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('keydown', unlockAudio);
+      };
+    }
+  }, []);
 
   useEffect(() => { selectedRoomRef.current = selectedRoom; }, [selectedRoom]);
 
@@ -127,10 +170,49 @@ export default function DataChatPage() {
     }
   }, []);
 
-  const { isConnected, connectionState, joinRoom, markAsRead, playNotificationSound, reconnect } = useSocket({
+  // Play notification sound function with Web Audio fallback
+  const playSound = useCallback(() => {
+    // Try HTML5 Audio first
+    if (notificationAudioRef.current && soundUnlockedRef.current) {
+      notificationAudioRef.current.currentTime = 0;
+      notificationAudioRef.current.play().catch(err => {
+        console.log('MP3 play failed, using beep:', err);
+        // Fallback to Web Audio API beep
+        if (audioContextRef.current) {
+          const ctx = audioContextRef.current;
+          const oscillator = ctx.createOscillator();
+          const gainNode = ctx.createGain();
+          oscillator.connect(gainNode);
+          gainNode.connect(ctx.destination);
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+          gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          oscillator.start(ctx.currentTime);
+          oscillator.stop(ctx.currentTime + 0.3);
+        }
+      });
+    } else if (audioContextRef.current) {
+      // Use Web Audio beep as fallback
+      const ctx = audioContextRef.current;
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.3);
+    }
+  }, []);
+
+  const { isConnected, connectionState, joinRoom, markAsRead, playNotificationSound, reconnect, sendTyping } = useSocket({
     onNewMessage: (msg) => {
       const message: Message = { ...msg, content: msg.content || '' };
       handleNewMessage(message);
+      // Play sound for messages from users (useSocket handles sound internally)
     },
     onNewRoom: (room) => {
       const newRoom: ChatRoom = {
@@ -138,6 +220,33 @@ export default function DataChatPage() {
         lastMessage: room.lastMessage ? { ...room.lastMessage, content: room.lastMessage.content || '' } : undefined,
       };
       setRooms(prev => prev.some(r => r.id === newRoom.id) ? prev : [newRoom, ...prev]);
+      // Sound is handled by useSocket
+    },
+    onUserTyping: ({ roomId, userName, isTyping }) => {
+      setTypingUsers(prev => {
+        const newState = { ...prev };
+        if (isTyping) {
+          // Clear existing timeout
+          if (newState[roomId]?.timeout) {
+            clearTimeout(newState[roomId].timeout);
+          }
+          // Set new timeout to clear typing after 3 seconds
+          const timeout = setTimeout(() => {
+            setTypingUsers(p => {
+              const updated = { ...p };
+              delete updated[roomId];
+              return updated;
+            });
+          }, 3000);
+          newState[roomId] = { userName, timeout };
+        } else {
+          if (newState[roomId]?.timeout) {
+            clearTimeout(newState[roomId].timeout);
+          }
+          delete newState[roomId];
+        }
+        return newState;
+      });
     },
     enableSound: true,
   });
@@ -204,17 +313,94 @@ export default function DataChatPage() {
   useEffect(() => { if (selectedRoom) fetchMessages(selectedRoom); }, [selectedRoom, fetchMessages]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
+  // LINE Sticker URLs - try multiple formats
   const renderSticker = (packageId?: string, stickerId?: string) => {
     if (!packageId || !stickerId) return null;
+    
+    // LINE sticker CDN URLs
+    const stickerUrls = [
+      `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/iPhone/sticker.png`,
+      `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/android/sticker.png`,
+      `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/PC/sticker.png`,
+      `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/ANDROID/sticker.png`,
+    ];
+    
     return (
-      <img
-        src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/iPhone/sticker.png`}
-        alt="sticker"
-        style={{ width: 120, height: 120, objectFit: 'contain' }}
-        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-      />
+      <div style={{ position: 'relative' }}>
+        <img
+          src={stickerUrls[0]}
+          alt={`Sticker ${packageId}/${stickerId}`}
+          style={{ 
+            width: 144, 
+            height: 144, 
+            objectFit: 'contain',
+            background: 'transparent',
+          }}
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            const currentIndex = stickerUrls.indexOf(img.src);
+            if (currentIndex < stickerUrls.length - 1) {
+              img.src = stickerUrls[currentIndex + 1];
+            } else {
+              // Fallback to emoji representation
+              img.style.display = 'none';
+              img.parentElement!.innerHTML = `<div style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;font-size:48px;background:${colors.bgTertiary};border-radius:16px">📦</div>`;
+            }
+          }}
+        />
+      </div>
     );
   };
+
+  // Emoji list for quick selection
+  const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😭', '🤔', '😅', '🥰', '💪', '👏', '🙌', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🏧', '💵', '🧧', '🎁'];
+
+  // Typing indicator component
+  const TypingIndicator = () => (
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: 10,
+      padding: '8px 16px',
+      marginBottom: 8,
+    }}>
+      <div style={{ width: 36, height: 36, borderRadius: 12, background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {selectedRoomData?.pictureUrl ? (
+          <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 36, height: 36, borderRadius: 12, objectFit: 'cover' }} />
+        ) : (
+          <span style={{ fontSize: 14, fontWeight: 600, color: colors.textSecondary }}>
+            {selectedRoomData?.displayName.charAt(0)}
+          </span>
+        )}
+      </div>
+      <div style={{
+        background: colors.bubbleUser,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 16,
+        borderTopLeftRadius: 6,
+        padding: '12px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+      }}>
+        <span style={{ fontSize: 13, color: colors.textSecondary, marginRight: 4 }}>กำลังพิมพ์</span>
+        <div style={{ display: 'flex', gap: 3 }}>
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: colors.accent,
+                animation: `typingBounce 1.4s ease-in-out ${i * 0.2}s infinite`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{
@@ -551,6 +737,8 @@ export default function DataChatPage() {
                       </div>
                     );
                   })}
+                  {/* Typing Indicator */}
+                  {selectedRoom && typingUsers[selectedRoom] && <TypingIndicator />}
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -578,6 +766,41 @@ export default function DataChatPage() {
               </div>
             )}
 
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <div style={{ 
+                padding: '12px 20px', 
+                background: colors.bgSecondary, 
+                borderTop: `1px solid ${colors.border}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Emoji</span>
+                  <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer', padding: 4 }}><X size={16} /></button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {commonEmojis.map((emoji, i) => (
+                    <button 
+                      key={i} 
+                      onClick={() => {
+                        setMessage(prev => prev + emoji);
+                        setShowEmojiPicker(false);
+                      }}
+                      style={{
+                        width: 36, height: 36, borderRadius: 8, border: 'none',
+                        background: colors.bgTertiary, fontSize: 20, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'transform 0.1s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Input */}
             <div style={{ padding: '12px 20px 14px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: colors.bgCard, borderRadius: 12, padding: '6px 6px 6px 14px', border: `1px solid ${colors.border}` }}>
@@ -598,7 +821,17 @@ export default function DataChatPage() {
                   }}><Bookmark size={20} /></button>
                   <button style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: 'transparent', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Paperclip size={18} /></button>
                   <button style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: 'transparent', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ImageIcon size={18} /></button>
-                  <button style={{ width: 34, height: 34, borderRadius: 10, border: 'none', background: 'transparent', color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Smile size={18} /></button>
+                  <button 
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    style={{ 
+                      width: 34, height: 34, borderRadius: 10, border: 'none', 
+                      background: showEmojiPicker ? colors.accentLight : 'transparent', 
+                      color: showEmojiPicker ? colors.accent : colors.textMuted, 
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                    }}
+                  >
+                    <Smile size={18} />
+                  </button>
                   <button
                     onClick={() => sendMessage(message)}
                     disabled={!message.trim() || isSending}
