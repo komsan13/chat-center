@@ -118,10 +118,8 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
       try {
         const response = await fetch('/api/auth/me');
         const data = await response.json();
-        console.log('Sidebar permissions response:', data);
         if (data.authenticated && data.user?.permissions) {
           setPermissions(data.user.permissions);
-          console.log('Sidebar permissions set:', data.user.permissions);
         }
       } catch (error) {
         console.error('Error fetching permissions:', error);
@@ -136,8 +134,6 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     if (!item.permission) return true; // No permission required
     return permissions[item.permission];
   });
-
-  console.log('Sidebar filteredMenuItems:', filteredMenuItems.map(i => i.nameKey), 'permissions:', permissions);
 
   // Auto-expand menu based on current path
   useEffect(() => {

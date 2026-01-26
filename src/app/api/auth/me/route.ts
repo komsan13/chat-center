@@ -30,46 +30,19 @@ export async function GET() {
       manageSettings: false,
     };
 
-    const derivePermissions = (raw: Record<string, unknown> | null) => {
+    // Simply read permissions from database without deriving
+    const readPermissions = (raw: Record<string, unknown> | null) => {
       const next = { ...basePermissions };
       if (raw) {
-        (Object.keys(basePermissions) as Array<keyof typeof basePermissions>).forEach(key => {
-          if (typeof raw[key] === 'boolean') {
-            next[key] = raw[key] as boolean;
-          }
-        });
+        // Direct mapping from database values
+        if (typeof raw['viewDashboard'] === 'boolean') next.viewDashboard = raw['viewDashboard'] as boolean;
+        if (typeof raw['manageUsers'] === 'boolean') next.manageUsers = raw['manageUsers'] as boolean;
+        if (typeof raw['managePermissions'] === 'boolean') next.managePermissions = raw['managePermissions'] as boolean;
+        if (typeof raw['viewReports'] === 'boolean') next.viewReports = raw['viewReports'] as boolean;
+        if (typeof raw['manageData'] === 'boolean') next.manageData = raw['manageData'] as boolean;
+        if (typeof raw['manageChat'] === 'boolean') next.manageChat = raw['manageChat'] as boolean;
+        if (typeof raw['manageSettings'] === 'boolean') next.manageSettings = raw['manageSettings'] as boolean;
       }
-
-      const hasAny = (keys: string[]) => keys.some(key => raw && raw[key] === true);
-
-      next.viewReports = next.viewReports || hasAny([
-        'viewDailySummary',
-        'viewDailyBalance',
-        'viewCashWithdrawal',
-        'viewTransfer',
-        'viewExpenses',
-        'viewPayroll',
-        'viewSalaries',
-        'viewSalaryPayment',
-        'manageReports',
-      ]);
-
-      next.manageData = next.manageData || hasAny([
-        'viewDataManagement',
-        'viewWebsites',
-        'viewBanks',
-        'viewEmployees',
-        'viewSalaryBase',
-        'viewLineTokens',
-      ]);
-
-      next.manageChat = next.manageChat || hasAny(['viewDataChat']);
-      next.manageUsers = next.manageUsers || hasAny(['viewUsers']);
-      next.managePermissions = next.managePermissions || hasAny(['viewPermissions', 'viewRoles', 'manageRoles']);
-      next.manageSettings = next.manageSettings || hasAny(['manageSettings']);
-
-      next.viewDashboard = next.viewDashboard || next.viewReports || next.manageData || next.manageChat || next.manageUsers || next.managePermissions || next.manageSettings || hasAny(['viewFinance', 'manageFinance']);
-
       return next;
     };
 
@@ -80,13 +53,13 @@ export async function GET() {
       if (role?.permissions) {
         try {
           const parsed = JSON.parse(role.permissions) as Record<string, unknown>;
-          permissions = derivePermissions(parsed);
+          permissions = readPermissions(parsed);
         } catch (e) {
           console.error('Error parsing permissions:', e);
         }
       }
     } else {
-      permissions = derivePermissions(null);
+      permissions = readPermissions(null);
     }
 
     const isEmptyPermissions = Object.values(permissions).every(value => value === false);
@@ -111,10 +84,10 @@ export async function GET() {
           manageSettings: false,
         },
         user: {
-          viewDashboard: true,
+          viewDashboard: false,
           manageUsers: false,
           managePermissions: false,
-          viewReports: true,
+          viewReports: false,
           manageData: false,
           manageChat: true,
           manageSettings: false,
