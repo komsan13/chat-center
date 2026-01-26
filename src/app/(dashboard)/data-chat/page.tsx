@@ -58,12 +58,7 @@ export default function DataChatPage() {
   const { isDark } = useTheme();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('selectedChatRoom');
-    }
-    return null;
-  });
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null); // Start with no room selected
   const [message, setMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'pinned'>('all');
