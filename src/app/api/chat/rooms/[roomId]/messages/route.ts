@@ -105,4 +105,5 @@ interface MessageRecord {
   isDeleted: number;
   readAt?: string;
   createdAt: string;
+  emojis?: string;
 }
