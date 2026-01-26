@@ -906,7 +906,9 @@ export default function DataChatPage() {
                               <div>{renderSticker(msg.packageId, msg.stickerId)}</div>
                             ) : msg.messageType === 'image' ? (
                               <img src={msg.mediaUrl} alt="" style={{ maxWidth: 240, borderRadius: 12 }} />
-                            ) : (msg.content?.startsWith('(') && msg.content?.endsWith(')')) || msg.content?.startsWith('[sticker') ? (
+                            ) : msg.content?.startsWith('[sticker') ? (
+                              <div style={{ fontSize: 40 }}>{convertStickerText(msg.content || '')}</div>
+                            ) : msg.content && /^\([a-zA-Z\s]+\)(\([a-zA-Z\s]+\))*$/.test(msg.content.trim()) ? (
                               <div style={{ fontSize: 40 }}>{convertStickerText(msg.content || '')}</div>
                             ) : (
                               <div style={{
