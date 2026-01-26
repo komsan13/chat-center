@@ -104,44 +104,34 @@ export async function POST(request: NextRequest) {
     // Send to LINE if it's media and we have room info
     let lineResult: { success: boolean; error?: string } = { success: false, error: 'Not sent to LINE' };
     
-    if (room && (messageType === 'image' || messageType === 'video' || messageType === 'audio')) {
-      // Check video format (LINE only supports MP4)
-      if (messageType === 'video' && !mimeType.includes('mp4')) {
-        console.log('[Upload API] Video format not supported by LINE:', mimeType);
-        lineResult = { success: false, error: 'LINE only supports MP4 video format' };
-      } else {
-        // Get LINE token
-        let lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ? AND status = ?').get(room.lineTokenId, 'active') as LineTokenRecord | undefined;
-        
-        if (!lineToken) {
-          lineToken = db.prepare('SELECT * FROM LineToken WHERE status = ? ORDER BY createdAt DESC LIMIT 1').get('active') as LineTokenRecord | undefined;
-        }
-        
-        if (lineToken) {
-          try {
-            const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
-            let sendResult;
-            
-            // Ensure HTTPS for LINE API
-            const secureMediaUrl = publicMediaUrl.replace('http://', 'https://');
-            console.log('[Upload API] Sending media to LINE:', { messageType, url: secureMediaUrl });
-            
-            if (messageType === 'image') {
-              sendResult = await botService.sendImage(room.lineUserId, secureMediaUrl);
-            } else if (messageType === 'video') {
-              sendResult = await botService.sendVideo(room.lineUserId, secureMediaUrl);
-            } else if (messageType === 'audio') {
-              sendResult = await botService.sendAudio(room.lineUserId, secureMediaUrl);
-            }
-            
-            lineResult = sendResult || { success: false, error: 'Unknown message type' };
-            console.log('[Upload API] LINE send result:', lineResult);
-          } catch (error) {
-            console.error('[Upload API] LINE send error:', error);
-            lineResult = { success: false, error: String(error) };
-          }
+    // Only send images to LINE (video/audio not reliably supported due to preview requirements)
+    if (room && messageType === 'image') {
+      // Get LINE token
+      let lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ? AND status = ?').get(room.lineTokenId, 'active') as LineTokenRecord | undefined;
+      
+      if (!lineToken) {
+        lineToken = db.prepare('SELECT * FROM LineToken WHERE status = ? ORDER BY createdAt DESC LIMIT 1').get('active') as LineTokenRecord | undefined;
+      }
+      
+      if (lineToken) {
+        try {
+          const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
+          
+          // Ensure HTTPS for LINE API
+          const secureMediaUrl = publicMediaUrl.replace('http://', 'https://');
+          console.log('[Upload API] Sending image to LINE:', { messageType, url: secureMediaUrl });
+          
+          const sendResult = await botService.sendImage(room.lineUserId, secureMediaUrl);
+          lineResult = sendResult || { success: false, error: 'Failed to send' };
+          console.log('[Upload API] LINE send result:', lineResult);
+        } catch (error) {
+          console.error('[Upload API] LINE send error:', error);
+          lineResult = { success: false, error: String(error) };
         }
       }
+    } else if (messageType === 'video' || messageType === 'audio') {
+      // Video/Audio not sent to LINE - saved locally only
+      lineResult = { success: false, error: 'Video/Audio ไม่รองรับการส่งไป LINE (บันทึกในระบบแล้ว)' };
     }
 
     // Create message in database
