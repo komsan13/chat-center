@@ -950,8 +950,11 @@ export default function DataChatPage() {
       '(love Moon)': '😍', '(shock Moon)': '😲', '(sleepy Moon)': '😴', '(cool Moon)': '😎',
       '(happy Moon)': '😊', '(sad Moon)': '😢', '(wink Moon)': '😜', '(shy Moon)': '🙈',
       '(Brown)': '🐻', '(Cony)': '🐰', '(Sally)': '🐥', '(James)': '👱', '(Boss)': '🦁',
-      '(funny Brown)': '🐻', '(laugh Brown)': '🐻', '(love Brown)': '🐻', '(cry Brown)': '🐻',
-      '(funny Cony)': '🐰', '(laugh Cony)': '🐰', '(love Cony)': '🐰', '(cry Cony)': '🐰',
+      '(funny Brown)': '🐻', '(laugh Brown)': '🐻', '(love Brown)': '🐻', '(cry Brown)': '🐻', '(crying Brown)': '🐻😢',
+      '(funny Cony)': '🐰', '(laugh Cony)': '🐰', '(love Cony)': '🐰', '(cry Cony)': '🐰', '(crying Cony)': '🐰😢',
+      '(hello Cony)': '🐰👋', '(hello Brown)': '🐻👋', '(bye Cony)': '🐰👋', '(bye Brown)': '🐻👋',
+      '(angry Cony)': '🐰😠', '(angry Brown)': '🐻😠', '(happy Cony)': '🐰😊', '(happy Brown)': '🐻😊',
+      '(sleepy Cony)': '🐰😴', '(sleepy Brown)': '🐻😴', '(shock Cony)': '🐰😲', '(shock Brown)': '🐻😲',
       // More expressions
       '(lol)': '🤣', '(omg)': '😱', '(wow)': '🤩', '(yay)': '🥳', '(no)': '🙅',
       '(yes)': '🙆', '(think)': '🤔', '(idea)': '💡', '(sleep)': '😴', '(sick)': '🤒',
