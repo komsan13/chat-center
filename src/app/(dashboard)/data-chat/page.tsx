@@ -1389,8 +1389,9 @@ export default function DataChatPage() {
 
                 {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                  {/* Row 1: Name + Time */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1 }}>
                       <span style={{ 
                         fontWeight: room.unreadCount > 0 ? 600 : 500,
                         color: colors.textPrimary, fontSize: 14,
@@ -1398,44 +1399,26 @@ export default function DataChatPage() {
                       }}>
                         {room.displayName}
                       </span>
-                      {room.isPinned && <Pin size={12} style={{ color: colors.accent, transform: 'rotate(-45deg)', flexShrink: 0 }} />}
-                      {room.isMuted && <VolumeX size={12} style={{ color: colors.warning, flexShrink: 0 }} />}
+                      {room.isPinned && <Pin size={11} style={{ color: colors.accent, transform: 'rotate(-45deg)', flexShrink: 0 }} />}
+                      {room.isMuted && <VolumeX size={11} style={{ color: colors.warning, flexShrink: 0 }} />}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-                      <span style={{ 
-                        fontSize: 11, 
-                        color: room.unreadCount > 0 ? colors.accent : colors.textMuted,
-                        fontWeight: room.unreadCount > 0 ? 600 : 400,
-                      }}>
-                        {room.lastMessageAt && formatTime(room.lastMessageAt)}
-                      </span>
-                      {/* Tags - show at top right */}
-                      {room.tags && room.tags.length > 0 && (
-                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 120 }}>
-                          {room.tags.slice(0, 2).map((tag, idx) => (
-                            <span key={idx} style={{
-                              padding: '1px 5px', borderRadius: 6,
-                              background: colors.accentLight, border: `1px solid ${colors.accent}40`,
-                              fontSize: 8, fontWeight: 600, color: colors.accent,
-                              textTransform: 'uppercase', letterSpacing: 0.3,
-                            }}>
-                              {tag}
-                            </span>
-                          ))}
-                          {room.tags.length > 2 && (
-                            <span style={{ fontSize: 8, color: colors.textMuted, fontWeight: 500 }}>
-                              +{room.tags.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <span style={{ 
+                      fontSize: 11, 
+                      color: room.unreadCount > 0 ? colors.accent : colors.textMuted,
+                      fontWeight: room.unreadCount > 0 ? 600 : 400,
+                      flexShrink: 0, marginLeft: 8,
+                    }}>
+                      {room.lastMessageAt && formatTime(room.lastMessageAt)}
+                    </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  
+                  {/* Row 2: Message Preview + Tags + Unread Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {/* Message Preview */}
                     <span style={{ 
                       fontSize: 12, color: colors.textMuted,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      flex: 1,
+                      flex: 1, minWidth: 0,
                     }}>
                       {typingUsers[room.id] ? (
                         <span style={{ color: colors.accent, fontStyle: 'italic' }}>
@@ -1469,13 +1452,40 @@ export default function DataChatPage() {
                         </>
                       )}
                     </span>
+                    
+                    {/* Tags - compact style */}
+                    {room.tags && room.tags.length > 0 && (
+                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                        {room.tags.slice(0, 1).map((tag, idx) => (
+                          <span key={idx} style={{
+                            padding: '2px 6px', borderRadius: 4,
+                            background: `${colors.accent}15`, 
+                            fontSize: 9, fontWeight: 600, color: colors.accent,
+                            textTransform: 'uppercase', letterSpacing: 0.3,
+                            border: `1px solid ${colors.accent}30`,
+                          }}>
+                            {tag}
+                          </span>
+                        ))}
+                        {room.tags.length > 1 && (
+                          <span style={{ 
+                            fontSize: 9, color: colors.textMuted, fontWeight: 500,
+                            display: 'flex', alignItems: 'center',
+                          }}>
+                            +{room.tags.length - 1}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Unread Badge */}
                     {room.unreadCount > 0 && (
                       <span style={{
-                        minWidth: 20, height: 20, borderRadius: 10,
+                        minWidth: 18, height: 18, borderRadius: 9,
                         background: colors.accent, color: '#fff',
-                        fontSize: 11, fontWeight: 600,
+                        fontSize: 10, fontWeight: 600,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        padding: '0 6px', marginLeft: 8,
+                        padding: '0 5px', flexShrink: 0,
                       }}>
                         {room.unreadCount > 99 ? '99+' : room.unreadCount}
                       </span>
