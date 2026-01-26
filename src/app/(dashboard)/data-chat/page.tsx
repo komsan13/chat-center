@@ -150,29 +150,53 @@ export default function DataChatPage() {
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
 
-  // Theme Colors - LINE OA Style with emerald accent
+  // Theme Colors - Professional Design System
   const colors = useMemo(() => ({
-    bgPrimary: isDark ? '#1a1a1a' : '#ffffff',
-    bgSecondary: isDark ? '#242424' : '#ffffff',
-    bgTertiary: isDark ? '#2f2f2f' : '#f5f5f5',
-    bgCard: isDark ? '#2a2a2a' : '#ffffff',
-    bgHover: isDark ? '#333333' : '#f0f0f0',
-    bgActive: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)',
-    bgChat: isDark ? '#1a1a1a' : '#e8e8e8',
-    border: isDark ? '#3a3a3a' : '#e0e0e0',
-    borderLight: isDark ? '#444444' : '#eeeeee',
-    textPrimary: isDark ? '#ffffff' : '#333333',
-    textSecondary: isDark ? '#b0b0b0' : '#666666',
-    textMuted: isDark ? '#808080' : '#999999',
+    // Backgrounds - Soft gradients for premium feel
+    bgPrimary: isDark ? '#0d0d0d' : '#f8fafc',
+    bgSecondary: isDark ? '#161616' : '#ffffff',
+    bgTertiary: isDark ? '#1f1f1f' : '#f1f5f9',
+    bgCard: isDark ? '#1a1a1a' : '#ffffff',
+    bgHover: isDark ? '#252525' : '#f1f5f9',
+    bgActive: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
+    bgChat: isDark ? '#0a0a0a' : '#e2e8f0',
+    bgGradient: isDark 
+      ? 'linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)'
+      : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+    // Borders - Subtle and clean
+    border: isDark ? '#2a2a2a' : '#e2e8f0',
+    borderLight: isDark ? '#333333' : '#f1f5f9',
+    borderAccent: isDark ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)',
+    // Typography - High contrast for readability
+    textPrimary: isDark ? '#f1f5f9' : '#1e293b',
+    textSecondary: isDark ? '#94a3b8' : '#64748b',
+    textMuted: isDark ? '#64748b' : '#94a3b8',
+    // Brand Colors - Emerald accent
     accent: '#10b981',
     accentHover: '#059669',
-    accentLight: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)',
-    bubbleAgent: '#10b981',
-    bubbleUser: isDark ? '#3a3a3a' : '#ffffff',
-    online: '#10b981',
+    accentLight: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+    accentGradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    // Chat Bubbles - Modern glassmorphism
+    bubbleAgent: isDark 
+      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+      : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    bubbleUser: isDark ? '#1f1f1f' : '#ffffff',
+    bubbleUserBorder: isDark ? '#2a2a2a' : '#e2e8f0',
+    // Status Colors
+    online: '#22c55e',
     warning: '#f59e0b',
     danger: '#ef4444',
     link: '#3b82f6',
+    // Shadows
+    shadow: isDark 
+      ? '0 4px 20px rgba(0,0,0,0.4)'
+      : '0 4px 20px rgba(0,0,0,0.08)',
+    shadowSm: isDark 
+      ? '0 2px 8px rgba(0,0,0,0.3)'
+      : '0 2px 8px rgba(0,0,0,0.05)',
+    shadowLg: isDark 
+      ? '0 8px 32px rgba(0,0,0,0.5)'
+      : '0 8px 32px rgba(0,0,0,0.1)',
   }), [isDark]);
 
   const fetchRooms = useCallback(async () => {
@@ -647,70 +671,81 @@ export default function DataChatPage() {
     <div style={{
       display: 'flex',
       height: 'calc(100vh - 118px)',
-      background: colors.bgPrimary,
-      borderRadius: 14,
+      background: colors.bgGradient,
+      borderRadius: 16,
       overflow: 'hidden',
       border: `1px solid ${colors.border}`,
-      boxShadow: isDark 
-        ? '0 6px 20px rgba(0,0,0,0.35)'
-        : '0 6px 20px rgba(0,0,0,0.06)',
+      boxShadow: colors.shadowLg,
     }}>
       
       {/* LEFT SIDEBAR */}
       <div style={{
-        width: 340,
+        width: 360,
         background: colors.bgSecondary,
         borderRight: `1px solid ${colors.border}`,
         display: 'flex',
         flexDirection: 'column',
       }}>
-        {/* Header - LINE OA Style */}
-        <div style={{ padding: '12px 16px', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}` }}>
+        {/* Header - Premium Design */}
+        <div style={{ 
+          padding: '16px 20px', 
+          background: colors.bgSecondary, 
+          borderBottom: `1px solid ${colors.border}`,
+        }}>
           {/* Filter Row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
             <button style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
-              background: colors.bgTertiary, border: 'none', borderRadius: 6,
-              color: colors.textPrimary, fontSize: 14, fontWeight: 500, cursor: 'pointer',
-            }}>
-              <span style={{ fontSize: 16 }}>≡</span>
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px',
+              background: colors.bgTertiary, border: `1px solid ${colors.border}`, borderRadius: 10,
+              color: colors.textPrimary, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.accent; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
+            >
+              <Filter size={16} style={{ color: colors.accent }} />
               <span>All</span>
             </button>
             <div style={{ flex: 1, position: 'relative' }}>
-              <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: colors.textMuted }} />
+              <Search style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: colors.textMuted }} />
               <input
                 type="text"
-                placeholder="Search"
+                placeholder="Search conversations..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
-                  width: '100%', height: 36, paddingLeft: 34, paddingRight: 12,
-                  borderRadius: 6, border: `1px solid ${colors.border}`,
+                  width: '100%', height: 42, paddingLeft: 42, paddingRight: 16,
+                  borderRadius: 10, border: `1px solid ${colors.border}`,
                   background: colors.bgPrimary, color: colors.textPrimary, fontSize: 14, outline: 'none',
+                  transition: 'all 0.2s ease',
                 }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${colors.accentLight}`; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
               />
             </div>
           </div>
           {/* Connection Status */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12, color: colors.textMuted }}>{rooms.length} chats</span>
+            <span style={{ fontSize: 13, color: colors.textMuted, fontWeight: 500 }}>{rooms.length} conversations</span>
             <div 
               style={{ 
-                display: 'flex', alignItems: 'center', gap: 5, padding: '2px 8px',
-                borderRadius: 10, cursor: connectionState !== 'connected' ? 'pointer' : 'default',
+                display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px',
+                borderRadius: 20, cursor: connectionState !== 'connected' ? 'pointer' : 'default',
+                background: connectionState === 'connected' ? 'rgba(34, 197, 94, 0.1)' : connectionState === 'reconnecting' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                transition: 'all 0.2s ease',
               }}
               onClick={() => { if (connectionState !== 'connected') reconnect(); }}
             >
               <div style={{ 
-                width: 6, height: 6, borderRadius: '50%', 
+                width: 8, height: 8, borderRadius: '50%', 
                 background: connectionState === 'connected' ? '#22c55e' : connectionState === 'reconnecting' ? '#f59e0b' : '#ef4444',
+                animation: connectionState === 'reconnecting' ? 'pulse 1.5s ease-in-out infinite' : 'none',
               }} />
-              <span style={{ fontSize: 11, fontWeight: 500, color: connectionState === 'connected' ? '#22c55e' : connectionState === 'reconnecting' ? '#f59e0b' : '#ef4444' }}>
-                {connectionState === 'connected' ? 'Connected' : connectionState === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}
+              <span style={{ fontSize: 12, fontWeight: 600, color: connectionState === 'connected' ? '#22c55e' : connectionState === 'reconnecting' ? '#f59e0b' : '#ef4444' }}>
+                {connectionState === 'connected' ? 'Live' : connectionState === 'reconnecting' ? 'Reconnecting...' : 'Offline'}
               </span>
             </div>
           </div>
-
         </div>
 
         {/* Chat List - LINE OA Style */}
@@ -735,53 +770,99 @@ export default function DataChatPage() {
                   setSelectedRoom(room.id);
                 }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', cursor: 'pointer',
                   borderBottom: `1px solid ${colors.borderLight}`,
                   background: selectedRoom === room.id ? colors.bgActive : colors.bgSecondary,
-                  transition: 'background 0.15s ease',
+                  borderLeft: selectedRoom === room.id ? `3px solid ${colors.accent}` : '3px solid transparent',
+                  transition: 'all 0.2s ease',
                 }}
-                onMouseEnter={(e) => { if (selectedRoom !== room.id) e.currentTarget.style.background = colors.bgHover; }}
-                onMouseLeave={(e) => { if (selectedRoom !== room.id) e.currentTarget.style.background = selectedRoom === room.id ? colors.bgActive : colors.bgSecondary; }}
+                onMouseEnter={(e) => { 
+                  if (selectedRoom !== room.id) {
+                    e.currentTarget.style.background = colors.bgHover;
+                    e.currentTarget.style.borderLeftColor = colors.accentLight;
+                  }
+                }}
+                onMouseLeave={(e) => { 
+                  if (selectedRoom !== room.id) {
+                    e.currentTarget.style.background = colors.bgSecondary;
+                    e.currentTarget.style.borderLeftColor = 'transparent';
+                  }
+                }}
               >
-                {/* Avatar - LINE OA Style */}
+                {/* Avatar - Premium Design with Ring */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   {room.pictureUrl ? (
-                    <img src={room.pictureUrl} alt={room.displayName} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} />
+                    <div style={{ 
+                      padding: 2, 
+                      borderRadius: '50%', 
+                      background: room.unreadCount > 0 ? colors.accentGradient : 'transparent',
+                    }}>
+                      <img src={room.pictureUrl} alt={room.displayName} style={{ 
+                        width: 50, height: 50, borderRadius: '50%', objectFit: 'cover',
+                        border: `2px solid ${colors.bgSecondary}`,
+                      }} />
+                    </div>
                   ) : (
                     <div style={{
-                      width: 48, height: 48, borderRadius: '50%', 
-                      background: colors.bgTertiary,
+                      width: 54, height: 54, borderRadius: '50%', 
+                      background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: colors.textMuted, fontSize: 20, fontWeight: 500,
+                      color: '#fff', fontSize: 20, fontWeight: 600,
+                      boxShadow: colors.shadowSm,
                     }}>
                       {room.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
+                  {/* Online Indicator */}
+                  <div style={{
+                    position: 'absolute', bottom: 2, right: 2,
+                    width: 14, height: 14, borderRadius: '50%',
+                    background: colors.online,
+                    border: `2px solid ${colors.bgSecondary}`,
+                  }} />
                 </div>
 
-                {/* Content - LINE OA Style */}
+                {/* Content - Premium Design */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontWeight: 500, color: colors.textPrimary, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ 
+                      fontWeight: room.unreadCount > 0 ? 700 : 500, 
+                      color: colors.textPrimary, 
+                      fontSize: 15, 
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 170,
+                      letterSpacing: '-0.01em',
+                    }}>
                       {room.displayName}
                     </span>
-                    <span style={{ fontSize: 12, color: colors.textMuted, flexShrink: 0 }}>
+                    <span style={{ 
+                      fontSize: 12, 
+                      color: room.unreadCount > 0 ? colors.accent : colors.textMuted, 
+                      flexShrink: 0,
+                      fontWeight: room.unreadCount > 0 ? 600 : 400,
+                    }}>
                       {room.lastMessageAt && formatTime(room.lastMessageAt)}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 13, color: typingUsers[room.id] ? colors.accent : colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, fontStyle: typingUsers[room.id] ? 'italic' : 'normal' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ 
+                      fontSize: 13, 
+                      color: typingUsers[room.id] ? colors.accent : colors.textMuted, 
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', 
+                      flex: 1,
+                      fontWeight: room.unreadCount > 0 ? 500 : 400,
+                    }}>
                       {typingUsers[room.id] ? (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          Typing
-                          <span style={{ display: 'inline-flex', gap: 2 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: colors.accent }}>
+                          <span style={{ fontStyle: 'italic' }}>typing</span>
+                          <span style={{ display: 'inline-flex', gap: 3 }}>
                             {[0, 1, 2].map((i) => (
-                              <span key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: colors.accent, animation: `typingBounce 1.4s ease-in-out ${i * 0.2}s infinite`, display: 'inline-block' }} />
+                              <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: colors.accent, animation: `typingBounce 1.4s ease-in-out ${i * 0.15}s infinite`, display: 'inline-block' }} />
                             ))}
                           </span>
                         </span>
                       ) : (
                         <>
+                          {room.lastMessage?.sender === 'agent' && <span style={{ color: colors.accent, marginRight: 4 }}>You:</span>}
                           {room.lastMessage?.content 
                             ? (room.lastMessage.content.startsWith('(') || room.lastMessage.content.startsWith('[sticker'))
                               ? convertStickerText(room.lastMessage.content)
@@ -792,10 +873,11 @@ export default function DataChatPage() {
                     </span>
                     {room.unreadCount > 0 && (
                       <span style={{
-                        minWidth: 20, height: 20, borderRadius: 10,
-                        background: '#ef4444',
-                        color: '#fff', fontSize: 11, fontWeight: 600,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px',
+                        minWidth: 22, height: 22, borderRadius: 11,
+                        background: colors.accentGradient,
+                        color: '#fff', fontSize: 11, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 7px',
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)',
                       }}>
                         {room.unreadCount > 99 ? '99+' : room.unreadCount}
                       </span>
@@ -812,65 +894,99 @@ export default function DataChatPage() {
       {selectedRoom && selectedRoomData ? (
         <>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: colors.bgPrimary }}>
-            {/* Chat Header - LINE OA Style */}
+            {/* Chat Header - Premium Design */}
             <div style={{
-              padding: '12px 20px', background: colors.bgSecondary, borderBottom: `1px solid ${colors.border}`,
+              padding: '16px 24px', 
+              background: colors.bgSecondary, 
+              borderBottom: `1px solid ${colors.border}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              boxShadow: colors.shadowSm,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 {selectedRoomData.pictureUrl ? (
-                  <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                  <div style={{ position: 'relative' }}>
+                    <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ 
+                      width: 44, height: 44, borderRadius: '50%', objectFit: 'cover',
+                      border: `2px solid ${colors.border}`,
+                    }} />
+                    <div style={{
+                      position: 'absolute', bottom: 0, right: 0,
+                      width: 12, height: 12, borderRadius: '50%',
+                      background: colors.online,
+                      border: `2px solid ${colors.bgSecondary}`,
+                    }} />
+                  </div>
                 ) : (
                   <div style={{
-                    width: 40, height: 40, borderRadius: '50%', 
-                    background: colors.bgTertiary,
+                    width: 44, height: 44, borderRadius: '50%', 
+                    background: colors.accentGradient,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: colors.textMuted, fontSize: 16, fontWeight: 500,
+                    color: '#fff', fontSize: 18, fontWeight: 600,
+                    boxShadow: colors.shadowSm,
                   }}>
                     {selectedRoomData.displayName.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.textPrimary, margin: 0 }}>{selectedRoomData.displayName}</h3>
-                  <span style={{ fontSize: 18 }}>🔈</span>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, color: colors.textPrimary, margin: 0, letterSpacing: '-0.01em' }}>{selectedRoomData.displayName}</h3>
+                    {!selectedRoomData.isMuted && <Volume2 size={16} style={{ color: colors.textMuted }} />}
+                    {selectedRoomData.isMuted && <VolumeX size={16} style={{ color: colors.textMuted }} />}
+                  </div>
+                  <p style={{ fontSize: 12, color: colors.online, margin: '2px 0 0 0', fontWeight: 500 }}>● Online now</p>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {/* LINE OA Action Buttons */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                {/* Action Buttons - Premium Design */}
                 <button style={{
-                  padding: '8px 16px', borderRadius: 6, border: `1px solid ${colors.border}`,
-                  background: colors.bgSecondary, color: colors.link, fontSize: 13, fontWeight: 500,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                  <Clock size={14} />
+                  padding: '10px 18px', borderRadius: 10, border: `1px solid ${colors.border}`,
+                  background: colors.bgSecondary, color: colors.link, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.link; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgSecondary; e.currentTarget.style.borderColor = colors.border; }}
+                >
+                  <Clock size={15} />
                   Follow up
                 </button>
                 <button style={{
-                  padding: '8px 16px', borderRadius: 6, border: `1px solid ${colors.border}`,
-                  background: colors.bgSecondary, color: colors.accent, fontSize: 13, fontWeight: 500,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                  <Check size={14} />
+                  padding: '10px 18px', borderRadius: 10, border: `1px solid ${colors.border}`,
+                  background: colors.bgSecondary, color: colors.accent, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = colors.accentLight; e.currentTarget.style.borderColor = colors.accent; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgSecondary; e.currentTarget.style.borderColor = colors.border; }}
+                >
+                  <Check size={15} />
                   Resolve
                 </button>
                 <button style={{
-                  padding: '8px 16px', borderRadius: 6, border: `1px solid ${colors.border}`,
-                  background: colors.bgSecondary, color: colors.textSecondary, fontSize: 13, fontWeight: 500,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                }}>
-                  <Search size={14} />
+                  padding: '10px 18px', borderRadius: 10, border: `1px solid ${colors.border}`,
+                  background: colors.bgSecondary, color: colors.textSecondary, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.textMuted; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgSecondary; e.currentTarget.style.borderColor = colors.border; }}
+                >
+                  <Search size={15} />
                   Search
                 </button>
                 <button
                   onClick={() => setShowRightPanel(!showRightPanel)}
                   style={{
-                    width: 36, height: 36, borderRadius: 6, border: `1px solid ${colors.border}`,
+                    width: 42, height: 42, borderRadius: 10, border: `1px solid ${colors.border}`,
                     background: showRightPanel ? colors.accentLight : colors.bgSecondary, 
                     color: showRightPanel ? colors.accent : colors.textSecondary, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s ease',
                   }}
+                  onMouseEnter={(e) => { if (!showRightPanel) { e.currentTarget.style.background = colors.bgHover; } }}
+                  onMouseLeave={(e) => { if (!showRightPanel) { e.currentTarget.style.background = colors.bgSecondary; } }}
                 >
-                  <MoreVertical size={18} />
+                  <MoreVertical size={20} />
                 </button>
               </div>
             </div>
@@ -934,13 +1050,14 @@ export default function DataChatPage() {
                               </div>
                             ) : (
                               <div style={{
-                                padding: '10px 14px', 
-                                borderRadius: isAgent ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                                padding: '12px 16px', 
+                                borderRadius: isAgent ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
                                 background: isAgent ? colors.bubbleAgent : colors.bubbleUser, 
                                 color: isAgent ? '#fff' : colors.textPrimary,
-                                boxShadow: isDark ? 'none' : '0 1px 2px rgba(0,0,0,0.08)',
+                                boxShadow: isAgent ? '0 4px 12px rgba(16, 185, 129, 0.25)' : colors.shadowSm,
+                                border: isAgent ? 'none' : `1px solid ${colors.bubbleUserBorder}`,
                               }}>
-                                <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{msg.content}</p>
+                                <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.6, letterSpacing: '0.01em' }}>{msg.content}</p>
                               </div>
                             )}
                           </div>
@@ -1040,13 +1157,13 @@ export default function DataChatPage() {
               </div>
             )}
 
-            {/* Input - LINE OA Style */}
-            <div style={{ padding: '12px 20px 16px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+            {/* Input - Premium Design */}
+            <div style={{ padding: '16px 24px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
               {/* Hint text */}
-              <div style={{ marginBottom: 8, fontSize: 12, color: colors.textMuted }}>
-                Enter: Send message, Shift + Enter: New line
+              <div style={{ marginBottom: 10, fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>
+                <span style={{ color: colors.textSecondary }}>Enter</span> to send • <span style={{ color: colors.textSecondary }}>Shift + Enter</span> for new line
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
                 {/* Input Field */}
                 <div style={{ flex: 1, position: 'relative' }}>
                   <input
@@ -1054,13 +1171,16 @@ export default function DataChatPage() {
                     value={message}
                     onChange={handleInputChange}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
-                    placeholder=""
+                    placeholder="Type your message..."
                     style={{ 
-                      width: '100%', minHeight: 44, padding: '12px 16px',
-                      border: `1px solid ${colors.border}`, borderRadius: 8,
+                      width: '100%', minHeight: 48, padding: '14px 18px',
+                      border: `2px solid ${colors.border}`, borderRadius: 12,
                       background: colors.bgPrimary, color: colors.textPrimary, fontSize: 14, outline: 'none',
                       resize: 'none',
+                      transition: 'all 0.2s ease',
                     }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 4px ${colors.accentLight}`; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
                   />
                 </div>
                 {/* Send Button */}
@@ -1068,157 +1188,220 @@ export default function DataChatPage() {
                   onClick={() => sendMessage(message)}
                   disabled={!message.trim() || isSending}
                   style={{
-                    padding: '12px 24px', borderRadius: 8, border: 'none',
-                    background: message.trim() && !isSending ? colors.accent : colors.bgTertiary,
+                    padding: '14px 28px', borderRadius: 12, border: 'none',
+                    background: message.trim() && !isSending ? colors.accentGradient : colors.bgTertiary,
                     color: message.trim() && !isSending ? '#fff' : colors.textMuted,
-                    fontSize: 14, fontWeight: 500,
+                    fontSize: 14, fontWeight: 600,
                     cursor: message.trim() && !isSending ? 'pointer' : 'default',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.2s',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    transition: 'all 0.2s ease',
+                    boxShadow: message.trim() && !isSending ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
                   }}
+                  onMouseEnter={(e) => { if (message.trim() && !isSending) e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
-                  {isSending ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : 'Send'}
+                  {isSending ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <><Send size={16} /> Send</>}
                 </button>
               </div>
               {/* Action Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   style={{ 
-                    width: 32, height: 32, borderRadius: '50%', border: 'none', 
-                    background: 'transparent', color: colors.textMuted, 
+                    width: 38, height: 38, borderRadius: 10, border: 'none', 
+                    background: showEmojiPicker ? colors.accentLight : 'transparent', 
+                    color: showEmojiPicker ? colors.accent : colors.textMuted, 
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s ease',
                   }}
+                  onMouseEnter={(e) => { if (!showEmojiPicker) e.currentTarget.style.background = colors.bgHover; }}
+                  onMouseLeave={(e) => { if (!showEmojiPicker) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <Smile size={20} />
+                  <Smile size={22} />
                 </button>
                 <button style={{ 
-                  width: 32, height: 32, borderRadius: '50%', border: 'none', 
+                  width: 38, height: 38, borderRadius: 10, border: 'none', 
                   background: 'transparent', color: colors.textMuted, 
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Paperclip size={20} />
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Paperclip size={22} />
                 </button>
                 <button 
                   onClick={() => setShowQuickReplies(!showQuickReplies)} 
                   style={{ 
-                    width: 32, height: 32, borderRadius: '50%', border: 'none', 
-                    background: 'transparent', color: colors.textMuted, 
+                    width: 38, height: 38, borderRadius: 10, border: 'none', 
+                    background: showQuickReplies ? colors.accentLight : 'transparent', 
+                    color: showQuickReplies ? colors.accent : colors.textMuted, 
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s ease',
                   }}
+                  onMouseEnter={(e) => { if (!showQuickReplies) e.currentTarget.style.background = colors.bgHover; }}
+                  onMouseLeave={(e) => { if (!showQuickReplies) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <Plus size={20} />
+                  <Plus size={22} />
                 </button>
                 <button style={{ 
-                  width: 32, height: 32, borderRadius: '50%', border: 'none', 
+                  width: 38, height: 38, borderRadius: 10, border: 'none', 
                   background: 'transparent', color: colors.textMuted, 
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Smile size={20} />
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Bookmark size={20} />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* RIGHT PANEL - LINE OA Style */}
+          {/* RIGHT PANEL - Premium Design */}
           {showRightPanel && (
-            <div style={{ width: 340, background: colors.bgSecondary, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-              {/* Close Button */}
-              <div style={{ position: 'absolute', top: 12, right: 12 }}>
-                <button 
-                  onClick={() => setShowRightPanel(false)}
-                  style={{
-                    width: 28, height: 28, borderRadius: 4, border: 'none',
-                    background: 'transparent', color: colors.textMuted, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <MoreVertical size={18} />
-                </button>
-              </div>
-
-              {/* Profile Section - LINE OA Style */}
-              <div style={{ padding: '24px 20px', textAlign: 'center', borderBottom: `1px solid ${colors.border}` }}>
-                <div style={{ position: 'relative', display: 'inline-block', marginBottom: 12 }}>
+            <div style={{ width: 360, background: colors.bgSecondary, borderLeft: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+              {/* Profile Section - Premium Design */}
+              <div style={{ 
+                padding: '32px 24px', 
+                textAlign: 'center', 
+                borderBottom: `1px solid ${colors.border}`,
+                background: colors.bgGradient,
+              }}>
+                <div style={{ position: 'relative', display: 'inline-block', marginBottom: 16 }}>
                   {selectedRoomData.pictureUrl ? (
-                    <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover' }} />
+                    <div style={{ position: 'relative' }}>
+                      <img src={selectedRoomData.pictureUrl} alt={selectedRoomData.displayName} style={{ 
+                        width: 88, height: 88, borderRadius: '50%', objectFit: 'cover',
+                        border: `3px solid ${colors.accent}`,
+                        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.2)',
+                      }} />
+                      <div style={{
+                        position: 'absolute', bottom: 4, right: 4,
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: colors.online,
+                        border: `3px solid ${colors.bgSecondary}`,
+                      }} />
+                    </div>
                   ) : (
                     <div style={{
-                      width: 80, height: 80, borderRadius: '50%', 
-                      background: colors.bgTertiary,
+                      width: 88, height: 88, borderRadius: '50%', 
+                      background: colors.accentGradient,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: colors.textMuted, fontSize: 28, fontWeight: 500,
+                      color: '#fff', fontSize: 32, fontWeight: 700,
+                      boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3)',
                     }}>
                       {selectedRoomData.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-                  <h3 style={{ fontSize: 16, fontWeight: 600, color: colors.textPrimary, margin: 0 }}>{selectedRoomData.displayName}</h3>
-                  <span style={{ fontSize: 14 }}>✏️</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 6 }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: colors.textPrimary, margin: 0, letterSpacing: '-0.02em' }}>{selectedRoomData.displayName}</h3>
+                  <button style={{ 
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 4, 
+                    color: colors.accent, display: 'flex', alignItems: 'center',
+                  }}>
+                    ✏️
+                  </button>
                 </div>
-                <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>({selectedRoomData.statusMessage || 'LINE User'})</p>
+                <p style={{ fontSize: 13, color: colors.textSecondary, margin: 0, fontWeight: 500 }}>({selectedRoomData.statusMessage || 'LINE User'})</p>
               </div>
 
-              {/* Tags Section - LINE OA Style */}
-              <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
+              {/* Tags Section - Premium Design */}
+              <div style={{ padding: '20px 24px', borderBottom: `1px solid ${colors.border}` }}>
                 <div style={{ 
-                  padding: '12px 16px', borderRadius: 8, border: `1px dashed ${colors.border}`,
+                  padding: '16px 20px', borderRadius: 12, 
+                  border: `2px dashed ${colors.borderAccent}`,
                   background: colors.bgPrimary, textAlign: 'center',
-                }}>
-                  <p style={{ fontSize: 13, color: colors.textMuted, margin: '0 0 8px 0' }}>Using tags can help you sort chats.</p>
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.background = colors.accentLight; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = colors.borderAccent; e.currentTarget.style.background = colors.bgPrimary; }}
+                >
+                  <p style={{ fontSize: 13, color: colors.textSecondary, margin: '0 0 10px 0', lineHeight: 1.5 }}>Using tags can help you sort chats.</p>
                   <button style={{ 
-                    background: 'none', border: 'none', color: colors.accent, 
-                    fontSize: 14, fontWeight: 500, cursor: 'pointer', padding: 0,
-                  }}>
-                    + Add tags
+                    background: colors.accentGradient, border: 'none', color: '#fff', 
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '8px 16px',
+                    borderRadius: 20, display: 'inline-flex', alignItems: 'center', gap: 6,
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
+                    <Plus size={14} /> Add tags
                   </button>
                 </div>
               </div>
 
-              {/* Assign Section - LINE OA Style */}
-              <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
+              {/* Assign Section - Premium Design */}
+              <div style={{ padding: '20px 24px', borderBottom: `1px solid ${colors.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: colors.textPrimary }}>Assign</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>Assigned to</span>
+                  <div style={{ 
+                    display: 'flex', alignItems: 'center', gap: 10, 
+                    padding: '8px 12px', borderRadius: 10, 
+                    background: colors.bgTertiary,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                  onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
+                  >
                     <div style={{ 
-                      width: 28, height: 28, borderRadius: '50%', 
-                      background: colors.accent,
+                      width: 32, height: 32, borderRadius: '50%', 
+                      background: colors.accentGradient,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontSize: 12, fontWeight: 600,
+                      color: '#fff', fontSize: 13, fontWeight: 700,
+                      boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)',
                     }}>
                       {currentUser?.name?.charAt(0) || 'A'}
                     </div>
-                    <span style={{ fontSize: 14, color: colors.textPrimary }}>{currentUser?.name || 'Agent'}</span>
-                    <span style={{ fontSize: 14 }}>✏️</span>
+                    <span style={{ fontSize: 14, color: colors.textPrimary, fontWeight: 500 }}>{currentUser?.name || 'Agent'}</span>
+                    <span style={{ fontSize: 12, color: colors.textMuted }}>✏️</span>
                   </div>
                 </div>
               </div>
 
-              {/* Notes Section - LINE OA Style */}
-              <div style={{ padding: '16px 20px', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: colors.textPrimary }}>Notes</span>
-                    <span style={{ fontSize: 13, color: colors.textMuted }}>0/1</span>
+              {/* Notes Section - Premium Design */}
+              <div style={{ padding: '20px 24px', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>Notes</span>
+                    <span style={{ 
+                      fontSize: 12, color: colors.textMuted, 
+                      background: colors.bgTertiary, padding: '2px 8px', borderRadius: 10, 
+                    }}>0/1</span>
                   </div>
                   <button style={{ 
-                    width: 24, height: 24, borderRadius: 4, border: 'none',
-                    background: 'transparent', color: colors.textMuted, cursor: 'pointer',
+                    width: 32, height: 32, borderRadius: 8, border: 'none',
+                    background: colors.bgTertiary, color: colors.accent, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = colors.accentLight; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; }}
+                  >
                     <Plus size={18} />
                   </button>
                 </div>
                 <div style={{ 
-                  padding: '16px', borderRadius: 8, border: `1px solid ${colors.border}`,
+                  padding: '20px', borderRadius: 12, border: `1px solid ${colors.border}`,
                   background: colors.bgPrimary,
+                  boxShadow: colors.shadowSm,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12 }}>
-                    <span style={{ fontSize: 18 }}>ℹ️</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>Keep records in Notes</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+                    <div style={{ 
+                      width: 32, height: 32, borderRadius: 8, 
+                      background: 'rgba(59, 130, 246, 0.1)', 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <span style={{ fontSize: 16 }}>📝</span>
+                    </div>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: colors.textPrimary }}>Keep records in Notes</span>
                   </div>
-                  <p style={{ fontSize: 13, color: colors.textSecondary, margin: 0, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 13, color: colors.textSecondary, margin: 0, lineHeight: 1.6 }}>
                     Record info on this user and your interactions with them, and leave handoff notes for your team. Notes aren't visible to the user; only account members can view and edit them.
                   </p>
                 </div>
@@ -1245,7 +1428,17 @@ export default function DataChatPage() {
         </div>
       )}
       
-      <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }` }} />
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        * { scrollbar-width: thin; scrollbar-color: ${colors.border} transparent; }
+        *::-webkit-scrollbar { width: 6px; }
+        *::-webkit-scrollbar-track { background: transparent; }
+        *::-webkit-scrollbar-thumb { background: ${colors.border}; border-radius: 3px; }
+        *::-webkit-scrollbar-thumb:hover { background: ${colors.textMuted}; }
+      `}} />
     </div>
   );
 }
