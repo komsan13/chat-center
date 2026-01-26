@@ -329,11 +329,13 @@ export default function DataChatPage() {
       const idx = prev.findIndex(r => r.id === msg.roomId);
       if (idx === -1) { fetchRooms(); return prev; }
       const updated = [...prev];
+      // Only increment unread count for messages from LINE users, not from agents
+      const shouldIncrementUnread = msg.sender === 'user' && selectedRoomRef.current !== msg.roomId;
       updated[idx] = {
         ...updated[idx],
         lastMessage: msg,
         lastMessageAt: msg.createdAt,
-        unreadCount: selectedRoomRef.current === msg.roomId ? 0 : updated[idx].unreadCount + 1,
+        unreadCount: selectedRoomRef.current === msg.roomId ? 0 : (shouldIncrementUnread ? updated[idx].unreadCount + 1 : updated[idx].unreadCount),
       };
       return updated.sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
