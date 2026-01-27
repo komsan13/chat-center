@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
       senderName: senderName,
       status: 'sending',
       createdAt: now,
+      emojis: emojis || undefined, // Include emojis data
     };
     
     emitChatEvent('new-message', messageData);

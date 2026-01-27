@@ -14,10 +14,8 @@ import { useSocket } from '@/hooks/useSocket';
 
 interface LineEmoji {
   index: number;
-  length: number;
   productId: string;
   emojiId: string;
-  url: string;
 }
 
 interface Message {
@@ -945,6 +943,7 @@ export default function DataChatPage() {
       senderName: currentUser?.name || 'Agent',
       status: 'sending',
       createdAt: new Date().toISOString(),
+      emojis: emojisToSend, // Include emojis data for preview
     };
     
     setMessages(prev => [...prev, tempMessage]);
@@ -1597,55 +1596,53 @@ export default function DataChatPage() {
     // If message has LINE emojis, render them as images (check this FIRST)
     if (msg.emojis && msg.emojis.length > 0) {
       const elements: React.ReactNode[] = [];
-      let lastIndex = 0;
+      let charIndex = 0;
+      let emojiIndex = 0;
       
       // Sort emojis by index
       const sortedEmojis = [...msg.emojis].sort((a, b) => a.index - b.index);
       
-      for (const emoji of sortedEmojis) {
-        // Add text before this emoji
-        if (emoji.index > lastIndex) {
-          elements.push(
-            <span key={`text-${lastIndex}`}>{content.slice(lastIndex, emoji.index)}</span>
-          );
+      for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        
+        // Check if this position has an emoji ($ placeholder)
+        if (char === '$' && emojiIndex < sortedEmojis.length) {
+          const emoji = sortedEmojis[emojiIndex];
+          if (emoji.index === i) {
+            // Add emoji image
+            elements.push(
+              <img 
+                key={`emoji-${i}`}
+                src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+                alt="LINE emoji"
+                style={{ 
+                  width: 22, 
+                  height: 22, 
+                  display: 'inline-block', 
+                  verticalAlign: 'middle',
+                  margin: '0 1px',
+                }}
+                onError={(e) => {
+                  // Fallback: try alternative URL format
+                  const target = e.target as HTMLImageElement;
+                  if (!target.dataset.retried) {
+                    target.dataset.retried = 'true';
+                    target.src = `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/android/${emoji.emojiId}.png`;
+                  }
+                }}
+              />
+            );
+            emojiIndex++;
+            continue;
+          }
         }
         
-        // Add emoji image
-        elements.push(
-          <img 
-            key={`emoji-${emoji.index}`}
-            src={emoji.url}
-            alt="LINE emoji"
-            style={{ 
-              width: 24, 
-              height: 24, 
-              display: 'inline-block', 
-              verticalAlign: 'middle',
-              margin: '0 1px',
-            }}
-            onError={(e) => {
-              // Fallback: try alternative URL format
-              const target = e.target as HTMLImageElement;
-              if (!target.dataset.retried) {
-                target.dataset.retried = 'true';
-                target.src = `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/android/${emoji.emojiId}.png`;
-              }
-            }}
-          />
-        );
-        
-        lastIndex = emoji.index + emoji.length;
-      }
-      
-      // Add remaining text after last emoji
-      if (lastIndex < content.length) {
-        elements.push(
-          <span key={`text-end`}>{content.slice(lastIndex)}</span>
-        );
+        // Add regular character
+        elements.push(<span key={`char-${i}`}>{char}</span>);
       }
       
       return (
-        <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5, display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
           {elements}
         </p>
       );
@@ -2082,7 +2079,7 @@ export default function DataChatPage() {
                                       ? room.lastMessage.emojis.slice(0, 3).map((emoji, i) => (
                                           <img 
                                             key={i}
-                                            src={emoji.url}
+                                            src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
                                             alt="emoji"
                                             style={{ width: 16, height: 16, verticalAlign: 'middle', marginRight: 2 }}
                                           />
