@@ -247,8 +247,8 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
   
   if (!message) return;
 
-  // Get or create chat room
-  let room = db.prepare('SELECT * FROM LineChatRoom WHERE lineUserId = ?').get(lineUserId) as ChatRoomRecord | undefined;
+  // Get or create chat room - must match BOTH lineUserId AND lineTokenId
+  let room = db.prepare('SELECT * FROM LineChatRoom WHERE lineUserId = ? AND lineTokenId = ?').get(lineUserId, lineToken.id) as ChatRoomRecord | undefined;
   
   if (!room) {
     // Get user profile from LINE
