@@ -247,6 +247,7 @@ model LineChatRoom {
   displayName   String
   pictureUrl    String?
   statusMessage String?
+  lastMessage   String?
   lastMessageAt DateTime?
   unreadCount   Int      @default(0)
   isPinned      Boolean  @default(false)

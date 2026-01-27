@@ -130,6 +130,7 @@ function createNotificationSound(audioContext: AudioContext) {
 export function useSocket(options: UseSocketOptions = {}) {
   // State
   const socketRef = useRef<Socket | null>(null);
+  const socketIdRef = useRef<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -315,6 +316,7 @@ export function useSocket(options: UseSocketOptions = {}) {
 
     socket.on('connect', () => {
       console.log(`[Socket] ✅ Connected: ${socket.id}`);
+      socketIdRef.current = socket.id || null;
       setIsConnected(true);
       setConnectionState('connected');
       setConnectionError(null);
@@ -404,7 +406,12 @@ export function useSocket(options: UseSocketOptions = {}) {
       optionsRef.current.onMessagesRead?.(data);
     });
 
-    socket.on('user-typing', (data: { roomId: string; userName: string; isTyping: boolean }) => {
+    socket.on('user-typing', (data: { roomId: string; userName: string; isTyping: boolean; senderSocketId?: string }) => {
+      // Filter out typing events from this same socket (same browser tab)
+      // But allow events from same user on different browser tabs
+      if (data.senderSocketId && data.senderSocketId === socketIdRef.current) {
+        return; // Ignore typing event from self
+      }
       optionsRef.current.onUserTyping?.(data);
     });
 

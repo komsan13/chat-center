@@ -167,20 +167,33 @@ app.prepare().then(() => {
       }
     });
 
-    // Typing indicators - broadcast only to all-rooms (clients join both room and all-rooms)
+    // Typing indicators - broadcast to ALL clients in all-rooms INCLUDING sender
+    // This ensures all browsers see typing status from other browsers
     socket.on('typing-start', ({ roomId, userName }) => {
-      if (roomId) {
+      if (roomId && userName) {
         console.log(`[Socket.IO] Typing start: ${userName} in room ${roomId}`);
-        // Broadcast to all-rooms EXCEPT sender (no need to send to specific room too)
-        socket.to('all-rooms').emit('user-typing', { roomId, userName, isTyping: true });
+        // Broadcast to ALL clients (io.emit sends to everyone including sender)
+        // But we need to exclude sender, so use socket.to
+        // Actually, for cross-browser support, sender's OTHER browser tabs need to see it too
+        // So we emit to all-rooms but mark the sender's socketId
+        io.to('all-rooms').emit('user-typing', { 
+          roomId, 
+          userName, 
+          isTyping: true,
+          senderSocketId: socket.id 
+        });
       }
     });
 
     socket.on('typing-stop', ({ roomId, userName }) => {
-      if (roomId) {
+      if (roomId && userName) {
         console.log(`[Socket.IO] Typing stop: ${userName} in room ${roomId}`);
-        // Broadcast to all-rooms EXCEPT sender
-        socket.to('all-rooms').emit('user-typing', { roomId, userName, isTyping: false });
+        io.to('all-rooms').emit('user-typing', { 
+          roomId, 
+          userName, 
+          isTyping: false,
+          senderSocketId: socket.id 
+        });
       }
     });
 
