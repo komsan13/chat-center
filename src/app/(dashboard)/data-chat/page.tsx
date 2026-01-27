@@ -1907,13 +1907,13 @@ export default function DataChatPage() {
   const [selectedTemplateCategory, setSelectedTemplateCategory] = useState('casino');
 
   // Insert quick message template to input (not send immediately)
-  const insertQuickTemplate = (messageText: string) => {
+  const insertQuickTemplate = (emoji: string, messageText: string) => {
     if (!selectedRoom) return;
     setShowEmojiPicker(false);
     
-    // Insert text into contentEditable
+    // Insert emoji + text into contentEditable
     if (messageEditorRef.current) {
-      messageEditorRef.current.innerText = messageText;
+      messageEditorRef.current.innerText = `${emoji} ${messageText}`;
       messageEditorRef.current.focus();
     }
   };
@@ -4197,7 +4197,7 @@ export default function DataChatPage() {
                           return (
                             <button
                               key={msg.id}
-                              onClick={() => insertQuickTemplate(msg.text)}
+                              onClick={() => insertQuickTemplate(msg.emoji, msg.text)}
                               style={{
                                 padding: '12px 14px', 
                                 borderRadius: 12,
