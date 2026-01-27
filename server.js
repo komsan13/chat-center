@@ -145,6 +145,7 @@ app.prepare().then(() => {
       if (roomId && updates) {
         console.log(`[Socket.IO] Room property update: ${roomId}`, updates);
         // Broadcast to ALL clients including sender
+        console.log(`[Socket.IO] 📢 Broadcasting room-property-changed to ALL clients (${io.engine.clientsCount} connected)`);
         io.emit('room-property-changed', { roomId, updates, updatedAt: new Date().toISOString() });
       }
     });
