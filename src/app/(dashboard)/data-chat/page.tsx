@@ -630,8 +630,8 @@ export default function DataChatPage() {
   }, []);
 
   // Handle room update from socket - update rooms list when other browsers send messages
-  const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number; displayName?: string; pictureUrl?: string; status?: 'active' | 'spam' | 'archived' | 'blocked' }) => {
-    console.log('[Chat] Room update received:', data.id);
+  const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number; displayName?: string; pictureUrl?: string; status?: 'active' | 'spam' | 'archived' | 'blocked'; lineTokenId?: string }) => {
+    console.log('[Chat] Room update received:', data.id, 'lineTokenId:', data.lineTokenId);
     
     setRooms(prev => {
       const roomIndex = prev.findIndex(r => r.id === data.id);
@@ -645,6 +645,7 @@ export default function DataChatPage() {
         const newRoom: ChatRoom = {
           id: data.id,
           lineUserId: '',
+          lineTokenId: data.lineTokenId,
           displayName: data.displayName || 'New Customer',
           pictureUrl: data.pictureUrl,
           lastMessage: data.lastMessage,
@@ -659,7 +660,16 @@ export default function DataChatPage() {
         };
         
         console.log('[Chat] Adding new room from update:', newRoom.id, newRoom.displayName);
-        // Sound is played by handleNewMessage, no need to play here
+        
+        // Play sound for returning room (e.g., after being cleared)
+        // Check token filter
+        const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
+                            !data.lineTokenId || 
+                            selectedTokenIdsRef.current.has(data.lineTokenId);
+        if (shouldNotify && data.lastMessage?.sender === 'user') {
+          playSound();
+        }
+        
         return [newRoom, ...prev];
       }
       

@@ -408,9 +408,10 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
   console.log(`[LINE Webhook] Broadcasting room-update with unreadCount: ${newUnreadCount}`);
   emitChatEvent('room-update', {
     id: room.id,
+    lineTokenId: room.lineTokenId,
     displayName: room.displayName,
     pictureUrl: room.pictureUrl,
-    status: room.status,
+    status: 'active', // Always set to active when new message comes
     lastMessage: messageData,
     lastMessageAt: now,
     unreadCount: newUnreadCount,
