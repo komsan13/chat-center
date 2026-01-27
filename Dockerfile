@@ -34,6 +34,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/server.js ./server.js
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/add-position-column.js ./add-position-column.js
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data
