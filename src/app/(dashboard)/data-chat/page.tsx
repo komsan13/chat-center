@@ -2819,7 +2819,7 @@ export default function DataChatPage() {
                   width: '100%', 
                   padding: '12px 14px',
                   borderRadius: 8, 
-                  border: `1px solid ${colors.border}`,
+                  border: 'none',
                   background: colors.bgPrimary, 
                   color: colors.textPrimary,
                   fontSize: 14, 
@@ -2827,10 +2827,7 @@ export default function DataChatPage() {
                   resize: 'none',
                   fontFamily: 'inherit',
                   lineHeight: 1.5,
-                  transition: 'border-color 0.15s ease',
                 }}
-                onFocus={(e) => e.currentTarget.style.borderColor = colors.accent}
-                onBlur={(e) => e.currentTarget.style.borderColor = colors.border}
               />
               
               {/* Bottom Bar: Actions + Send */}
@@ -2884,19 +2881,6 @@ export default function DataChatPage() {
                     title="Quick replies"
                   >
                     <Plus size={20} />
-                  </button>
-                  <button 
-                    onClick={() => { setShowEmojiPicker(true); setEmojiPickerTab('sticker'); }}
-                    style={{ 
-                      width: 36, height: 36, borderRadius: '50%', border: 'none',
-                      background: showEmojiPicker && emojiPickerTab === 'sticker' ? colors.accentLight : 'transparent',
-                      color: showEmojiPicker && emojiPickerTab === 'sticker' ? colors.accent : colors.textMuted,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.15s ease',
-                    }}
-                    title="Stickers"
-                  >
-                    <MessageCircle size={20} />
                   </button>
                 </div>
                 
