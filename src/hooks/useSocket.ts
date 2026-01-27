@@ -46,7 +46,7 @@ interface ChatRoom {
   isPinned: boolean;
   isMuted: boolean;
   tags: string[];
-  status: 'active' | 'archived' | 'blocked';
+  status: 'active' | 'archived' | 'blocked' | 'spam';
   createdAt: string;
   updatedAt: string;
 }
@@ -80,6 +80,8 @@ interface UseSocketOptions {
   onConnectionQualityChange?: (quality: ConnectionQuality) => void;
   enableSound?: boolean;
   currentRoomId?: string | null;
+  selectedTokenIds?: string[];
+  roomsRef?: React.RefObject<ChatRoom[]>;
 }
 
 type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'suspended';
@@ -384,7 +386,15 @@ export function useSocket(options: UseSocketOptions = {}) {
     socket.on('new-message', (message: ChatMessage) => {
       console.log(`[Socket] 📨 New message: ${message.id}`);
       const currentRoom = optionsRef.current.currentRoomId;
-      if (message.sender === 'user' && message.roomId !== currentRoom) {
+      const selectedTokenIds = optionsRef.current.selectedTokenIds || [];
+      const rooms = optionsRef.current.roomsRef?.current || [];
+      
+      // Find the room to check its lineTokenId
+      const messageRoom = rooms.find(r => r.id === message.roomId);
+      const isFromSelectedToken = selectedTokenIds.length === 0 || 
+        (messageRoom?.lineTokenId && selectedTokenIds.includes(messageRoom.lineTokenId));
+      
+      if (message.sender === 'user' && message.roomId !== currentRoom && isFromSelectedToken) {
         playNotificationSound();
         // Browser notification if tab hidden
         if (!isPageVisibleRef.current && 'Notification' in window && Notification.permission === 'granted') {
@@ -400,7 +410,13 @@ export function useSocket(options: UseSocketOptions = {}) {
 
     socket.on('new-room', (room: ChatRoom) => {
       console.log(`[Socket] 🆕 New room: ${room.id}`);
-      playNotificationSound();
+      const selectedTokenIds = optionsRef.current.selectedTokenIds || [];
+      const isFromSelectedToken = selectedTokenIds.length === 0 || 
+        (room.lineTokenId && selectedTokenIds.includes(room.lineTokenId));
+      
+      if (isFromSelectedToken) {
+        playNotificationSound();
+      }
       optionsRef.current.onNewRoom?.(room);
     });
 
