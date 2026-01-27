@@ -1905,17 +1905,25 @@ export default function DataChatPage() {
     },
   ];
   const [selectedTemplateCategory, setSelectedTemplateCategory] = useState('casino');
+  const [templateSearchTerm, setTemplateSearchTerm] = useState('');
 
   // Insert quick message template to input (not send immediately)
   const insertQuickTemplate = (emoji: string, messageText: string) => {
     if (!selectedRoom) return;
     setShowEmojiPicker(false);
+    setTemplateSearchTerm('');
+    
+    // Full message with emoji
+    const fullMessage = `${emoji} ${messageText}`;
     
     // Insert emoji + text into contentEditable
     if (messageEditorRef.current) {
-      messageEditorRef.current.innerText = `${emoji} ${messageText}`;
+      messageEditorRef.current.innerText = fullMessage;
       messageEditorRef.current.focus();
     }
+    
+    // Also update state so Send button works immediately
+    setMessage(fullMessage);
   };
 
   // Send quick message template as text (legacy - kept for reference)
@@ -4133,118 +4141,181 @@ export default function DataChatPage() {
                 {/* Quick Message Templates Tab - Pro Design */}
                 {emojiPickerTab === 'custom' && (
                   <div style={{ maxHeight: 340, overflowY: 'auto' }}>
-                    {/* Category Tabs - Pill Style with Emoji */}
+                    {/* Search Box */}
                     <div style={{ 
-                      display: 'flex', gap: 8, marginBottom: 16,
-                      padding: '4px',
-                      background: colors.bgTertiary,
-                      borderRadius: 12,
+                      position: 'relative',
+                      marginBottom: 12,
                     }}>
-                      {quickMessageTemplates.map((category) => {
-                        const isActive = selectedTemplateCategory === category.id;
-                        return (
-                          <button
-                            key={category.id}
-                            onClick={() => setSelectedTemplateCategory(category.id)}
-                            style={{
-                              flex: 1,
-                              padding: '10px 16px', 
-                              borderRadius: 10,
-                              border: 'none',
-                              background: isActive ? category.gradient : 'transparent',
-                              color: isActive ? '#fff' : colors.textMuted,
-                              fontSize: 12, 
-                              fontWeight: 600, 
-                              cursor: 'pointer',
-                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 6,
-                              boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
-                            }}
-                          >
-                            <span style={{ fontSize: 14 }}>{category.emoji}</span>
-                            {category.name}
-                          </button>
-                        );
-                      })}
+                      <Search size={14} style={{ 
+                        position: 'absolute', 
+                        left: 12, 
+                        top: '50%', 
+                        transform: 'translateY(-50%)',
+                        color: colors.textMuted,
+                      }} />
+                      <input
+                        type="text"
+                        placeholder="ค้นหาข้อความ..."
+                        value={templateSearchTerm}
+                        onChange={(e) => setTemplateSearchTerm(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px 10px 36px',
+                          borderRadius: 10,
+                          border: `1px solid ${colors.border}`,
+                          background: colors.bgTertiary,
+                          color: colors.textPrimary,
+                          fontSize: 13,
+                          outline: 'none',
+                        }}
+                      />
+                      {templateSearchTerm && (
+                        <button
+                          onClick={() => setTemplateSearchTerm('')}
+                          style={{
+                            position: 'absolute',
+                            right: 8,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: colors.textMuted,
+                            padding: 4,
+                          }}
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
                     </div>
                     
-                    {/* Quick Tip */}
-                    <div style={{
-                      padding: '10px 14px', 
-                      borderRadius: 10,
-                      background: `linear-gradient(135deg, ${colors.accent}08 0%, ${colors.accent}15 100%)`,
-                      marginBottom: 14,
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 10,
-                    }}>
-                      <span style={{ fontSize: 18 }}>💡</span>
-                      <span style={{ fontSize: 12, color: colors.textSecondary, fontWeight: 500 }}>
-                        เลือกข้อความ แล้วกดส่งเอง
-                      </span>
-                    </div>
-                    
-                    {/* Messages Grid */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {quickMessageTemplates
-                        .find(cat => cat.id === selectedTemplateCategory)
-                        ?.messages.map((msg) => {
-                          const category = quickMessageTemplates.find(cat => cat.id === selectedTemplateCategory);
-                          
+                    {/* Category Tabs - Pill Style with Emoji (hide when searching) */}
+                    {!templateSearchTerm && (
+                      <div style={{ 
+                        display: 'flex', gap: 8, marginBottom: 12,
+                        padding: '4px',
+                        background: colors.bgTertiary,
+                        borderRadius: 12,
+                      }}>
+                        {quickMessageTemplates.map((category) => {
+                          const isActive = selectedTemplateCategory === category.id;
                           return (
                             <button
-                              key={msg.id}
-                              onClick={() => insertQuickTemplate(msg.emoji, msg.text)}
+                              key={category.id}
+                              onClick={() => setSelectedTemplateCategory(category.id)}
                               style={{
-                                padding: '12px 14px', 
-                                borderRadius: 12,
-                                border: `1px solid transparent`,
-                                background: colors.bgTertiary,
+                                flex: 1,
+                                padding: '8px 12px', 
+                                borderRadius: 10,
+                                border: 'none',
+                                background: isActive ? category.gradient : 'transparent',
+                                color: isActive ? '#fff' : colors.textMuted,
+                                fontSize: 11, 
+                                fontWeight: 600, 
                                 cursor: 'pointer',
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: 12,
                                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                textAlign: 'left',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = `${category?.color}12`;
-                                e.currentTarget.style.borderColor = `${category?.color}40`;
-                                e.currentTarget.style.transform = 'translateX(4px)';
-                                e.currentTarget.style.boxShadow = `0 2px 8px ${category?.color}20`;
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = colors.bgTertiary;
-                                e.currentTarget.style.borderColor = 'transparent';
-                                e.currentTarget.style.transform = 'translateX(0)';
-                                e.currentTarget.style.boxShadow = 'none';
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 4,
+                                boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
                               }}
                             >
-                              {/* Emoji */}
-                              <span style={{
-                                fontSize: 24,
-                                lineHeight: 1,
-                                flexShrink: 0,
-                              }}>
-                                {msg.emoji}
-                              </span>
-                              
-                              {/* Text */}
-                              <span style={{
-                                fontSize: 13, 
-                                color: colors.textPrimary,
-                                lineHeight: 1.5,
-                                flex: 1,
-                                fontWeight: 500,
-                              }}>
-                                {msg.text}
-                              </span>
+                              <span style={{ fontSize: 12 }}>{category.emoji}</span>
+                              {category.name}
                             </button>
                           );
                         })}
+                      </div>
+                    )}
+                    
+                    {/* Messages Grid */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {(() => {
+                        // Get messages based on search or category
+                        let messagesToShow: Array<{ id: string; text: string; emoji: string; categoryColor?: string }> = [];
+                        
+                        if (templateSearchTerm) {
+                          // Search across all categories
+                          quickMessageTemplates.forEach(cat => {
+                            cat.messages.forEach(msg => {
+                              if (msg.text.toLowerCase().includes(templateSearchTerm.toLowerCase())) {
+                                messagesToShow.push({ ...msg, categoryColor: cat.color });
+                              }
+                            });
+                          });
+                        } else {
+                          // Show current category
+                          const category = quickMessageTemplates.find(cat => cat.id === selectedTemplateCategory);
+                          if (category) {
+                            messagesToShow = category.messages.map(msg => ({ ...msg, categoryColor: category.color }));
+                          }
+                        }
+                        
+                        if (messagesToShow.length === 0) {
+                          return (
+                            <div style={{ 
+                              padding: 20, 
+                              textAlign: 'center',
+                              color: colors.textMuted,
+                              fontSize: 13,
+                            }}>
+                              🔍 ไม่พบข้อความที่ค้นหา
+                            </div>
+                          );
+                        }
+                        
+                        return messagesToShow.map((msg) => (
+                          <button
+                            key={msg.id}
+                            onClick={() => insertQuickTemplate(msg.emoji, msg.text)}
+                            style={{
+                              padding: '12px 14px', 
+                              borderRadius: 12,
+                              border: `1px solid transparent`,
+                              background: colors.bgTertiary,
+                              cursor: 'pointer',
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: 12,
+                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              textAlign: 'left',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = `${msg.categoryColor}12`;
+                              e.currentTarget.style.borderColor = `${msg.categoryColor}40`;
+                              e.currentTarget.style.transform = 'translateX(4px)';
+                              e.currentTarget.style.boxShadow = `0 2px 8px ${msg.categoryColor}20`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = colors.bgTertiary;
+                              e.currentTarget.style.borderColor = 'transparent';
+                              e.currentTarget.style.transform = 'translateX(0)';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
+                          >
+                            {/* Emoji */}
+                            <span style={{
+                              fontSize: 24,
+                              lineHeight: 1,
+                              flexShrink: 0,
+                            }}>
+                              {msg.emoji}
+                            </span>
+                            
+                            {/* Text */}
+                            <span style={{
+                              fontSize: 13, 
+                              color: colors.textPrimary,
+                              lineHeight: 1.5,
+                              flex: 1,
+                              fontWeight: 500,
+                            }}>
+                              {msg.text}
+                            </span>
+                          </button>
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}
