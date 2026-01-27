@@ -87,6 +87,7 @@ export default function DataChatPage() {
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [typingUsers, setTypingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout } }>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emojiPickerTab, setEmojiPickerTab] = useState<'emoji' | 'sticker'>('emoji');
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [chatSearchTerm, setChatSearchTerm] = useState('');
@@ -955,6 +956,71 @@ export default function DataChatPage() {
     }
   };
 
+  // Send LINE Sticker
+  const sendSticker = async (packageId: string, stickerId: string) => {
+    if (!selectedRoom || isSending) return;
+    setIsSending(true);
+    
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage: Message = {
+      id: tempId,
+      roomId: selectedRoom,
+      messageType: 'sticker',
+      content: `[sticker:${packageId}/${stickerId}]`,
+      packageId,
+      stickerId,
+      sender: 'agent',
+      senderName: currentUser?.name || 'Agent',
+      status: 'sending',
+      createdAt: new Date().toISOString(),
+    };
+    
+    setMessages(prev => [...prev, tempMessage]);
+    setShowEmojiPicker(false);
+    
+    try {
+      const response = await fetch('/api/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          roomId: selectedRoom, 
+          messageType: 'sticker',
+          packageId,
+          stickerId,
+          senderName: currentUser?.name || 'Agent' 
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const sentMessage = { ...data.message, status: 'sent' };
+        setMessages(prev => prev.map(m => m.id === tempId ? sentMessage : m));
+        
+        if (messagesCacheRef.current.has(selectedRoom)) {
+          const cached = messagesCacheRef.current.get(selectedRoom)!;
+          messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempId ? sentMessage : m));
+        }
+        
+        setRooms(prev => prev.map(room => 
+          room.id === selectedRoom 
+            ? { ...room, lastMessage: sentMessage, lastMessageAt: sentMessage.createdAt }
+            : room
+        ));
+        
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else {
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+      }
+    } catch (error) {
+      console.error('Failed to send sticker:', error);
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   // ═══════════════════════════════════════════════════════════════════
   // CHAT ROOM ACTIONS (Pin, Mute, Archive, Spam, Delete)
   // ═══════════════════════════════════════════════════════════════════
@@ -1476,6 +1542,42 @@ export default function DataChatPage() {
 
   // Emoji list
   const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😱', '🤔', '👏', '💪', '🙌', '😎', '🥳', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🧾', '📝', '🎁', '🏆'];
+  
+  // LINE Official Stickers (free to use with Messaging API)
+  // These are the only stickers bots can send
+  const lineStickers = [
+    // Package 446 - Moon & James
+    { packageId: '446', stickerId: '1988', name: 'OK' },
+    { packageId: '446', stickerId: '1989', name: 'Love' },
+    { packageId: '446', stickerId: '1990', name: 'Happy' },
+    { packageId: '446', stickerId: '1991', name: 'Angry' },
+    { packageId: '446', stickerId: '1992', name: 'Cry' },
+    { packageId: '446', stickerId: '1993', name: 'Hi' },
+    { packageId: '446', stickerId: '1994', name: 'Question' },
+    { packageId: '446', stickerId: '1995', name: 'Excited' },
+    { packageId: '446', stickerId: '2000', name: 'Bye' },
+    { packageId: '446', stickerId: '2001', name: 'Thank you' },
+    { packageId: '446', stickerId: '2002', name: 'Sleepy' },
+    { packageId: '446', stickerId: '2003', name: 'Surprise' },
+    // Package 789 - Brown & Cony
+    { packageId: '789', stickerId: '10855', name: 'Love' },
+    { packageId: '789', stickerId: '10856', name: 'Kiss' },
+    { packageId: '789', stickerId: '10857', name: 'Hug' },
+    { packageId: '789', stickerId: '10858', name: 'Heart' },
+    { packageId: '789', stickerId: '10859', name: 'Happy' },
+    { packageId: '789', stickerId: '10860', name: 'Dance' },
+    { packageId: '789', stickerId: '10861', name: 'Cry' },
+    { packageId: '789', stickerId: '10862', name: 'Angry' },
+    // Package 11537 - LINE Characters
+    { packageId: '11537', stickerId: '52002734', name: 'Hi' },
+    { packageId: '11537', stickerId: '52002735', name: 'OK' },
+    { packageId: '11537', stickerId: '52002736', name: 'Love' },
+    { packageId: '11537', stickerId: '52002737', name: 'Thanks' },
+    { packageId: '11537', stickerId: '52002738', name: 'Wow' },
+    { packageId: '11537', stickerId: '52002739', name: 'Sad' },
+    { packageId: '11537', stickerId: '52002740', name: 'Happy' },
+    { packageId: '11537', stickerId: '52002741', name: 'Sleep' },
+  ];
 
   // Typing indicator component - shows who is typing
   const TypingIndicator = ({ userName }: { userName?: string }) => (
@@ -2565,31 +2667,107 @@ export default function DataChatPage() {
               </div>
             )}
 
-            {/* Emoji Picker */}
+            {/* Emoji & Sticker Picker */}
             {showEmojiPicker && (
               <div style={{ padding: isMobile ? '10px 12px' : '12px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>Emoji</span>
+                {/* Tab Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button
+                      onClick={() => setEmojiPickerTab('emoji')}
+                      style={{
+                        padding: '6px 14px', borderRadius: 6, border: 'none',
+                        background: emojiPickerTab === 'emoji' ? colors.accent : colors.bgTertiary,
+                        color: emojiPickerTab === 'emoji' ? '#fff' : colors.textMuted,
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      😊 Emoji
+                    </button>
+                    <button
+                      onClick={() => setEmojiPickerTab('sticker')}
+                      style={{
+                        padding: '6px 14px', borderRadius: 6, border: 'none',
+                        background: emojiPickerTab === 'sticker' ? colors.accent : colors.bgTertiary,
+                        color: emojiPickerTab === 'sticker' ? '#fff' : colors.textMuted,
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      🐻 Sticker
+                    </button>
+                  </div>
                   <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 6 : 4 }}>
-                  {commonEmojis.map((emoji, i) => (
-                    <button 
-                      key={i} 
-                      onClick={() => { setMessage(prev => prev + emoji); setShowEmojiPicker(false); }}
-                      style={{
-                        width: isMobile ? 38 : 32, height: isMobile ? 38 : 32, borderRadius: 6, border: 'none',
-                        background: colors.bgTertiary, fontSize: isMobile ? 20 : 18, cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'transform 0.1s',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
-                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
+                
+                {/* Emoji Tab */}
+                {emojiPickerTab === 'emoji' && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 6 : 4 }}>
+                    {commonEmojis.map((emoji, i) => (
+                      <button 
+                        key={i} 
+                        onClick={() => { setMessage(prev => prev + emoji); setShowEmojiPicker(false); }}
+                        style={{
+                          width: isMobile ? 38 : 32, height: isMobile ? 38 : 32, borderRadius: 6, border: 'none',
+                          background: colors.bgTertiary, fontSize: isMobile ? 20 : 18, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'transform 0.1s',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Sticker Tab */}
+                {emojiPickerTab === 'sticker' && (
+                  <div>
+                    <div style={{ fontSize: 10, color: colors.textMuted, marginBottom: 8, padding: '4px 8px', background: colors.bgTertiary, borderRadius: 4, display: 'inline-block' }}>
+                      💡 LINE Official Stickers (Free)
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 6, maxHeight: 200, overflowY: 'auto' }}>
+                      {lineStickers.map((sticker, i) => (
+                        <button 
+                          key={i} 
+                          onClick={() => sendSticker(sticker.packageId, sticker.stickerId)}
+                          title={sticker.name}
+                          style={{
+                            width: isMobile ? 60 : 52, height: isMobile ? 60 : 52, borderRadius: 8, 
+                            border: `1px solid ${colors.border}`,
+                            background: colors.bgTertiary, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s ease',
+                            padding: 4,
+                          }}
+                          onMouseEnter={(e) => { 
+                            e.currentTarget.style.transform = 'scale(1.1)'; 
+                            e.currentTarget.style.borderColor = colors.accent;
+                            e.currentTarget.style.boxShadow = `0 2px 8px ${colors.accent}40`;
+                          }}
+                          onMouseLeave={(e) => { 
+                            e.currentTarget.style.transform = 'scale(1)'; 
+                            e.currentTarget.style.borderColor = colors.border;
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
+                        >
+                          <img 
+                            src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${sticker.stickerId}/iPhone/sticker.png`}
+                            alt={sticker.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            onError={(e) => {
+                              // Fallback to Android version if iPhone fails
+                              (e.target as HTMLImageElement).src = `https://stickershop.line-scdn.net/stickershop/v1/sticker/${sticker.stickerId}/android/sticker.png`;
+                            }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
