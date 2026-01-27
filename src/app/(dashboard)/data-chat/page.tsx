@@ -1742,6 +1742,7 @@ export default function DataChatPage() {
     },
   ];
   const [selectedEmojiCategory, setSelectedEmojiCategory] = useState('brown');
+  const [quickReplyEmojiCategory, setQuickReplyEmojiCategory] = useState('brown');
   
   // LINE Official Stickers grouped by package (verified working sticker IDs)
   // Reference: https://developers.line.biz/en/docs/messaging-api/sticker-list/
@@ -3097,44 +3098,100 @@ export default function DataChatPage() {
               </div>
             )}
             
-            {/* Quick Reply Create/Edit Modal */}
+            {/* Quick Reply Create/Edit Modal - Professional Design */}
             {showQuickReplyModal && (
               <div style={{
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                zIndex: 10000,
+                background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 10000, backdropFilter: 'blur(4px)',
               }}
                 onClick={() => { setShowQuickReplyModal(false); setEditingQuickReply(null); }}
               >
                 <div 
                   style={{
-                    background: colors.bgPrimary, borderRadius: 12, padding: 24,
-                    width: '90%', maxWidth: 500, boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                    background: colors.bgSecondary, borderRadius: 16, 
+                    width: '90%', maxWidth: 480, 
+                    boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+                    border: `1px solid ${colors.border}`,
+                    overflow: 'hidden',
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const form = e.target as HTMLFormElement;
-                    const title = (form.elements.namedItem('title') as HTMLInputElement).value;
-                    const label = (form.elements.namedItem('label') as HTMLTextAreaElement).value;
-                    const tokenId = (form.elements.namedItem('tokenId') as HTMLSelectElement).value;
-                    if (title.trim() && label.trim()) {
-                      saveQuickReply(title.trim(), label.trim(), tokenId, editingQuickReply?.id);
-                    }
+                  {/* Modal Header */}
+                  <div style={{
+                    padding: '16px 20px',
+                    borderBottom: `1px solid ${colors.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    background: colors.bgPrimary,
                   }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: 10,
+                        background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent}dd)`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <MessageCircle size={18} color="#fff" />
+                      </div>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: colors.textPrimary }}>
+                          {editingQuickReply ? 'Edit Quick Reply' : 'Create Quick Reply'}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: 11, color: colors.textMuted }}>
+                          Create reusable message templates
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setShowQuickReplyModal(false); setEditingQuickReply(null); }}
+                      style={{
+                        width: 32, height: 32, borderRadius: 8, border: 'none',
+                        background: colors.bgTertiary, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: colors.textMuted, transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = colors.danger + '20'; e.currentTarget.style.color = colors.danger; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.color = colors.textMuted; }}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <form 
+                    style={{ padding: 20 }}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.target as HTMLFormElement;
+                      const title = (form.elements.namedItem('title') as HTMLInputElement).value;
+                      const label = (form.elements.namedItem('label') as HTMLTextAreaElement).value;
+                      const tokenId = (form.elements.namedItem('tokenId') as HTMLSelectElement).value;
+                      if (title.trim() && label.trim()) {
+                        saveQuickReply(title.trim(), label.trim(), tokenId, editingQuickReply?.id);
+                      }
+                    }}
+                  >
                     {/* Title Field */}
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <label style={{ fontSize: 14, color: colors.textPrimary, fontWeight: 500 }}>Title</label>
-                        <span style={{ fontSize: 12, color: colors.textMuted }}>
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <label style={{ 
+                          fontSize: 13, color: colors.textPrimary, fontWeight: 600,
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}>
+                          <Tag size={14} color={colors.accent} />
+                          Title
+                        </label>
+                        <span style={{ 
+                          fontSize: 11, color: colors.textMuted,
+                          background: colors.bgTertiary, padding: '2px 8px', borderRadius: 10,
+                        }}>
                           <span id="titleCount">0</span>/30
                         </span>
                       </div>
                       <input
+                        id="quickReplyTitle"
                         name="title"
                         defaultValue={editingQuickReply?.title || ''}
-                        placeholder="Enter title"
+                        placeholder="Enter a memorable title..."
                         maxLength={30}
                         required
                         onChange={(e) => {
@@ -3142,116 +3199,219 @@ export default function DataChatPage() {
                           if (counter) counter.textContent = String(e.target.value.length);
                         }}
                         style={{
-                          width: '100%', padding: '12px 14px', borderRadius: 8,
+                          width: '100%', padding: '12px 14px', borderRadius: 10,
                           border: `1px solid ${colors.border}`, background: colors.bgPrimary,
                           color: colors.textPrimary, fontSize: 14, outline: 'none',
+                          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
                         }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${colors.accent}20`; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
                       />
-                      <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 4 }}>
-                        Titles won't be shown to LINE users.
-                      </div>
+                      <p style={{ fontSize: 11, color: colors.textMuted, marginTop: 6, marginBottom: 0 }}>
+                        💡 Title is for your reference only, users won't see it.
+                      </p>
                     </div>
                     
                     {/* Messages Field */}
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>        
-                        <label style={{ fontSize: 14, color: colors.textPrimary, fontWeight: 500 }}>Messages</label>
-                        <span style={{ fontSize: 12, color: colors.textMuted }}>
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>        
+                        <label style={{ 
+                          fontSize: 13, color: colors.textPrimary, fontWeight: 600,
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}>
+                          <MessageCircle size={14} color={colors.accent} />
+                          Message Content
+                        </label>
+                        <span style={{ 
+                          fontSize: 11, color: colors.textMuted,
+                          background: colors.bgTertiary, padding: '2px 8px', borderRadius: 10,
+                        }}>
                           <span id="messageCount">0</span>/1000
                         </span>
                       </div>
-                      <div style={{ position: 'relative' }}>
-                        <textarea
-                          id="quickReplyMessage"
-                          name="label"
-                          defaultValue={editingQuickReply?.label || ''}
-                          placeholder="Enter message"
-                          maxLength={1000}
-                          rows={6}
-                          required
-                          onChange={(e) => {
-                            const counter = document.getElementById('messageCount');
-                            if (counter) counter.textContent = String(e.target.value.length);
-                          }}
-                          style={{
-                            width: '100%', padding: '12px 14px', borderRadius: 8,
-                            border: `1px solid ${colors.border}`, background: colors.bgPrimary,
-                            color: colors.textPrimary, fontSize: 14, outline: 'none',
-                            resize: 'vertical', fontFamily: 'inherit', minHeight: 120,
-                          }}
-                        />
-                        {/* LINE Emoji Bar */}
-                        <div style={{ 
-                          marginTop: 8, padding: '8px 0', borderTop: `1px solid ${colors.border}`,
-                        }}>
-                          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>LINE Emoji (click to insert)</div>
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                            {/* Brown & Friends Emoji - productId: 5ac1bfd5040ab15980c9b435 */}
-                            {['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017', '018', '019', '020'].map(emojiId => (
-                              <button
-                                key={emojiId}
-                                type="button"
-                                onClick={() => {
-                                  const textarea = document.getElementById('quickReplyMessage') as HTMLTextAreaElement;
-                                  if (textarea) {
-                                    const start = textarea.selectionStart;
-                                    const end = textarea.selectionEnd;
-                                    const text = textarea.value;
-                                    // Insert $ placeholder for LINE emoji
-                                    textarea.value = text.substring(0, start) + '$' + text.substring(end);
-                                    textarea.selectionStart = textarea.selectionEnd = start + 1;
-                                    textarea.focus();
-                                    const counter = document.getElementById('messageCount');
-                                    if (counter) counter.textContent = String(textarea.value.length);
-                                  }
-                                }}
-                                style={{
-                                  width: 36, height: 36, borderRadius: 6,
-                                  border: `1px solid ${colors.border}`, background: colors.bgSecondary,
-                                  cursor: 'pointer', padding: 4,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  transition: 'all 0.15s ease',
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgSecondary; e.currentTarget.style.transform = 'scale(1)'; }}
-                                title={`LINE Emoji ${emojiId}`}
-                              >
-                                <img 
-                                  src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/5ac1bfd5040ab15980c9b435/iPhone/${emojiId}.png`}
-                                  alt={`emoji-${emojiId}`}
-                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                />
-                              </button>
-                            ))}
-                          </div>
+                      <textarea
+                        id="quickReplyMessage"
+                        name="label"
+                        defaultValue={editingQuickReply?.label || ''}
+                        placeholder="Type your message here..."
+                        maxLength={1000}
+                        rows={5}
+                        required
+                        onChange={(e) => {
+                          const counter = document.getElementById('messageCount');
+                          if (counter) counter.textContent = String(e.target.value.length);
+                        }}
+                        style={{
+                          width: '100%', padding: '12px 14px', borderRadius: 10,
+                          border: `1px solid ${colors.border}`, background: colors.bgPrimary,
+                          color: colors.textPrimary, fontSize: 14, outline: 'none',
+                          resize: 'none', fontFamily: 'inherit', minHeight: 100,
+                          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                        }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${colors.accent}20`; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
+                      />
+                    </div>
+
+                    {/* LINE Emoji Picker with Categories */}
+                    <div style={{ 
+                      marginBottom: 20, borderRadius: 12,
+                      background: colors.bgPrimary, border: `1px solid ${colors.border}`,
+                      overflow: 'hidden',
+                    }}>
+                      {/* Emoji Header */}
+                      <div style={{ 
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 12px', borderBottom: `1px solid ${colors.border}`,
+                        background: colors.bgTertiary,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Smile size={14} color={colors.accent} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: colors.textPrimary }}>
+                            LINE Emoji
+                          </span>
                         </div>
+                        <span style={{ 
+                          fontSize: 10, color: colors.textMuted,
+                          background: colors.bgSecondary, padding: '3px 8px', borderRadius: 6,
+                        }}>
+                          Click emoji to insert
+                        </span>
+                      </div>
+
+                      {/* Emoji Grid */}
+                      <div style={{ 
+                        display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 4,
+                        maxHeight: 140, overflow: 'auto', padding: 10,
+                      }}>
+                        {lineEmojiCategories.find(c => c.id === quickReplyEmojiCategory)?.packages.flatMap((pkg) => 
+                          pkg.emojis.map(emojiId => (
+                            <button
+                              key={`${pkg.productId}-${emojiId}`}
+                              type="button"
+                              onClick={() => {
+                                const messageField = document.getElementById('quickReplyMessage') as HTMLTextAreaElement;
+                                if (messageField) {
+                                  const start = messageField.selectionStart || messageField.value.length;
+                                  const end = messageField.selectionEnd || messageField.value.length;
+                                  const text = messageField.value;
+                                  messageField.value = text.substring(0, start) + '$' + text.substring(end);
+                                  messageField.selectionStart = messageField.selectionEnd = start + 1;
+                                  messageField.focus();
+                                  const counter = document.getElementById('messageCount');
+                                  if (counter) counter.textContent = String(messageField.value.length);
+                                }
+                              }}
+                              style={{
+                                width: 32, height: 32, borderRadius: 6,
+                                border: 'none', background: 'transparent',
+                                cursor: 'pointer', padding: 3,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.12s ease',
+                              }}
+                              onMouseEnter={(e) => { 
+                                e.currentTarget.style.transform = 'scale(1.25)'; 
+                                e.currentTarget.style.background = colors.bgHover;
+                                e.currentTarget.style.zIndex = '10';
+                              }}
+                              onMouseLeave={(e) => { 
+                                e.currentTarget.style.transform = 'scale(1)'; 
+                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.zIndex = '1';
+                              }}
+                            >
+                              <img 
+                                src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${pkg.productId}/iPhone/${emojiId}.png`}
+                                alt={`emoji-${emojiId}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              />
+                            </button>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Category Tabs */}
+                      <div style={{ 
+                        display: 'flex', gap: 2, padding: '8px 10px',
+                        borderTop: `1px solid ${colors.border}`, background: colors.bgTertiary,
+                        justifyContent: 'center',
+                      }}>
+                        {lineEmojiCategories.map((cat) => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setQuickReplyEmojiCategory(cat.id)}
+                            style={{
+                              width: 36, height: 36, borderRadius: 8,
+                              border: 'none', cursor: 'pointer',
+                              background: quickReplyEmojiCategory === cat.id ? colors.accent + '20' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 16, transition: 'all 0.15s ease',
+                              position: 'relative',
+                            }}
+                            onMouseEnter={(e) => { 
+                              if (quickReplyEmojiCategory !== cat.id) {
+                                e.currentTarget.style.background = colors.bgHover;
+                              }
+                            }}
+                            onMouseLeave={(e) => { 
+                              if (quickReplyEmojiCategory !== cat.id) {
+                                e.currentTarget.style.background = 'transparent';
+                              }
+                            }}
+                            title={cat.name}
+                          >
+                            {cat.icon}
+                            {quickReplyEmojiCategory === cat.id && (
+                              <div style={{
+                                position: 'absolute', bottom: 2, left: '50%', transform: 'translateX(-50%)',
+                                width: 16, height: 3, borderRadius: 2, background: colors.accent,
+                              }} />
+                            )}
+                          </button>
+                        ))}
                       </div>
                     </div>
                     
-                    {/* LINE Token (hidden select, use current token) */}
+                    {/* LINE Token (hidden) */}
                     <input type="hidden" name="tokenId" value={editingQuickReply?.lineTokenId || quickReplyTokenId || 'all'} />
                     
-                    <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 20 }}>
+                    {/* Action Buttons */}
+                    <div style={{ 
+                      display: 'flex', gap: 10, justifyContent: 'flex-end',
+                      paddingTop: 16, borderTop: `1px solid ${colors.border}`,
+                    }}>
                       <button
                         type="button"
                         onClick={() => { setShowQuickReplyModal(false); setEditingQuickReply(null); }}
                         style={{
-                          padding: '10px 20px', borderRadius: 8,
-                          background: colors.bgTertiary, border: `1px solid ${colors.border}`,
-                          color: colors.textPrimary, fontSize: 13, cursor: 'pointer',
+                          padding: '10px 20px', borderRadius: 10,
+                          background: 'transparent', border: `1px solid ${colors.border}`,
+                          color: colors.textPrimary, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          transition: 'all 0.15s ease',
                         }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgTertiary; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         style={{
-                          padding: '10px 24px', borderRadius: 8,
-                          background: colors.accent, border: 'none',
+                          padding: '10px 24px', borderRadius: 10,
+                          background: `linear-gradient(135deg, ${colors.accent}, ${colors.accent}dd)`,
+                          border: 'none',
                           color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          boxShadow: `0 4px 12px ${colors.accent}40`,
+                          transition: 'all 0.15s ease',
                         }}
+                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 6px 16px ${colors.accent}50`; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 4px 12px ${colors.accent}40`; }}
                       >
-                        {editingQuickReply ? 'Save' : 'Create'}
+                        <Check size={16} />
+                        {editingQuickReply ? 'Save Changes' : 'Create Reply'}
                       </button>
                     </div>
                   </form>
