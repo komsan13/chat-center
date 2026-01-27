@@ -413,6 +413,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     });
 
     socket.on('room-property-changed', (data: { roomId: string; updates: RoomPropertyUpdate; updatedAt: string }) => {
+      console.log('[Socket] 📥 Received room-property-changed:', data);
       optionsRef.current.onRoomPropertyChanged?.(data);
     });
 
@@ -527,6 +528,7 @@ export function useSocket(options: UseSocketOptions = {}) {
   }, []);
 
   const emitRoomPropertyUpdate = useCallback((roomId: string, updates: RoomPropertyUpdate) => {
+    console.log('[Socket] 📤 Emitting room-property-update:', roomId, updates, 'socket connected:', socketRef.current?.connected);
     socketRef.current?.emit('room-property-update', { roomId, updates });
   }, []);
 

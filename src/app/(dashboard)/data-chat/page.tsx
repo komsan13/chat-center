@@ -717,8 +717,9 @@ export default function DataChatPage() {
     tags?: string[];
     status?: 'active' | 'archived' | 'blocked' | 'spam';
   }; updatedAt: string }) => {
-    console.log('[Chat] Room property changed:', data.roomId, data.updates);
+    console.log('[Chat] 🔔 Room property changed received:', data.roomId, data.updates);
     setRooms(prev => {
+      console.log('[Chat] Updating rooms state with new tags:', data.updates.tags);
       const updatedRooms = prev.map(r => r.id === data.roomId ? { ...r, ...data.updates } : r);
       // Re-sort if isPinned changed
       if (data.updates.isPinned !== undefined) {
@@ -944,6 +945,7 @@ export default function DataChatPage() {
       });
       
       if (response.ok) {
+        console.log('[Chat] updateRoom success, broadcasting:', roomId, updates);
         // Update local state and re-sort if isPinned changed
         setRooms(prev => {
           const updatedRooms = prev.map(r => r.id === roomId ? { ...r, ...updates } : r);
@@ -959,6 +961,7 @@ export default function DataChatPage() {
           return updatedRooms;
         });
         // Broadcast to all other browsers via socket
+        console.log('[Chat] emitRoomPropertyUpdate:', roomId, updates, 'isConnected:', isConnected);
         emitRoomPropertyUpdate(roomId, updates);
         return true;
       }
