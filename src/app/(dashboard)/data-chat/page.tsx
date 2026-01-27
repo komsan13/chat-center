@@ -16,6 +16,8 @@ interface LineEmoji {
   index: number;
   productId: string;
   emojiId: string;
+  length?: number;
+  url?: string;
 }
 
 interface Message {
@@ -1596,49 +1598,48 @@ export default function DataChatPage() {
     // If message has LINE emojis, render them as images (check this FIRST)
     if (msg.emojis && msg.emojis.length > 0) {
       const elements: React.ReactNode[] = [];
-      let charIndex = 0;
-      let emojiIndex = 0;
       
       // Sort emojis by index
       const sortedEmojis = [...msg.emojis].sort((a, b) => a.index - b.index);
       
-      for (let i = 0; i < content.length; i++) {
-        const char = content[i];
-        
-        // Check if this position has an emoji ($ placeholder)
-        if (char === '$' && emojiIndex < sortedEmojis.length) {
-          const emoji = sortedEmojis[emojiIndex];
-          if (emoji.index === i) {
-            // Add emoji image
-            elements.push(
-              <img 
-                key={`emoji-${i}`}
-                src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
-                alt="LINE emoji"
-                style={{ 
-                  width: 22, 
-                  height: 22, 
-                  display: 'inline-block', 
-                  verticalAlign: 'middle',
-                  margin: '0 1px',
-                }}
-                onError={(e) => {
-                  // Fallback: try alternative URL format
-                  const target = e.target as HTMLImageElement;
-                  if (!target.dataset.retried) {
-                    target.dataset.retried = 'true';
-                    target.src = `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/android/${emoji.emojiId}.png`;
-                  }
-                }}
-              />
-            );
-            emojiIndex++;
-            continue;
-          }
+      let lastIndex = 0;
+      sortedEmojis.forEach((emoji, idx) => {
+        // Add text before this emoji
+        if (emoji.index > lastIndex) {
+          const textBefore = content.substring(lastIndex, emoji.index);
+          elements.push(<span key={`text-${idx}`}>{textBefore}</span>);
         }
         
-        // Add regular character
-        elements.push(<span key={`char-${i}`}>{char}</span>);
+        // Add emoji image
+        elements.push(
+          <img 
+            key={`emoji-${idx}`}
+            src={emoji.url || `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+            alt="LINE emoji"
+            style={{ 
+              width: 22, 
+              height: 22, 
+              display: 'inline-block', 
+              verticalAlign: 'middle',
+              margin: '0 1px',
+            }}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (!target.dataset.retried) {
+                target.dataset.retried = 'true';
+                target.src = `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/android/${emoji.emojiId}.png`;
+              }
+            }}
+          />
+        );
+        
+        // Move past the emoji placeholder (use length if available, otherwise 1 for $ placeholder)
+        lastIndex = emoji.index + (emoji.length || 1);
+      });
+      
+      // Add remaining text after last emoji
+      if (lastIndex < content.length) {
+        elements.push(<span key="text-end">{content.substring(lastIndex)}</span>);
       }
       
       return (
