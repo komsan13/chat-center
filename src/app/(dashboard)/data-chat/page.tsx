@@ -102,7 +102,6 @@ export default function DataChatPage() {
   const [emojiPickerTab, setEmojiPickerTab] = useState<'emoji' | 'sticker' | 'custom'>('emoji');
   const [pendingEmojis, setPendingEmojis] = useState<Array<{ index: number; productId: string; emojiId: string }>>([]);
   const [selectedStickerPackage, setSelectedStickerPackage] = useState('11537');
-  const [selectedCustomStickerPack, setSelectedCustomStickerPack] = useState('shark-cat');
   const [hoveredSticker, setHoveredSticker] = useState<{ stickerId: string; x: number; y: number } | null>(null);
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
@@ -1855,36 +1854,52 @@ export default function DataChatPage() {
     },
   ];
 
-  // Custom Sticker Packs (ส่งเป็น image message)
-  const customStickerPacks = [
+  // Quick Message Templates (ส่งเป็น text message พร้อม emoji)
+  const quickMessageTemplates = [
     {
-      id: 'shark-cat',
-      name: '🦈 ฉลามแมว',
-      stickers: [
-        { id: 'credit-done', text: 'เครดิตเข้าเรียบร้อยแล้วนะคะลูกค้า', url: '/stickers/shark-cat/credit-done.png' },
-        { id: 'checking', text: 'แอดตรวจสอบให้สักครู่ค่ะ', url: '/stickers/shark-cat/checking.png' },
-        { id: 'bank-delay', text: 'ธนาคารดีเลย์ กรุณารอสักครู่นะคะ', url: '/stickers/shark-cat/bank-delay.png' },
-        { id: 'good-luck', text: 'เฮงๆรวยๆแตกเยอะๆนะคะ', url: '/stickers/shark-cat/good-luck.png' },
-        { id: 'calm-down', text: 'ใจเย็นๆนะคะ', url: '/stickers/shark-cat/calm-down.png' },
-        { id: 'fighting', text: 'สู้ๆ แอดมินเป็นกำลังใจให้นะคะ', url: '/stickers/shark-cat/fighting.png' },
-        { id: 'sorry-delay', text: 'ทำรายการให้เรียบร้อย ขออภัยในความล่าช้าค่ะ', url: '/stickers/shark-cat/sorry-delay.png' },
-        { id: 'hello', text: 'สวัสดีค่า ทำรายการอะไรดีคะ', url: '/stickers/shark-cat/hello.png' },
-        { id: 'credit-in', text: 'เครดิตเข้าแล้ว เฮงๆปังๆน๊า', url: '/stickers/shark-cat/credit-in.png' },
-        { id: 'send-slip', text: 'แจ้งสลิปให้แอดมินด้วยน๊า', url: '/stickers/shark-cat/send-slip.png' },
-        { id: 'wait-process', text: 'รอสักครู่ อยู่ระหว่างดำเนินการนะคะ', url: '/stickers/shark-cat/wait-process.png' },
-        { id: 'sorry', text: 'ขออภัยด้วยน๊า', url: '/stickers/shark-cat/sorry.png' },
-        { id: 'screenshot', text: 'แคปหน้าจอให้แอดหน่อยน๊า', url: '/stickers/shark-cat/screenshot.png' },
-        { id: 'complete-info', text: 'แจ้งข้อมูลให้ครบด้วยนะคะ', url: '/stickers/shark-cat/complete-info.png' },
-        { id: 'wrong-slip', text: 'ไม่ใช่สลิปของทางเรานะคะ', url: '/stickers/shark-cat/wrong-slip.png' },
-        { id: 'one-line-one-user', text: '1 ไลน์ ต่อ 1 ยูส ค่ะ', url: '/stickers/shark-cat/one-line-one-user.png' },
-        { id: 'maintenance', text: 'ห้องเกมปิดปรับปรุงชั่วคราวค่า', url: '/stickers/shark-cat/maintenance.png' },
-        { id: 'welcome', text: 'แอดมินยินดีให้บริการค่า', url: '/stickers/shark-cat/welcome.png' },
+      id: 'casino',
+      name: '🎰 คาสิโน',
+      color: '#6366f1',
+      messages: [
+        { id: 'credit-done', text: '✅ เครดิตเข้าเรียบร้อยแล้วนะคะลูกค้า 💕', emoji: '✅' },
+        { id: 'checking', text: '🔍 แอดตรวจสอบให้สักครู่ค่ะ', emoji: '🔍' },
+        { id: 'bank-delay', text: '🏦 ธนาคารดีเลย์ กรุณารอสักครู่นะคะ 🙏', emoji: '🏦' },
+        { id: 'good-luck', text: '🎰 เฮงๆรวยๆแตกเยอะๆนะคะ 💰🍀', emoji: '🎰' },
+        { id: 'credit-in', text: '💸 เครดิตเข้าแล้ว เฮงๆปังๆน๊า 🎉', emoji: '💸' },
+        { id: 'send-slip', text: '🧾 แจ้งสลิปให้แอดมินด้วยน๊า 📷', emoji: '🧾' },
+      ],
+    },
+    {
+      id: 'service',
+      name: '💬 บริการ',
+      color: '#10b981',
+      messages: [
+        { id: 'hello', text: '👋 สวัสดีค่า ทำรายการอะไรดีคะ 😊', emoji: '👋' },
+        { id: 'welcome', text: '🌟 แอดมินยินดีให้บริการค่า 💖', emoji: '🌟' },
+        { id: 'wait-process', text: '⏳ รอสักครู่ อยู่ระหว่างดำเนินการนะคะ', emoji: '⏳' },
+        { id: 'complete-info', text: '📝 แจ้งข้อมูลให้ครบด้วยนะคะ', emoji: '📝' },
+        { id: 'screenshot', text: '📱 แคปหน้าจอให้แอดหน่อยน๊า', emoji: '📱' },
+        { id: 'fighting', text: '💪 สู้ๆ แอดมินเป็นกำลังใจให้นะคะ ❤️', emoji: '💪' },
+      ],
+    },
+    {
+      id: 'apology',
+      name: '🙏 ขออภัย',
+      color: '#f59e0b',
+      messages: [
+        { id: 'sorry', text: '🙇 ขออภัยด้วยน๊า 🙏', emoji: '🙇' },
+        { id: 'sorry-delay', text: '⏰ ทำรายการให้เรียบร้อย ขออภัยในความล่าช้าค่ะ 🙏', emoji: '⏰' },
+        { id: 'calm-down', text: '😌 ใจเย็นๆนะคะ แอดรับเรื่องให้แล้วค่ะ 💕', emoji: '😌' },
+        { id: 'wrong-slip', text: '❌ ไม่ใช่สลิปของทางเรานะคะ', emoji: '❌' },
+        { id: 'maintenance', text: '🔧 ห้องเกมปิดปรับปรุงชั่วคราวค่า 🛠️', emoji: '🔧' },
+        { id: 'one-line-one-user', text: '📌 1 ไลน์ ต่อ 1 ยูส ค่ะ', emoji: '📌' },
       ],
     },
   ];
+  const [selectedTemplateCategory, setSelectedTemplateCategory] = useState('casino');
 
-  // Send custom sticker as image
-  const sendCustomSticker = async (stickerUrl: string, stickerText: string) => {
+  // Send quick message template as text
+  const sendQuickTemplate = async (messageText: string) => {
     if (!selectedRoom || isSending) return;
     setIsSending(true);
     setShowEmojiPicker(false);
@@ -1893,9 +1908,8 @@ export default function DataChatPage() {
     const tempMessage: Message = {
       id: tempId,
       roomId: selectedRoom,
-      messageType: 'image',
-      content: stickerText,
-      mediaUrl: stickerUrl,
+      messageType: 'text',
+      content: messageText,
       sender: 'agent',
       senderName: currentUser?.name || 'Agent',
       status: 'sending',
@@ -1910,9 +1924,7 @@ export default function DataChatPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           roomId: selectedRoom, 
-          messageType: 'image',
-          mediaUrl: stickerUrl,
-          content: stickerText,
+          content: messageText,
           senderName: currentUser?.name || 'Agent',
         }),
       });
@@ -1936,7 +1948,7 @@ export default function DataChatPage() {
         setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
       }
     } catch (error) {
-      console.error('Failed to send custom sticker:', error);
+      console.error('Failed to send quick template:', error);
       setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
     } finally {
       setIsSending(false);
@@ -3914,7 +3926,7 @@ export default function DataChatPage() {
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      🦈 Custom
+                      ⚡ Quick
                     </button>
                   </div>
                   <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
@@ -4098,25 +4110,25 @@ export default function DataChatPage() {
                   </div>
                 )}
 
-                {/* Custom Sticker Tab - ส่งเป็น Image */}
+                {/* Quick Message Templates Tab */}
                 {emojiPickerTab === 'custom' && (
                   <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-                    {/* Pack Selector */}
+                    {/* Category Selector */}
                     <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                      {customStickerPacks.map((pack) => (
+                      {quickMessageTemplates.map((category) => (
                         <button
-                          key={pack.id}
-                          onClick={() => setSelectedCustomStickerPack(pack.id)}
+                          key={category.id}
+                          onClick={() => setSelectedTemplateCategory(category.id)}
                           style={{
                             padding: '6px 12px', borderRadius: 6,
-                            border: selectedCustomStickerPack === pack.id ? `1px solid ${colors.accent}` : `1px solid ${colors.border}`,
-                            background: selectedCustomStickerPack === pack.id ? colors.accentLight : colors.bgTertiary,
-                            color: selectedCustomStickerPack === pack.id ? colors.accent : colors.textMuted,
+                            border: selectedTemplateCategory === category.id ? `1px solid ${category.color}` : `1px solid ${colors.border}`,
+                            background: selectedTemplateCategory === category.id ? `${category.color}20` : colors.bgTertiary,
+                            color: selectedTemplateCategory === category.id ? category.color : colors.textMuted,
                             fontSize: 11, fontWeight: 600, cursor: 'pointer',
                             transition: 'all 0.15s ease',
                           }}
                         >
-                          {pack.name}
+                          {category.name}
                         </button>
                       ))}
                     </div>
@@ -4129,78 +4141,67 @@ export default function DataChatPage() {
                       marginBottom: 12,
                       display: 'flex', alignItems: 'center', gap: 8,
                     }}>
-                      <span style={{ fontSize: 16 }}>💡</span>
+                      <span style={{ fontSize: 16 }}>⚡</span>
                       <span style={{ fontSize: 11, color: colors.textSecondary }}>
-                        Custom Sticker จะส่งเป็นรูปภาพพร้อมข้อความ
+                        คลิกเพื่อส่งข้อความสำเร็จรูปทันที
                       </span>
                     </div>
                     
-                    {/* Stickers Grid */}
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
-                      gap: 10,
-                    }}>
-                      {customStickerPacks
-                        .find(pack => pack.id === selectedCustomStickerPack)
-                        ?.stickers.map((sticker) => (
+                    {/* Messages List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {quickMessageTemplates
+                        .find(cat => cat.id === selectedTemplateCategory)
+                        ?.messages.map((msg) => (
                         <button
-                          key={sticker.id}
-                          onClick={() => sendCustomSticker(sticker.url, sticker.text)}
+                          key={msg.id}
+                          onClick={() => sendQuickTemplate(msg.text)}
+                          disabled={isSending}
                           style={{
-                            padding: 10, borderRadius: 10,
+                            padding: '12px 14px', borderRadius: 10,
                             border: `1px solid ${colors.border}`,
                             background: colors.bgTertiary,
-                            cursor: 'pointer',
-                            display: 'flex', flexDirection: 'column',
-                            alignItems: 'center', gap: 8,
+                            cursor: isSending ? 'not-allowed' : 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 12,
                             transition: 'all 0.15s ease',
+                            textAlign: 'left',
+                            opacity: isSending ? 0.6 : 1,
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = colors.accentLight;
-                            e.currentTarget.style.borderColor = colors.accent;
-                            e.currentTarget.style.transform = 'scale(1.02)';
+                            if (!isSending) {
+                              const category = quickMessageTemplates.find(cat => cat.id === selectedTemplateCategory);
+                              e.currentTarget.style.background = `${category?.color}15`;
+                              e.currentTarget.style.borderColor = category?.color || colors.accent;
+                              e.currentTarget.style.transform = 'translateX(4px)';
+                            }
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.background = colors.bgTertiary;
                             e.currentTarget.style.borderColor = colors.border;
-                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.transform = 'translateX(0)';
                           }}
                         >
-                          {/* Sticker Preview Placeholder */}
+                          {/* Emoji Icon */}
                           <div style={{
-                            width: 60, height: 60, borderRadius: 8,
-                            background: `linear-gradient(135deg, #87ceeb 0%, #98d8e8 50%, #b0e0e6 100%)`,
+                            width: 40, height: 40, borderRadius: 10,
+                            background: `${quickMessageTemplates.find(cat => cat.id === selectedTemplateCategory)?.color}20`,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 28,
+                            fontSize: 20,
+                            flexShrink: 0,
                           }}>
-                            🦈
+                            {msg.emoji}
                           </div>
                           {/* Text */}
                           <span style={{
-                            fontSize: 10, color: colors.textSecondary,
-                            textAlign: 'center', lineHeight: 1.3,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
+                            fontSize: 13, color: colors.textPrimary,
+                            lineHeight: 1.4,
+                            flex: 1,
                           }}>
-                            {sticker.text}
+                            {msg.text}
                           </span>
+                          {/* Send Icon */}
+                          <Send size={14} style={{ color: colors.textMuted, flexShrink: 0 }} />
                         </button>
                       ))}
-                    </div>
-                    
-                    {/* Upload Custom Sticker Note */}
-                    <div style={{
-                      marginTop: 16, padding: 12, borderRadius: 8,
-                      background: colors.bgSecondary,
-                      border: `1px dashed ${colors.border}`,
-                      textAlign: 'center',
-                    }}>
-                      <span style={{ fontSize: 11, color: colors.textMuted }}>
-                        📁 วางรูป Sticker ไว้ที่โฟลเดอร์ <code style={{ background: colors.bgTertiary, padding: '2px 6px', borderRadius: 4 }}>public/stickers/</code>
-                      </span>
                     </div>
                   </div>
                 )}
