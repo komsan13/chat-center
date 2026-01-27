@@ -36,6 +36,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/add-position-column.js ./add-position-column.js
 COPY --from=builder /app/create-quick-reply-table.js ./create-quick-reply-table.js
+COPY --from=builder /app/fix-room-unique-constraint.js ./fix-room-unique-constraint.js
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data
