@@ -2883,37 +2883,47 @@ export default function DataChatPage() {
                       </div>
                       
                       {/* Filters */}
-                      <div style={{ padding: '8px 12px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <select
-                          value={quickReplyTokenId || 'all'}
-                          onChange={(e) => setQuickReplyTokenId(e.target.value === 'all' ? null : e.target.value)}
-                          style={{
-                            padding: '6px 10px', borderRadius: 6,
-                            border: `1px solid ${colors.border}`, background: colors.bgSecondary,
-                            color: colors.textPrimary, fontSize: 12, outline: 'none', cursor: 'pointer',
-                          }}
-                        >
-                          <option value="all">All ({quickReplies.length})</option>
-                          {lineTokens.map(token => (
-                            <option key={token.id} value={token.id}>
-                              {token.websiteName ? `${token.websiteName}` : token.name}
-                            </option>
-                          ))}
-                        </select>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 12, color: colors.textMuted }}>Sort by:</span>
+                      <div style={{ padding: '10px 12px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                        <div style={{ position: 'relative', minWidth: 120 }}>
                           <select
-                            value={quickReplySortBy}
-                            onChange={(e) => setQuickReplySortBy(e.target.value as 'recent' | 'title')}
+                            value={quickReplyTokenId || 'all'}
+                            onChange={(e) => setQuickReplyTokenId(e.target.value === 'all' ? null : e.target.value)}
                             style={{
-                              padding: '6px 10px', borderRadius: 6,
+                              width: '100%', padding: '8px 28px 8px 12px', borderRadius: 8,
                               border: `1px solid ${colors.border}`, background: colors.bgSecondary,
-                              color: colors.textPrimary, fontSize: 12, outline: 'none', cursor: 'pointer',
+                              color: colors.textPrimary, fontSize: 12, fontWeight: 500, outline: 'none', cursor: 'pointer',
+                              appearance: 'none', WebkitAppearance: 'none',
+                              transition: 'border-color 0.15s ease',
                             }}
                           >
-                            <option value="recent">Recently created</option>
-                            <option value="title">Title A-Z</option>
+                            <option value="all">All ({quickReplies.length})</option>
+                            {lineTokens.map(token => (
+                              <option key={token.id} value={token.id}>
+                                {token.websiteName ? `${token.websiteName}` : token.name}
+                              </option>
+                            ))}
                           </select>
+                          <ChevronDown size={14} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: colors.textMuted, pointerEvents: 'none' }} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 500 }}>Sort by:</span>
+                          <div style={{ position: 'relative' }}>
+                            <select
+                              value={quickReplySortBy}
+                              onChange={(e) => setQuickReplySortBy(e.target.value as 'recent' | 'title')}
+                              style={{
+                                padding: '8px 28px 8px 12px', borderRadius: 8,
+                                border: `1px solid ${colors.border}`, background: colors.bgSecondary,
+                                color: colors.textPrimary, fontSize: 12, fontWeight: 500, outline: 'none', cursor: 'pointer',
+                                appearance: 'none', WebkitAppearance: 'none',
+                                transition: 'border-color 0.15s ease',
+                              }}
+                            >
+                              <option value="recent">Recently created</option>
+                              <option value="title">Title A-Z</option>
+                            </select>
+                            <ChevronDown size={14} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: colors.textMuted, pointerEvents: 'none' }} />
+                          </div>
                         </div>
                       </div>
                       
@@ -3001,30 +3011,34 @@ export default function DataChatPage() {
                             <button
                               onClick={() => { setEditingQuickReply(previewQuickReply); setQuickReplyMessage(previewQuickReply?.label || ''); setQuickReplyPendingEmojis([]); setShowQuickReplyModal(true); }}
                               style={{
-                                padding: '6px 12px', borderRadius: 6,
-                                background: colors.bgSecondary, border: `1px solid ${colors.border}`,
-                                color: colors.textPrimary, fontSize: 12, cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', gap: 4,
-                                transition: 'all 0.15s ease',
+                                padding: '8px 14px', borderRadius: 8,
+                                background: `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}08)`,
+                                border: `1px solid ${colors.accent}40`,
+                                color: colors.accent, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                transition: 'all 0.2s ease',
+                                boxShadow: `0 2px 8px ${colors.accent}15`,
                               }}
-                              onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgSecondary; }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = `linear-gradient(135deg, ${colors.accent}25, ${colors.accent}15)`; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}08)`; e.currentTarget.style.transform = 'translateY(0)'; }}
                             >
-                              <FileEdit size={12} /> Edit
+                              <FileEdit size={14} /> Edit
                             </button>
                             <button
                               onClick={() => { deleteQuickReply(previewQuickReply.id); setPreviewQuickReply(null); }}
                               style={{
-                                padding: '6px 12px', borderRadius: 6,
-                                background: '#fef2f2', border: '1px solid #fca5a5',
-                                color: '#dc2626', fontSize: 12, cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', gap: 4,
-                                transition: 'all 0.15s ease',
+                                padding: '8px 14px', borderRadius: 8,
+                                background: 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0.05))',
+                                border: '1px solid rgba(239,68,68,0.3)',
+                                color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 2px 8px rgba(239,68,68,0.1)',
                               }}
-                              onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1))'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0.05))'; e.currentTarget.style.transform = 'translateY(0)'; }}
                             >
-                              <Trash2 size={12} /> Delete
+                              <Trash2 size={14} /> Delete
                             </button>
                           </div>
                         )}

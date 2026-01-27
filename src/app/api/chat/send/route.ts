@@ -99,10 +99,18 @@ export async function POST(request: NextRequest) {
     // Create message in database first
     const messageId = generateId('msg_');
     const now = new Date().toISOString();
+    const emojisJson = emojis && Array.isArray(emojis) && emojis.length > 0 ? JSON.stringify(emojis) : null;
+    
+    // Try to add emojis column if it doesn't exist
+    try {
+      db.prepare(`ALTER TABLE LineChatMessage ADD COLUMN emojis TEXT`).run();
+    } catch {
+      // Column already exists
+    }
     
     db.prepare(`
-      INSERT INTO LineChatMessage (id, roomId, messageType, content, mediaUrl, stickerId, packageId, sender, senderName, status, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO LineChatMessage (id, roomId, messageType, content, mediaUrl, stickerId, packageId, emojis, sender, senderName, status, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       messageId,
       roomId,
@@ -111,6 +119,7 @@ export async function POST(request: NextRequest) {
       mediaUrl || null,
       stickerId || null,
       packageId || null,
+      emojisJson,
       'agent',
       senderName,
       'sending',
