@@ -534,7 +534,10 @@ export default function DataChatPage() {
         const exists = prev.find(m => 
           m.id === msg.id || 
           (m.lineMessageId && m.lineMessageId === msg.lineMessageId) ||
-          (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender)
+          (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender) ||
+          // Check sticker duplicate by packageId and stickerId
+          (m.id?.startsWith('temp-') && m.messageType === 'sticker' && msg.messageType === 'sticker' && 
+           m.packageId === msg.packageId && m.stickerId === msg.stickerId && m.sender === msg.sender)
         );
         if (!exists) {
           return [...prev, msg];
@@ -2735,23 +2738,13 @@ export default function DataChatPage() {
                           key={i} 
                           onClick={() => sendSticker(sticker.packageId, sticker.stickerId)}
                           title={sticker.name}
+                          className="sticker-btn"
                           style={{
                             width: isMobile ? 60 : 52, height: isMobile ? 60 : 52, borderRadius: 8, 
                             border: `1px solid ${colors.border}`,
                             background: colors.bgTertiary, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s ease',
                             padding: 4,
-                          }}
-                          onMouseEnter={(e) => { 
-                            e.currentTarget.style.transform = 'scale(1.1)'; 
-                            e.currentTarget.style.borderColor = colors.accent;
-                            e.currentTarget.style.boxShadow = `0 2px 8px ${colors.accent}40`;
-                          }}
-                          onMouseLeave={(e) => { 
-                            e.currentTarget.style.transform = 'scale(1)'; 
-                            e.currentTarget.style.borderColor = colors.border;
-                            e.currentTarget.style.boxShadow = 'none';
                           }}
                         >
                           <img 
