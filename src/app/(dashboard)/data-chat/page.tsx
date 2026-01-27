@@ -1030,21 +1030,9 @@ export default function DataChatPage() {
           // Remove from UI completely
           setRooms(prev => prev.filter(r => r.id !== roomId));
         } else if (mode === 'clear') {
-          // Keep room but clear messages only (keep tags and notes)
-          setRooms(prev => {
-            const updated = prev.map(r => 
-              r.id === roomId 
-                ? { ...r, lastMessage: undefined, lastMessageAt: undefined, unreadCount: 0 }
-                : r
-            );
-            // Sort: rooms with messages first
-            return updated.sort((a, b) => {
-              if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-              const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
-              const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
-              return timeB - timeA;
-            });
-          });
+          // Room is now hidden (status='cleared'), remove from UI
+          // It will reappear when customer sends new message
+          setRooms(prev => prev.filter(r => r.id !== roomId));
           // Clear messages from UI
           setMessages([]);
           messagesCacheRef.current.delete(roomId);
@@ -1053,7 +1041,7 @@ export default function DataChatPage() {
           setRooms(prev => prev.filter(r => r.id !== roomId));
         }
         
-        if (selectedRoom === roomId && mode !== 'clear') {
+        if (selectedRoom === roomId) {
           setSelectedRoom(null);
         }
         // Broadcast to all other browsers via socket

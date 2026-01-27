@@ -225,14 +225,14 @@ export async function DELETE(
       // Keep notes - don't delete them
       // db.prepare('DELETE FROM ChatNote WHERE roomId = ?').run(roomId);
       
-      // Reset room state (keep tags)
+      // Reset room state and set status to 'cleared' (hidden until new message)
       db.prepare(`
         UPDATE LineChatRoom 
-        SET lastMessageAt = NULL, unreadCount = 0, updatedAt = ? 
+        SET lastMessageAt = NULL, unreadCount = 0, status = 'cleared', updatedAt = ? 
         WHERE id = ?
       `).run(new Date().toISOString(), roomId);
       
-      return NextResponse.json({ success: true, message: 'Messages cleared, room kept for future messages' });
+      return NextResponse.json({ success: true, message: 'Messages cleared, room hidden until new message' });
     } else {
       // Soft delete - archive the room
       db.prepare(`

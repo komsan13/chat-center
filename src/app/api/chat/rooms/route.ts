@@ -150,14 +150,16 @@ export async function GET(request: NextRequest) {
     `;
     const params: (string | number)[] = [];
 
-    // Handle spam filter - show spam rooms, otherwise show non-spam rooms
+    // Handle spam filter - show spam rooms, otherwise show non-spam/non-cleared rooms
     if (filter === 'spam') {
       query += ` AND r.status = 'spam'`;
     } else if (filter === 'archived') {
       query += ` AND r.status = 'archived'`;
+    } else if (filter === 'cleared') {
+      query += ` AND r.status = 'cleared'`;
     } else {
-      // For other filters, show all non-spam rooms (active, archived, null)
-      query += ` AND (r.status != 'spam' OR r.status IS NULL)`;
+      // For other filters, show all non-spam and non-cleared rooms
+      query += ` AND (r.status NOT IN ('spam', 'cleared') OR r.status IS NULL)`;
     }
 
     if (search) {

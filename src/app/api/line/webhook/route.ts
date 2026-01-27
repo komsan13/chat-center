@@ -372,10 +372,10 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
     now
   );
 
-  // Update room's last message and unread count
+  // Update room's last message, unread count, and reset status to 'active' (in case it was 'cleared')
   db.prepare(`
     UPDATE LineChatRoom 
-    SET lastMessageAt = ?, unreadCount = unreadCount + 1, updatedAt = ?
+    SET lastMessageAt = ?, unreadCount = unreadCount + 1, status = 'active', updatedAt = ?
     WHERE id = ?
   `).run(now, now, room.id);
 
