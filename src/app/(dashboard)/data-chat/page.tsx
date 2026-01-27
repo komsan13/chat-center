@@ -13,6 +13,7 @@ import {
   Heart, HeartHandshake, Timer, Wrench, Info, Zap, ArrowRight
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useSocket } from '@/hooks/useSocket';
 
 interface LineEmoji {
@@ -81,6 +82,7 @@ interface QuickReply {
 
 export default function DataChatPage() {
   const { isDark } = useTheme();
+  const { t, language } = useLanguage();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null); // Start with no room selected
@@ -1994,7 +1996,7 @@ export default function DataChatPage() {
           {userName && (
             <span style={{ fontSize: 12, color: colors.accent, fontWeight: 600 }}>{userName}</span>
           )}
-          <span style={{ fontSize: 12, color: colors.textMuted }}>กำลังพิมพ์</span>
+          <span style={{ fontSize: 12, color: colors.textMuted }}>{t('dataChat.isTyping')}</span>
           <div style={{ display: 'flex', gap: 3 }}>
             {[0, 1, 2].map((i) => (
               <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: colors.accent, animation: `typingDot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
@@ -2087,7 +2089,7 @@ export default function DataChatPage() {
                 }}
               >
                 <Filter size={isMobile ? 14 : 15} style={{ color: colors.accent }} />
-                <span>{filterStatus === 'all' ? 'All' : filterStatus === 'unread' ? 'Unread' : filterStatus === 'pinned' ? 'Pinned' : filterStatus === 'archived' ? 'Archived' : 'Spam'}</span>
+                <span>{filterStatus === 'all' ? t('dataChat.all') : filterStatus === 'unread' ? t('dataChat.unread') : filterStatus === 'pinned' ? t('dataChat.pinned') : filterStatus === 'archived' ? t('dataChat.archived') : t('dataChat.spam')}</span>
                 <ChevronDown size={isMobile ? 12 : 14} style={{ color: colors.textMuted }} />
               </button>
               
@@ -2109,7 +2111,7 @@ export default function DataChatPage() {
                         fontSize: 13, textAlign: 'left', cursor: 'pointer',
                       }}
                     >
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                      {t(`dataChat.${status}`)}
                     </button>
                   ))}
                 </div>
@@ -2121,7 +2123,7 @@ export default function DataChatPage() {
               <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: colors.textMuted }} />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder={t('dataChat.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{
@@ -2140,7 +2142,7 @@ export default function DataChatPage() {
           {/* Stats */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>
-              {filteredRooms.length} conversations
+              {filteredRooms.length} {t('dataChat.conversations')}
             </span>
             <div style={{ 
               display: 'flex', alignItems: 'center', gap: 8,
@@ -2193,7 +2195,7 @@ export default function DataChatPage() {
                       {connectionHealth?.latency || 0}ms
                     </span>
                   </>
-                ) : 'Connecting...'}
+                ) : t('dataChat.connecting')}
               </span>
             </div>
           </div>
@@ -2209,7 +2211,7 @@ export default function DataChatPage() {
             <div style={{ padding: 40, textAlign: 'center' }}>
               <MessageCircle size={32} style={{ color: colors.textMuted, marginBottom: 12 }} />
               <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>
-                {filterStatus === 'spam' ? 'No spam messages' : selectedTokenIds.size === 0 ? 'Select a channel below' : 'No conversations'}
+                {filterStatus === 'spam' ? t('dataChat.noSpamMessages') : selectedTokenIds.size === 0 ? t('dataChat.selectChannel') : t('dataChat.noConversations')}
               </p>
             </div>
           ) : (
@@ -2901,7 +2903,7 @@ export default function DataChatPage() {
                 <Search size={16} style={{ color: colors.textMuted }} />
                 <input
                   type="text"
-                  placeholder="Search in this conversation..."
+                  placeholder={t('dataChat.searchInConversation')}
                   value={chatSearchTerm}
                   onChange={(e) => setChatSearchTerm(e.target.value)}
                   autoFocus
@@ -2936,7 +2938,7 @@ export default function DataChatPage() {
                 </div>
               ) : messages.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 40 }}>
-                  <p style={{ fontSize: 13, color: colors.textMuted }}>No messages yet</p>
+                  <p style={{ fontSize: 13, color: colors.textMuted }}>{t('dataChat.noMessages')}</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -3132,7 +3134,7 @@ export default function DataChatPage() {
                             type="text"
                             value={quickReplySearch}
                             onChange={(e) => setQuickReplySearch(e.target.value)}
-                            placeholder="Search titles"
+                            placeholder={t('dataChat.searchTitles')}
                             style={{
                               flex: 1, padding: '10px 14px', borderRadius: 6,
                               border: `1px solid ${colors.border}`, background: colors.bgSecondary,
@@ -3175,7 +3177,7 @@ export default function DataChatPage() {
                           <ChevronDown size={14} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: colors.textMuted, pointerEvents: 'none' }} />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 500 }}>Sort by:</span>
+                          <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 500 }}>{t('dataChat.sortBy')}</span>
                           <div style={{ position: 'relative' }}>
                             <select
                               value={quickReplySortBy}
@@ -3188,8 +3190,8 @@ export default function DataChatPage() {
                                 transition: 'border-color 0.15s ease',
                               }}
                             >
-                              <option value="recent">Recently created</option>
-                              <option value="title">Title A-Z</option>
+                              <option value="recent">{t('dataChat.recentlyCreated')}</option>
+                              <option value="title">{t('dataChat.titleAZ')}</option>
                             </select>
                             <ChevronDown size={14} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: colors.textMuted, pointerEvents: 'none' }} />
                           </div>
@@ -3235,7 +3237,7 @@ export default function DataChatPage() {
                               color: colors.textPrimary,
                               marginBottom: 8,
                             }}>
-                              ยังไม่มีข้อความด่วน
+                              {t('dataChat.noQuickReplies')}
                             </div>
                             
                             {/* Subtitle */}
@@ -3246,7 +3248,7 @@ export default function DataChatPage() {
                               lineHeight: 1.5,
                               maxWidth: 220,
                             }}>
-                              สร้างข้อความด่วนเพื่อตอบกลับลูกค้าได้รวดเร็วขึ้น
+                              {t('dataChat.noQuickRepliesDesc')}
                             </div>
                             
                             {/* CTA Button */}
@@ -3272,7 +3274,7 @@ export default function DataChatPage() {
                               }}
                             >
                               <Plus size={18} />
-                              สร้างข้อความด่วน
+                              {t('dataChat.addQuickReply')}
                             </button>
                             
                             <style>{`
@@ -3365,7 +3367,7 @@ export default function DataChatPage() {
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                           }}
                         >
-                          <Plus size={16} /> Create a standard reply
+                          <Plus size={16} /> {t('dataChat.addQuickReply')}
                         </button>
                       </div>
                     </div>
@@ -3373,7 +3375,7 @@ export default function DataChatPage() {
                     {/* Right Panel - Preview */}
                     <div style={{ width: '50%', display: 'flex', flexDirection: 'column', background: colors.bgTertiary }}>
                       <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>Preview</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>{t('dataChat.preview')}</span>
                         {previewQuickReply && (
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
@@ -3390,7 +3392,7 @@ export default function DataChatPage() {
                               onMouseEnter={(e) => { e.currentTarget.style.background = `linear-gradient(135deg, ${colors.accent}25, ${colors.accent}15)`; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}08)`; e.currentTarget.style.transform = 'translateY(0)'; }}
                             >
-                              <FileEdit size={14} /> Edit
+                              <FileEdit size={14} /> {t('dataChat.edit')}
                             </button>
                             <button
                               onClick={() => { deleteQuickReply(previewQuickReply.id); setPreviewQuickReply(null); }}
@@ -3406,7 +3408,7 @@ export default function DataChatPage() {
                               onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1))'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0.05))'; e.currentTarget.style.transform = 'translateY(0)'; }}
                             >
-                              <Trash2 size={14} /> Delete
+                              <Trash2 size={14} /> {t('dataChat.delete')}
                             </button>
                           </div>
                         )}
@@ -3530,7 +3532,7 @@ export default function DataChatPage() {
                               fontSize: 12,
                             }}>
                               <ChevronLeft size={16} />
-                              <span>Select from list</span>
+                              <span>{t('dataChat.noChannelSelected')}</span>
                             </div>
                           </div>
                         )}
@@ -3553,7 +3555,7 @@ export default function DataChatPage() {
                         color: colors.textPrimary, fontSize: 13, cursor: 'pointer',
                       }}
                     >
-                      Cancel
+                      {t('dataChat.cancel')}
                     </button>
                     <button
                       onClick={() => previewQuickReply && selectQuickReply(previewQuickReply)}
@@ -3567,7 +3569,7 @@ export default function DataChatPage() {
                         cursor: previewQuickReply ? 'pointer' : 'default',
                       }}
                     >
-                      Select
+                      {t('dataChat.use')}
                     </button>
                   </div>
                 </div>
@@ -3610,10 +3612,10 @@ export default function DataChatPage() {
                       </div>
                       <div>
                         <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: colors.textPrimary }}>
-                          {editingQuickReply ? 'Edit Quick Reply' : 'Create Quick Reply'}
+                          {editingQuickReply ? t('dataChat.editQuickReply') : t('dataChat.addQuickReply')}
                         </h3>
                         <p style={{ margin: 0, fontSize: 11, color: colors.textMuted }}>
-                          Create reusable message templates
+                          {t('dataChat.noQuickRepliesDesc')}
                         </p>
                       </div>
                     </div>
@@ -3656,7 +3658,7 @@ export default function DataChatPage() {
                           display: 'flex', alignItems: 'center', gap: 6,
                         }}>
                           <Tag size={14} color={colors.accent} />
-                          Title
+                          {t('dataChat.titleLabel')}
                         </label>
                         <span style={{ 
                           fontSize: 11, color: colors.textMuted,
@@ -3669,7 +3671,7 @@ export default function DataChatPage() {
                         id="quickReplyTitle"
                         name="title"
                         defaultValue={editingQuickReply?.title || ''}
-                        placeholder="Enter a memorable title..."
+                        placeholder={t('dataChat.titlePlaceholder')}
                         maxLength={30}
                         required
                         onChange={(e) => {
@@ -3686,7 +3688,7 @@ export default function DataChatPage() {
                         onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
                       />
                       <p style={{ fontSize: 11, color: colors.textMuted, marginTop: 6, marginBottom: 0 }}>
-                        💡 Title is for your reference only, users won't see it.
+                        💡 {t('dataChat.titleHint')}
                       </p>
                     </div>
                     
@@ -3698,7 +3700,7 @@ export default function DataChatPage() {
                           display: 'flex', alignItems: 'center', gap: 6,
                         }}>
                           <MessageCircle size={14} color={colors.accent} />
-                          Message Content
+                          {t('dataChat.messageContent')}
                         </label>
                         <span style={{ 
                           fontSize: 11, color: colors.textMuted,
@@ -3779,14 +3781,14 @@ export default function DataChatPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Smile size={14} color={colors.accent} />
                           <span style={{ fontSize: 12, fontWeight: 600, color: colors.textPrimary }}>
-                            LINE Emoji
+                            {t('dataChat.lineEmoji')}
                           </span>
                         </div>
                         <span style={{ 
                           fontSize: 10, color: colors.textMuted,
                           background: colors.bgSecondary, padding: '3px 8px', borderRadius: 6,
                         }}>
-                          Click emoji to insert
+                          {t('dataChat.clickEmojiToInsert')}
                         </span>
                       </div>
 
@@ -3925,7 +3927,7 @@ export default function DataChatPage() {
                         onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgTertiary; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                       >
-                        Cancel
+                        {t('dataChat.cancel')}
                       </button>
                       <button
                         type="submit"
@@ -3942,7 +3944,7 @@ export default function DataChatPage() {
                         onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 4px 12px ${colors.accent}40`; }}
                       >
                         <Check size={16} />
-                        {editingQuickReply ? 'Save Changes' : 'Create Reply'}
+                        {editingQuickReply ? t('dataChat.save') : t('dataChat.addQuickReply')}
                       </button>
                     </div>
                   </form>
@@ -3966,7 +3968,7 @@ export default function DataChatPage() {
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      😊 Emoji
+                      😊 {t('dataChat.emoji')}
                     </button>
                     <button
                       onClick={() => setEmojiPickerTab('sticker')}
@@ -3978,7 +3980,7 @@ export default function DataChatPage() {
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      🐻 Sticker
+                      🐻 {t('dataChat.sticker')}
                     </button>
                     <button
                       onClick={() => setEmojiPickerTab('custom')}
@@ -3990,7 +3992,7 @@ export default function DataChatPage() {
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      ⚡ Quick
+                      ⚡ {t('dataChat.quick')}
                     </button>
                   </div>
                   <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
@@ -4191,7 +4193,7 @@ export default function DataChatPage() {
                       }} />
                       <input
                         type="text"
-                        placeholder="ค้นหาข้อความ..."
+                        placeholder={t('dataChat.searchMessages')}
                         value={templateSearchTerm}
                         onChange={(e) => setTemplateSearchTerm(e.target.value)}
                         style={{
@@ -4372,7 +4374,7 @@ export default function DataChatPage() {
                   id="messageEditor"
                   contentEditable
                   suppressContentEditableWarning
-                  data-placeholder="Enter: Send message, Shift + Enter: New line"
+                  data-placeholder={t('dataChat.inputPlaceholder')}
                   onInput={(e) => {
                     const editor = e.currentTarget;
                     // Extract text content ($ for emojis) and emoji data
@@ -4491,7 +4493,7 @@ export default function DataChatPage() {
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'all 0.15s ease',
                     }}
-                    title="Quick replies"
+                    title={t('dataChat.quickReplies')}
                   >
                     <Plus size={20} />
                   </button>
@@ -4526,7 +4528,7 @@ export default function DataChatPage() {
                   ) : (
                     <>
                       <Send size={14} />
-                      Send
+                      {t('dataChat.send')}
                     </>
                   )}
                 </button>
@@ -4686,7 +4688,7 @@ export default function DataChatPage() {
                     <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                       <input
                         type="text"
-                        placeholder="New tag..."
+                        placeholder={t('dataChat.newTag')}
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
                         onKeyDown={(e) => {
@@ -4785,7 +4787,7 @@ export default function DataChatPage() {
               {/* Notes Section */}
               <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Notes</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>{t('dataChat.notes')}</span>
                   <button 
                     onClick={() => setShowNoteInput(!showNoteInput)}
                     style={{ 
@@ -4803,7 +4805,7 @@ export default function DataChatPage() {
                 {showNoteInput && (
                   <div style={{ marginBottom: 12 }}>
                     <textarea
-                      placeholder="Write a note..."
+                      placeholder={t('dataChat.writeNote')}
                       value={newNoteContent}
                       onChange={(e) => setNewNoteContent(e.target.value)}
                       style={{
@@ -4824,7 +4826,7 @@ export default function DataChatPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        Cancel
+                        {t('dataChat.cancel')}
                       </button>
                       <button
                         onClick={addNote}
@@ -4839,7 +4841,7 @@ export default function DataChatPage() {
                         }}
                       >
                         {isAddingNote && <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />}
-                        Save Note
+                        {t('dataChat.save')}
                       </button>
                     </div>
                   </div>
@@ -4883,10 +4885,10 @@ export default function DataChatPage() {
                     }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
                         <FileEdit size={18} style={{ color: colors.info, flexShrink: 0, marginTop: 2 }} />
-                        <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Keep records</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>{t('dataChat.keepRecords')}</span>
                       </div>
                       <p style={{ fontSize: 12, color: colors.textMuted, margin: 0, lineHeight: 1.5 }}>
-                        Record info about this user and leave notes for your team.
+                        {t('dataChat.recordInfo')}
                       </p>
                     </div>
                   )}
@@ -4896,7 +4898,7 @@ export default function DataChatPage() {
               {/* Actions Section */}
               <div style={{ padding: 20, borderTop: `1px solid ${colors.border}` }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary, display: 'block', marginBottom: 12 }}>
-                  Actions
+                  {t('dataChat.quickActions')}
                 </span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <button
@@ -4914,7 +4916,7 @@ export default function DataChatPage() {
                     onMouseLeave={(e) => e.currentTarget.style.background = selectedRoomData.isPinned ? colors.accentLight : colors.bgPrimary}
                   >
                     <Pin size={16} style={{ transform: selectedRoomData.isPinned ? 'rotate(-45deg)' : 'none' }} />
-                    {selectedRoomData.isPinned ? 'Unpin Chat' : 'Pin Chat'}
+                    {selectedRoomData.isPinned ? t('dataChat.unpinChat') : t('dataChat.pinChat')}
                   </button>
                   
                   <button
@@ -4932,7 +4934,7 @@ export default function DataChatPage() {
                     onMouseLeave={(e) => e.currentTarget.style.background = selectedRoomData.isMuted ? colors.warning + '15' : colors.bgPrimary}
                   >
                     {selectedRoomData.isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                    {selectedRoomData.isMuted ? 'Unmute Notifications' : 'Mute Notifications'}
+                    {selectedRoomData.isMuted ? t('dataChat.unmuteNotifications') : t('dataChat.muteNotifications')}
                   </button>
                   
                   <button
@@ -4950,7 +4952,7 @@ export default function DataChatPage() {
                     onMouseLeave={(e) => e.currentTarget.style.background = colors.bgPrimary}
                   >
                     <Bookmark size={16} />
-                    Archive Chat
+                    {t('dataChat.archiveChat')}
                   </button>
                   
                   {selectedRoomData.status === 'spam' ? (
@@ -4969,7 +4971,7 @@ export default function DataChatPage() {
                       onMouseLeave={(e) => { e.currentTarget.style.background = colors.accent + '15'; }}
                     >
                       <Check size={16} />
-                      Not Spam
+                      {t('dataChat.notSpam')}
                     </button>
                   ) : (
                     <button
@@ -4987,13 +4989,13 @@ export default function DataChatPage() {
                       onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgPrimary; e.currentTarget.style.borderColor = colors.border; }}
                     >
                       <AlertTriangle size={16} />
-                      Mark as Spam
+                      {t('dataChat.markSpam')}
                     </button>
                   )}
                   
                   <button
                     onClick={() => {
-                      if (confirm('ต้องการลบข้อความทั้งหมดในแชทนี้หรือไม่? (user จะยังสามารถส่งข้อความมาได้อีก)')) {
+                      if (confirm(t('dataChat.confirmClearMessages'))) {
                         deleteRoom(selectedRoom, 'clear');
                       }
                     }}
@@ -5010,7 +5012,7 @@ export default function DataChatPage() {
                     onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgPrimary; e.currentTarget.style.borderColor = colors.border; }}
                   >
                     <Trash2 size={16} />
-                    Clear Messages
+                    {t('dataChat.clearMessages')}
                   </button>
                 </div>
               </div>
@@ -5044,10 +5046,10 @@ export default function DataChatPage() {
           )}
           <MessageCircle size={isMobile ? 40 : 48} style={{ color: colors.textMuted, marginBottom: 16 }} />
           <h2 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 600, color: colors.textPrimary, margin: '0 0 8px 0', textAlign: 'center' }}>
-            Select a conversation
+            {t('dataChat.selectConversation')}
           </h2>
           <p style={{ fontSize: isMobile ? 12 : 13, color: colors.textMuted, textAlign: 'center', maxWidth: 240, margin: '0 0 20px 0' }}>
-            Choose a chat from the list to start messaging
+            {t('dataChat.selectConversationDesc')}
           </p>
           
           {/* Connection Status with Quality Indicator */}
@@ -5064,9 +5066,9 @@ export default function DataChatPage() {
                 animation: connectionState === 'reconnecting' ? 'pulse 1.5s ease-in-out infinite' : 'none',
               }} />
               <span style={{ fontSize: 13, fontWeight: 600 }}>
-                {connectionState === 'connected' ? 'Connected' : 
-                 connectionState === 'reconnecting' ? 'Reconnecting...' : 
-                 connectionState === 'suspended' ? 'Suspended' : 'Disconnected'}
+                {connectionState === 'connected' ? t('dataChat.connected') : 
+                 connectionState === 'reconnecting' ? t('dataChat.reconnecting') : 
+                 connectionState === 'suspended' ? t('dataChat.suspended') : t('dataChat.disconnected')}
               </span>
             </div>
             
@@ -5110,7 +5112,7 @@ export default function DataChatPage() {
                   cursor: 'pointer',
                 }}
               >
-                Reconnect Now
+                {t('dataChat.manualReconnect')}
               </button>
             )}
           </div>

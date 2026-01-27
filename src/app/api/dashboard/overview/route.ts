@@ -69,11 +69,11 @@ export async function GET(request: NextRequest) {
     try {
       const summaryQuery = `
         SELECT 
-          COALESCE(SUM(depositAmount), 0) as totalDeposits,
-          COALESCE(SUM(withdrawalAmount), 0) as totalWithdrawals,
-          COALESCE(SUM(netProfit), 0) as netProfit
+          COALESCE(SUM(totalDeposit), 0) as totalDeposits,
+          COALESCE(SUM(totalWithdrawal), 0) as totalWithdrawals,
+          COALESCE(SUM(totalProfit), 0) as netProfit
         FROM DailySummary 
-        WHERE date >= ? AND date <= ? ${websiteFilter.replace('websiteId', 'website')}
+        WHERE date >= ? AND date <= ? ${websiteFilter.replace('websiteId', 'websiteName')}
       `;
       const summary = db.prepare(summaryQuery).get(startDate, endDate) as any;
       if (summary) {

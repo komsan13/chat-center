@@ -54,7 +54,7 @@ export async function PUT(
     }
     
     // Check for duplicate date + website (excluding current record)
-    const duplicate = db.prepare('SELECT * FROM DailySummary WHERE date = ? AND website = ? AND id != ?').get(date, website, id);
+    const duplicate = db.prepare('SELECT * FROM DailySummary WHERE date = ? AND websiteName = ? AND id != ?').get(date, website, id);
     if (duplicate) {
       db.close();
       return NextResponse.json({ 
@@ -66,20 +66,30 @@ export async function PUT(
     // Calculate net profit
     const deposit = parseFloat(depositAmount) || 0;
     const withdrawal = parseFloat(withdrawalAmount) || 0;
-    const netProfit = deposit - withdrawal;
+    const profit = deposit - withdrawal;
     
     const now = new Date().toISOString();
     
     db.prepare(`
       UPDATE DailySummary 
-      SET date = ?, website = ?, depositAmount = ?, withdrawalAmount = ?, netProfit = ?, updatedAt = ?
+      SET date = ?, websiteName = ?, totalDeposit = ?, totalWithdrawal = ?, totalProfit = ?, updatedAt = ?
       WHERE id = ?
-    `).run(date, website, deposit, withdrawal, netProfit, now, id);
+    `).run(date, website, deposit, withdrawal, profit, now, id);
     
-    const updated = db.prepare('SELECT * FROM DailySummary WHERE id = ?').get(id);
+    const updated = db.prepare('SELECT * FROM DailySummary WHERE id = ?').get(id) as any;
     db.close();
     
-    return NextResponse.json({ success: true, data: updated });
+    // Transform data for frontend compatibility
+    return NextResponse.json({ 
+      success: true, 
+      data: {
+        ...updated,
+        website: updated.websiteName || updated.websiteId || '',
+        depositAmount: updated.totalDeposit,
+        withdrawalAmount: updated.totalWithdrawal,
+        netProfit: updated.totalProfit
+      }
+    });
   } catch (error) {
     console.error('Error updating daily summary:', error);
     return NextResponse.json({ success: false, error: 'Failed to update daily summary' }, { status: 500 });
