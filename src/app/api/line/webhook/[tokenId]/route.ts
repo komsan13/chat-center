@@ -176,6 +176,28 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
     room = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(roomId) as ChatRoomRecord;
     
     console.log(`[LINE Webhook/${token.id}] Created new room: ${roomId} for user: ${displayName}`);
+    
+    // Broadcast new room to all clients
+    const newRoomData = {
+      id: roomId,
+      lineUserId: userId,
+      lineTokenId: token.id,
+      displayName,
+      pictureUrl,
+      statusMessage,
+      unreadCount: 0,
+      isPinned: false,
+      isMuted: false,
+      tags: [],
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    if (global.__broadcast) {
+      global.__broadcast('new-room', newRoomData);
+      console.log(`[LINE Webhook/${token.id}] 📡 Broadcast new-room: ${roomId}`);
+    }
   }
 
   // Handle message events
