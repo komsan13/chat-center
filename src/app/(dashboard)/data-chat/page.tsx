@@ -351,18 +351,20 @@ export default function DataChatPage() {
     fetchCurrentUser();
   }, []);
 
-  // Load Quick Replies from localStorage
+  // Load Quick Replies from API
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('quickReplies');
-      if (saved) {
-        try {
-          setQuickReplies(JSON.parse(saved));
-        } catch (e) {
-          console.error('Failed to parse quick replies:', e);
+    const fetchQuickReplies = async () => {
+      try {
+        const response = await fetch('/api/chat/quick-reply');
+        const result = await response.json();
+        if (result.success) {
+          setQuickReplies(result.data);
         }
+      } catch (error) {
+        console.error('Failed to fetch quick replies:', error);
       }
-    }
+    };
+    fetchQuickReplies();
   }, []);
 
   // Auto-detect LINE token from selected room
@@ -1120,47 +1122,79 @@ export default function DataChatPage() {
   // ═══════════════════════════════════════════════════════════════════
   // QUICK REPLIES MANAGEMENT
   // ═══════════════════════════════════════════════════════════════════
-  const saveQuickReply = (title: string, label: string, lineTokenId: string, existingId?: string, emojis?: LineEmoji[]) => {
-    const newReply: QuickReply = {
-      id: existingId || `qr-${Date.now()}`,
-      lineTokenId,
-      title,
-      label,
-      icon: '💬',
-      isFavorite: existingId ? (quickReplies.find(q => q.id === existingId)?.isFavorite || false) : false,
-      createdAt: existingId ? (quickReplies.find(q => q.id === existingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
-      emojis: emojis && emojis.length > 0 ? emojis : undefined,
-    };
-    
-    setQuickReplies(prev => {
-      let updated: QuickReply[];
+  const saveQuickReply = async (title: string, label: string, lineTokenId: string, existingId?: string, emojis?: LineEmoji[]) => {
+    try {
+      const payload = {
+        lineTokenId,
+        title,
+        label,
+        icon: '💬',
+        emojis: emojis && emojis.length > 0 ? emojis : undefined,
+        isFavorite: existingId ? (quickReplies.find(q => q.id === existingId)?.isFavorite || false) : false,
+      };
+
       if (existingId) {
-        updated = prev.map(q => q.id === existingId ? newReply : q);
+        // Update existing
+        const response = await fetch(`/api/chat/quick-reply/${existingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const result = await response.json();
+        if (result.success) {
+          setQuickReplies(prev => prev.map(q => q.id === existingId ? result.data : q));
+        }
       } else {
-        updated = [...prev, newReply];
+        // Create new
+        const response = await fetch('/api/chat/quick-reply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const result = await response.json();
+        if (result.success) {
+          setQuickReplies(prev => [...prev, result.data]);
+        }
       }
-      localStorage.setItem('quickReplies', JSON.stringify(updated));
-      return updated;
-    });
+    } catch (error) {
+      console.error('Failed to save quick reply:', error);
+    }
     
     setShowQuickReplyModal(false);
     setEditingQuickReply(null);
   };
 
-  const toggleFavorite = (id: string) => {
-    setQuickReplies(prev => {
-      const updated = prev.map(q => q.id === id ? { ...q, isFavorite: !q.isFavorite } : q);
-      localStorage.setItem('quickReplies', JSON.stringify(updated));
-      return updated;
-    });
+  const toggleFavorite = async (id: string) => {
+    const current = quickReplies.find(q => q.id === id);
+    if (!current) return;
+
+    try {
+      const response = await fetch(`/api/chat/quick-reply/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isFavorite: !current.isFavorite }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setQuickReplies(prev => prev.map(q => q.id === id ? result.data : q));
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+    }
   };
 
-  const deleteQuickReply = (id: string) => {
-    setQuickReplies(prev => {
-      const updated = prev.filter(q => q.id !== id);
-      localStorage.setItem('quickReplies', JSON.stringify(updated));
-      return updated;
-    });
+  const deleteQuickReply = async (id: string) => {
+    try {
+      const response = await fetch(`/api/chat/quick-reply/${id}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+      if (result.success) {
+        setQuickReplies(prev => prev.filter(q => q.id !== id));
+      }
+    } catch (error) {
+      console.error('Failed to delete quick reply:', error);
+    }
   };
 
   const selectQuickReply = (reply: QuickReply) => {

@@ -124,3 +124,15 @@ model LineToken {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+model QuickReply {
+  id            String   @id @default(cuid())
+  lineTokenId   String
+  title         String
+  label         String
+  icon          String   @default("💬")
+  emojis        String?
+  isFavorite    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
