@@ -1856,57 +1856,69 @@ export default function DataChatPage() {
     },
   ];
 
-  // Quick Message Templates (ส่งเป็น text message พร้อม emoji) - Pro Design
+  // Quick Message Templates - Pro Design with Emoji
   const quickMessageTemplates = [
     {
       id: 'casino',
       name: 'คาสิโน',
-      icon: 'Coins',
+      emoji: '🎰',
       color: '#8b5cf6',
       gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
       messages: [
-        { id: 'credit-done', text: 'เครดิตเข้าเรียบร้อยแล้วนะคะลูกค้า', icon: 'CheckCircle2', iconColor: '#10b981' },
-        { id: 'checking', text: 'แอดตรวจสอบให้สักครู่ค่ะ', icon: 'Search', iconColor: '#3b82f6' },
-        { id: 'bank-delay', text: 'ธนาคารดีเลย์ กรุณารอสักครู่นะคะ', icon: 'Building2', iconColor: '#f59e0b' },
-        { id: 'good-luck', text: 'เฮงๆ รวยๆ แตกเยอะๆ นะคะ', icon: 'Sparkles', iconColor: '#eab308' },
-        { id: 'credit-in', text: 'เครดิตเข้าแล้ว เฮงๆปังๆน๊า', icon: 'BadgeDollarSign', iconColor: '#22c55e' },
-        { id: 'send-slip', text: 'แจ้งสลิปให้แอดมินด้วยน๊า', icon: 'Receipt', iconColor: '#6366f1' },
+        { id: 'credit-done', text: 'เครดิตเข้าเรียบร้อยแล้วนะคะลูกค้า', emoji: '✅' },
+        { id: 'checking', text: 'แอดตรวจสอบให้สักครู่ค่ะ', emoji: '🔍' },
+        { id: 'bank-delay', text: 'ธนาคารดีเลย์ กรุณารอสักครู่นะคะ', emoji: '🏦' },
+        { id: 'good-luck', text: 'เฮงๆ รวยๆ แตกเยอะๆ นะคะ', emoji: '🍀' },
+        { id: 'credit-in', text: 'เครดิตเข้าแล้ว เฮงๆปังๆน๊า', emoji: '💰' },
+        { id: 'send-slip', text: 'แจ้งสลิปให้แอดมินด้วยน๊า', emoji: '🧾' },
       ],
     },
     {
       id: 'service',
       name: 'บริการ',
-      icon: 'Headphones',
+      emoji: '💬',
       color: '#10b981',
       gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
       messages: [
-        { id: 'hello', text: 'สวัสดีค่า ทำรายการอะไรดีคะ', icon: 'HandHeart', iconColor: '#ec4899' },
-        { id: 'welcome', text: 'แอดมินยินดีให้บริการค่า', icon: 'Star', iconColor: '#f59e0b' },
-        { id: 'wait-process', text: 'รอสักครู่ อยู่ระหว่างดำเนินการนะคะ', icon: 'Clock', iconColor: '#3b82f6' },
-        { id: 'complete-info', text: 'แจ้งข้อมูลให้ครบด้วยนะคะ', icon: 'ClipboardList', iconColor: '#8b5cf6' },
-        { id: 'screenshot', text: 'แคปหน้าจอให้แอดหน่อยน๊า', icon: 'Smartphone', iconColor: '#06b6d4' },
-        { id: 'fighting', text: 'สู้ๆ แอดมินเป็นกำลังใจให้นะคะ', icon: 'Heart', iconColor: '#ef4444' },
+        { id: 'hello', text: 'สวัสดีค่า ทำรายการอะไรดีคะ', emoji: '👋' },
+        { id: 'welcome', text: 'แอดมินยินดีให้บริการค่า', emoji: '⭐' },
+        { id: 'wait-process', text: 'รอสักครู่ อยู่ระหว่างดำเนินการนะคะ', emoji: '⏳' },
+        { id: 'complete-info', text: 'แจ้งข้อมูลให้ครบด้วยนะคะ', emoji: '📝' },
+        { id: 'screenshot', text: 'แคปหน้าจอให้แอดหน่อยน๊า', emoji: '📱' },
+        { id: 'fighting', text: 'สู้ๆ แอดมินเป็นกำลังใจให้นะคะ', emoji: '💪' },
       ],
     },
     {
       id: 'apology',
       name: 'ขออภัย',
-      icon: 'MessageCircleHeart',
+      emoji: '🙏',
       color: '#f59e0b',
       gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
       messages: [
-        { id: 'sorry', text: 'ขออภัยด้วยน๊า', icon: 'HeartHandshake', iconColor: '#ec4899' },
-        { id: 'sorry-delay', text: 'ทำรายการให้เรียบร้อย ขออภัยในความล่าช้าค่ะ', icon: 'Timer', iconColor: '#f59e0b' },
-        { id: 'calm-down', text: 'ใจเย็นๆนะคะ แอดรับเรื่องให้แล้วค่ะ', icon: 'Smile', iconColor: '#10b981' },
-        { id: 'wrong-slip', text: 'ไม่ใช่สลิปของทางเรานะคะ', icon: 'XCircle', iconColor: '#ef4444' },
-        { id: 'maintenance', text: 'ห้องเกมปิดปรับปรุงชั่วคราวค่า', icon: 'Wrench', iconColor: '#6366f1' },
-        { id: 'one-line-one-user', text: '1 ไลน์ ต่อ 1 ยูส ค่ะ', icon: 'Info', iconColor: '#3b82f6' },
+        { id: 'sorry', text: 'ขออภัยด้วยน๊า', emoji: '🙇' },
+        { id: 'sorry-delay', text: 'ทำรายการให้เรียบร้อย ขออภัยในความล่าช้าค่ะ', emoji: '⏰' },
+        { id: 'calm-down', text: 'ใจเย็นๆนะคะ แอดรับเรื่องให้แล้วค่ะ', emoji: '😌' },
+        { id: 'wrong-slip', text: 'ไม่ใช่สลิปของทางเรานะคะ', emoji: '❌' },
+        { id: 'maintenance', text: 'ห้องเกมปิดปรับปรุงชั่วคราวค่า', emoji: '🔧' },
+        { id: 'one-line-one-user', text: '1 ไลน์ ต่อ 1 ยูส ค่ะ', emoji: '📌' },
       ],
     },
   ];
   const [selectedTemplateCategory, setSelectedTemplateCategory] = useState('casino');
 
-  // Send quick message template as text
+  // Insert quick message template to input (not send immediately)
+  const insertQuickTemplate = (messageText: string) => {
+    if (!selectedRoom) return;
+    setShowEmojiPicker(false);
+    
+    // Insert text into contentEditable
+    if (messageEditorRef.current) {
+      messageEditorRef.current.innerText = messageText;
+      messageEditorRef.current.focus();
+    }
+  };
+
+  // Send quick message template as text (legacy - kept for reference)
   const sendQuickTemplate = async (messageText: string) => {
     if (!selectedRoom || isSending) return;
     setIsSending(true);
@@ -4121,7 +4133,7 @@ export default function DataChatPage() {
                 {/* Quick Message Templates Tab - Pro Design */}
                 {emojiPickerTab === 'custom' && (
                   <div style={{ maxHeight: 340, overflowY: 'auto' }}>
-                    {/* Category Tabs - Pill Style */}
+                    {/* Category Tabs - Pill Style with Emoji */}
                     <div style={{ 
                       display: 'flex', gap: 8, marginBottom: 16,
                       padding: '4px',
@@ -4130,8 +4142,6 @@ export default function DataChatPage() {
                     }}>
                       {quickMessageTemplates.map((category) => {
                         const isActive = selectedTemplateCategory === category.id;
-                        const IconComponent = category.icon === 'Coins' ? Coins : 
-                                             category.icon === 'Headphones' ? Headphones : MessageCircleHeart;
                         return (
                           <button
                             key={category.id}
@@ -4154,7 +4164,7 @@ export default function DataChatPage() {
                               boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
                             }}
                           >
-                            <IconComponent size={14} />
+                            <span style={{ fontSize: 14 }}>{category.emoji}</span>
                             {category.name}
                           </button>
                         );
@@ -4171,15 +4181,9 @@ export default function DataChatPage() {
                       alignItems: 'center', 
                       gap: 10,
                     }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 8,
-                        background: `${colors.accent}20`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Zap size={14} style={{ color: colors.accent }} />
-                      </div>
+                      <span style={{ fontSize: 18 }}>💡</span>
                       <span style={{ fontSize: 12, color: colors.textSecondary, fontWeight: 500 }}>
-                        คลิกเพื่อส่งข้อความทันที
+                        เลือกข้อความ แล้วกดส่งเอง
                       </span>
                     </div>
                     
@@ -4189,40 +4193,28 @@ export default function DataChatPage() {
                         .find(cat => cat.id === selectedTemplateCategory)
                         ?.messages.map((msg) => {
                           const category = quickMessageTemplates.find(cat => cat.id === selectedTemplateCategory);
-                          const IconMap: { [key: string]: React.ComponentType<{ size?: number; style?: React.CSSProperties }> } = {
-                            CheckCircle2, Search, Building2, Sparkles, BadgeDollarSign, Receipt,
-                            HandHeart, Star, Clock, ClipboardList, Smartphone, Heart,
-                            HeartHandshake, Timer, Smile, XCircle, Wrench, Info
-                          };
-                          const MsgIcon = IconMap[msg.icon] || MessageCircle;
                           
                           return (
                             <button
                               key={msg.id}
-                              onClick={() => sendQuickTemplate(msg.text)}
-                              disabled={isSending}
+                              onClick={() => insertQuickTemplate(msg.text)}
                               style={{
-                                padding: '14px 16px', 
+                                padding: '12px 14px', 
                                 borderRadius: 12,
                                 border: `1px solid transparent`,
                                 background: colors.bgTertiary,
-                                cursor: isSending ? 'not-allowed' : 'pointer',
+                                cursor: 'pointer',
                                 display: 'flex', 
                                 alignItems: 'center', 
-                                gap: 14,
+                                gap: 12,
                                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                 textAlign: 'left',
-                                opacity: isSending ? 0.6 : 1,
-                                position: 'relative',
-                                overflow: 'hidden',
                               }}
                               onMouseEnter={(e) => {
-                                if (!isSending) {
-                                  e.currentTarget.style.background = `${category?.color}12`;
-                                  e.currentTarget.style.borderColor = `${category?.color}40`;
-                                  e.currentTarget.style.transform = 'translateX(4px)';
-                                  e.currentTarget.style.boxShadow = `0 2px 8px ${category?.color}20`;
-                                }
+                                e.currentTarget.style.background = `${category?.color}12`;
+                                e.currentTarget.style.borderColor = `${category?.color}40`;
+                                e.currentTarget.style.transform = 'translateX(4px)';
+                                e.currentTarget.style.boxShadow = `0 2px 8px ${category?.color}20`;
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = colors.bgTertiary;
@@ -4231,20 +4223,14 @@ export default function DataChatPage() {
                                 e.currentTarget.style.boxShadow = 'none';
                               }}
                             >
-                              {/* Icon Container */}
-                              <div style={{
-                                width: 38, 
-                                height: 38, 
-                                borderRadius: 10,
-                                background: `${msg.iconColor}15`,
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center',
+                              {/* Emoji */}
+                              <span style={{
+                                fontSize: 24,
+                                lineHeight: 1,
                                 flexShrink: 0,
-                                transition: 'all 0.2s ease',
                               }}>
-                                <MsgIcon size={18} style={{ color: msg.iconColor }} />
-                              </div>
+                                {msg.emoji}
+                              </span>
                               
                               {/* Text */}
                               <span style={{
@@ -4256,18 +4242,6 @@ export default function DataChatPage() {
                               }}>
                                 {msg.text}
                               </span>
-                              
-                              {/* Send Arrow */}
-                              <div style={{
-                                width: 28, height: 28, borderRadius: 8,
-                                background: `${category?.color}15`,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                flexShrink: 0,
-                                opacity: 0.7,
-                                transition: 'all 0.2s ease',
-                              }}>
-                                <ArrowRight size={14} style={{ color: category?.color }} />
-                              </div>
                             </button>
                           );
                         })}
