@@ -142,16 +142,17 @@ export async function POST(request: NextRequest) {
     const events = JSON.parse(body);
     console.log('[LINE Webhook] Received:', JSON.stringify(events, null, 2));
 
-    // Get ALL active LINE tokens for signature verification
-    const allTokens = db.prepare('SELECT * FROM LineToken WHERE status = ?').all('active') as LineTokenRecord[];
+    // Get ALL LINE tokens (including inactive) for signature verification
+    const allTokens = db.prepare('SELECT * FROM LineToken').all() as LineTokenRecord[];
 
     if (allTokens.length === 0) {
-      console.warn('[LINE Webhook] No active LINE token found');
+      console.warn('[LINE Webhook] No LINE token found in database');
       return NextResponse.json({ success: true });
     }
 
-    // Try to verify signature with any of the active tokens
+    // Try to verify signature with ALL tokens (active and inactive)
     let matchedToken: LineTokenRecord | null = null;
+    let matchedButInactive = false;
     
     if (process.env.NODE_ENV === 'production') {
       for (const token of allTokens) {
@@ -161,20 +162,31 @@ export async function POST(request: NextRequest) {
           .digest('base64');
         
         if (hash === signature) {
-          matchedToken = token;
-          console.log(`[LINE Webhook] Signature matched with token: ${token.name}`);
+          if (token.status === 'active') {
+            matchedToken = token;
+            console.log(`[LINE Webhook] ✅ Signature matched with ACTIVE token: ${token.name}`);
+          } else {
+            matchedButInactive = true;
+            console.warn(`[LINE Webhook] ⚠️ Signature matched with INACTIVE token: ${token.name} - Please activate this token to receive messages`);
+          }
           break;
         }
       }
       
       if (!matchedToken) {
+        if (matchedButInactive) {
+          // Token matched but inactive - return 200 OK so LINE doesn't retry
+          console.warn('[LINE Webhook] Token is inactive, message ignored');
+          return NextResponse.json({ success: true, message: 'Token inactive' });
+        }
+        
         console.error('[LINE Webhook] Invalid signature - no matching token found');
-        console.error('[LINE Webhook] Tried tokens:', allTokens.map(t => t.name).join(', '));
+        console.error('[LINE Webhook] Tried tokens:', allTokens.map(t => `${t.name}(${t.status})`).join(', '));
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
     } else {
-      // In development, use first token
-      matchedToken = allTokens[0];
+      // In development, use first active token
+      matchedToken = allTokens.find(t => t.status === 'active') || allTokens[0];
     }
 
     // Process events with the matched token
