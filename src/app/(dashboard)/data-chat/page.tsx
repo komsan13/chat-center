@@ -541,10 +541,13 @@ export default function DataChatPage() {
       fetch(`/api/chat/rooms/${msg.roomId}/messages`, { method: 'POST' }).catch(() => {});
     }
     
-    // Update rooms list
+    // Update rooms list and play sound if needed
     setRooms(prev => {
       const roomIndex = prev.findIndex(r => r.id === msg.roomId);
-      if (roomIndex === -1) return prev;
+      if (roomIndex === -1) {
+        // Room not in state yet - sound will be played by handleNewRoom
+        return prev;
+      }
       
       const updatedRooms = [...prev];
       const room = { ...updatedRooms[roomIndex] };
@@ -553,12 +556,11 @@ export default function DataChatPage() {
       
       // Only increment unread and play sound for incoming user messages
       // Skip notification for spam rooms and muted rooms
-      // Skip notification if room's lineTokenId is not in selectedTokenIds
       if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user' && room.status !== 'spam' && !room.isMuted) {
         // Increment locally for immediate UI feedback
         room.unreadCount = (room.unreadCount || 0) + 1;
         
-        // Only play sound if token is selected (or no token filter)
+        // Play sound if token is selected (or no token filter)
         const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
                             !room.lineTokenId || 
                             selectedTokenIdsRef.current.has(room.lineTokenId);
@@ -693,22 +695,31 @@ export default function DataChatPage() {
 
   // Handle new room from socket (when a new customer starts chatting)
   const handleNewRoom = useCallback((room: ChatRoom) => {
-    console.log('[Chat] New room received:', room.id, room.displayName);
+    console.log('[Chat] New room received:', room.id, room.displayName, 'lineTokenId:', room.lineTokenId);
     
     // Don't add spam rooms to the list immediately
     if (room.status === 'spam') return;
+    
+    // Check if this room's token is selected for notifications
+    const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
+                        !room.lineTokenId || 
+                        selectedTokenIdsRef.current.has(room.lineTokenId);
     
     setRooms(prev => {
       // Check if room already exists
       if (prev.some(r => r.id === room.id)) {
         return prev;
       }
+      
+      // Play sound for new room (only if token is selected and not muted)
+      if (shouldNotify && !room.isMuted) {
+        playSound();
+      }
+      
       // Add new room to the top
       return [room, ...prev];
     });
-    
-    // Sound is played by handleNewMessage when first message arrives
-  }, []);
+  }, [playSound]);
 
   // Handle room property changes from other browsers (pin, mute, tags, status)
   const handleRoomPropertyChanged = useCallback((data: { roomId: string; updates: {
