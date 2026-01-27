@@ -210,9 +210,10 @@ export async function GET(request: NextRequest) {
       if (lastMessage && typeof lastMessage.emojis === 'string') {
         lastMessage.emojis = JSON.parse(lastMessage.emojis);
       }
-      // Parse emojis in recentMessages
+      // Parse emojis in recentMessages and map stickerPackageId to packageId
       const recentMessages = (recentMessagesMap[room.id] || []).map(msg => ({
         ...msg,
+        packageId: msg.packageId || msg.stickerPackageId,
         emojis: msg.emojis ? JSON.parse(msg.emojis as string) : null,
       }));
       
@@ -318,6 +319,7 @@ interface MessageRecord {
   mediaUrl?: string;
   stickerId?: string;
   packageId?: string;
+  stickerPackageId?: string;  // Database column name
   sender: string;
   senderName?: string;
   status: string;

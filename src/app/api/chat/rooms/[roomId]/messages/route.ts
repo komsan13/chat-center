@@ -40,9 +40,11 @@ export async function GET(
     // Reverse to get chronological order
     messages.reverse();
 
-    // Parse emojis JSON for each message
+    // Parse emojis JSON for each message and map column names
     const parsedMessages = messages.map(msg => ({
       ...msg,
+      // Map stickerPackageId to packageId for frontend compatibility
+      packageId: msg.packageId || msg.stickerPackageId,
       emojis: msg.emojis ? JSON.parse(msg.emojis as string) : null,
     }));
 
@@ -98,6 +100,7 @@ interface MessageRecord {
   mediaUrl?: string;
   stickerId?: string;
   packageId?: string;
+  stickerPackageId?: string;  // Database column name
   sender: string;
   senderName?: string;
   status: string;
