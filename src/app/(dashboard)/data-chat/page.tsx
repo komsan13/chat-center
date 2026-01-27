@@ -208,6 +208,7 @@ export default function DataChatPage() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
   const sendTypingRef = useRef<((roomId: string, userName: string, isTyping: boolean) => void) | null>(null);
+  const lastSoundTimeRef = useRef<number>(0); // Debounce sound playback
 
   // ═══════════════════════════════════════════════════════════════════
   // THEME COLORS - Clean Professional Design
@@ -567,6 +568,13 @@ export default function DataChatPage() {
   }, []);
 
   const playSound = useCallback(() => {
+    // Debounce: prevent multiple sounds within 500ms
+    const now = Date.now();
+    if (now - lastSoundTimeRef.current < 500) {
+      return;
+    }
+    lastSoundTimeRef.current = now;
+    
     if (notificationAudioRef.current && soundUnlockedRef.current) {
       notificationAudioRef.current.currentTime = 0;
       notificationAudioRef.current.play().catch(() => {
@@ -591,114 +599,135 @@ export default function DataChatPage() {
   // SOCKET CONNECTION
   // ═══════════════════════════════════════════════════════════════════
   const handleNewMessage = useCallback((msg: Message) => {
+    // Validate message data
+    if (!msg || !msg.id || !msg.roomId) {
+      console.warn('[Chat] Invalid message received:', msg);
+      return;
+    }
+    
     // Skip if this is a temp message (we already have it locally)
     if (msg.id?.startsWith('temp-')) return;
     
-    // Update cache
-    if (messagesCacheRef.current.has(msg.roomId)) {
-      const cached = messagesCacheRef.current.get(msg.roomId)!;
-      // Check for duplicates by id or lineMessageId
-      const exists = cached.find(m => 
-        m.id === msg.id || 
-        (m.lineMessageId && m.lineMessageId === msg.lineMessageId) ||
-        (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender)
-      );
-      if (!exists) {
-        messagesCacheRef.current.set(msg.roomId, [...cached, msg]);
-      } else if (exists.id?.startsWith('temp-')) {
-        // Replace temp message with real one
-        messagesCacheRef.current.set(msg.roomId, cached.map(m => 
-          m.id === exists.id ? msg : m
-        ));
-      }
-    }
-    
-    // Update messages if viewing this room
-    if (selectedRoomRef.current === msg.roomId) {
-      setMessages(prev => {
-        // Check for duplicates
-        const exists = prev.find(m => 
+    try {
+      // Update cache
+      if (messagesCacheRef.current.has(msg.roomId)) {
+        const cached = messagesCacheRef.current.get(msg.roomId)!;
+        // Check for duplicates by id or lineMessageId
+        const exists = cached.find(m => 
           m.id === msg.id || 
           (m.lineMessageId && m.lineMessageId === msg.lineMessageId) ||
-          (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender) ||
-          // Check sticker duplicate by packageId and stickerId
-          (m.id?.startsWith('temp-') && m.messageType === 'sticker' && msg.messageType === 'sticker' && 
-           m.packageId === msg.packageId && m.stickerId === msg.stickerId && m.sender === msg.sender)
+          (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender)
         );
         if (!exists) {
-          return [...prev, msg];
+          messagesCacheRef.current.set(msg.roomId, [...cached, msg]);
         } else if (exists.id?.startsWith('temp-')) {
           // Replace temp message with real one
-          return prev.map(m => m.id === exists.id ? msg : m);
+          messagesCacheRef.current.set(msg.roomId, cached.map(m => 
+            m.id === exists.id ? msg : m
+          ));
         }
-        return prev;
-      });
-      // Mark as read
-      fetch(`/api/chat/rooms/${msg.roomId}/messages`, { method: 'POST' }).catch(() => {});
-    }
-    
-    // Update rooms list and play sound if needed
-    setRooms(prev => {
-      const roomIndex = prev.findIndex(r => r.id === msg.roomId);
-      if (roomIndex === -1) {
-        // Room not in state yet - sound will be played by handleNewRoom
-        return prev;
       }
       
-      const updatedRooms = [...prev];
-      const room = { ...updatedRooms[roomIndex] };
-      room.lastMessage = msg;
-      room.lastMessageAt = msg.createdAt;
+      // Update messages if viewing this room
+      if (selectedRoomRef.current === msg.roomId) {
+        setMessages(prev => {
+          // Check for duplicates
+          const exists = prev.find(m => 
+            m.id === msg.id || 
+            (m.lineMessageId && m.lineMessageId === msg.lineMessageId) ||
+            (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender) ||
+            // Check sticker duplicate by packageId and stickerId
+            (m.id?.startsWith('temp-') && m.messageType === 'sticker' && msg.messageType === 'sticker' && 
+             m.packageId === msg.packageId && m.stickerId === msg.stickerId && m.sender === msg.sender)
+          );
+          if (!exists) {
+            return [...prev, msg];
+          } else if (exists.id?.startsWith('temp-')) {
+            // Replace temp message with real one
+            return prev.map(m => m.id === exists.id ? msg : m);
+          }
+          return prev;
+        });
+        // Mark as read
+        fetch(`/api/chat/rooms/${msg.roomId}/messages`, { method: 'POST' }).catch(() => {});
+      }
       
-      // Only increment unread and play sound for incoming user messages
-      // Skip notification for spam rooms and muted rooms
-      if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user' && room.status !== 'spam' && !room.isMuted) {
-        // Increment locally for immediate UI feedback
-        room.unreadCount = (room.unreadCount || 0) + 1;
+      // Update rooms list and play sound if needed
+      setRooms(prev => {
+        const roomIndex = prev.findIndex(r => r.id === msg.roomId);
+        if (roomIndex === -1) {
+          // Room not in state yet - sound will be played by handleNewRoom
+          return prev;
+        }
         
-        // Play sound if token is selected (or no token filter)
-        const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
-                            !room.lineTokenId || 
-                            selectedTokenIdsRef.current.has(room.lineTokenId);
-        if (shouldNotify) {
-          playSound();
+        const updatedRooms = [...prev];
+        const room = { ...updatedRooms[roomIndex] };
+        room.lastMessage = msg;
+        room.lastMessageAt = msg.createdAt;
+        
+        // Only increment unread and play sound for incoming user messages
+        // Skip notification for spam rooms and muted rooms
+        if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user' && room.status !== 'spam' && !room.isMuted) {
+          // Increment locally for immediate UI feedback
+          room.unreadCount = (room.unreadCount || 0) + 1;
+          
+          // Play sound if token is selected (or no token filter)
+          const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
+                              !room.lineTokenId || 
+                              selectedTokenIdsRef.current.has(room.lineTokenId);
+          if (shouldNotify) {
+            playSound();
+          }
         }
-      }
-      
-      // Update room in place - DON'T reorder, keep stable position
-      updatedRooms[roomIndex] = room;
-      return updatedRooms;
-    });
+        
+        // Update room in place - DON'T reorder, keep stable position
+        updatedRooms[roomIndex] = room;
+        return updatedRooms;
+      });
+    } catch (error) {
+      console.error('[Chat] Error handling new message:', error);
+    }
   }, [playSound]);
 
   const handleTypingEvent = useCallback((data: { roomId: string; userName: string; isTyping: boolean }) => {
+    // Validate data
+    if (!data || !data.roomId || !data.userName) {
+      console.warn('[Typing Event] Invalid data received:', data);
+      return;
+    }
+    
     // Server broadcasts to everyone EXCEPT sender, so no need to filter here
     console.log('[Typing Event]', data);
-    if (data.isTyping) {
-      setTypingUsers(prev => {
-        // Clear existing timeout if any
-        if (prev[data.roomId]?.timeout) {
-          clearTimeout(prev[data.roomId].timeout);
-        }
-        // Set new timeout to auto-clear after 5 seconds (in case stop event is missed)
-        const timeout = setTimeout(() => {
-          setTypingUsers(p => {
-            const newState = { ...p };
-            delete newState[data.roomId];
-            return newState;
-          });
-        }, 5000);
-        return { ...prev, [data.roomId]: { userName: data.userName, timeout } };
-      });
-    } else {
-      setTypingUsers(prev => {
-        if (prev[data.roomId]?.timeout) {
-          clearTimeout(prev[data.roomId].timeout);
-        }
-        const newState = { ...prev };
-        delete newState[data.roomId];
-        return newState;
-      });
+    
+    try {
+      if (data.isTyping) {
+        setTypingUsers(prev => {
+          // Clear existing timeout if any
+          if (prev[data.roomId]?.timeout) {
+            clearTimeout(prev[data.roomId].timeout);
+          }
+          // Set new timeout to auto-clear after 5 seconds (in case stop event is missed)
+          const timeout = setTimeout(() => {
+            setTypingUsers(p => {
+              const newState = { ...p };
+              delete newState[data.roomId];
+              return newState;
+            });
+          }, 5000);
+          return { ...prev, [data.roomId]: { userName: data.userName, timeout } };
+        });
+      } else {
+        setTypingUsers(prev => {
+          if (prev[data.roomId]?.timeout) {
+            clearTimeout(prev[data.roomId].timeout);
+          }
+          const newState = { ...prev };
+          delete newState[data.roomId];
+          return newState;
+        });
+      }
+    } catch (error) {
+      console.error('[Typing Event] Error handling typing event:', error);
     }
   }, []);
 
@@ -879,6 +908,22 @@ export default function DataChatPage() {
   useEffect(() => {
     fetchRooms();
   }, [fetchRooms]);
+
+  // Cleanup typing timeouts and other refs on unmount
+  useEffect(() => {
+    return () => {
+      // Clear typing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      // Clear all typing user timeouts
+      Object.values(typingUsers).forEach(user => {
+        if (user.timeout) {
+          clearTimeout(user.timeout);
+        }
+      });
+    };
+  }, [typingUsers]);
 
   // Fallback polling when socket is disconnected - poll every 5 seconds
   useEffect(() => {

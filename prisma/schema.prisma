@@ -136,3 +136,152 @@ model QuickReply {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+// Financial Tables
+model Expenses {
+  id            String   @id @default(cuid())
+  date          String
+  websiteId     String?
+  websiteName   String?
+  category      String
+  description   String?
+  amount        Float
+  note          String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Salaries {
+  id            String   @id @default(cuid())
+  employeeId    String
+  employeeName  String
+  position      String?
+  websites      String?
+  baseSalary    Float    @default(0)
+  bonus         Float    @default(0)
+  deductions    Float    @default(0)
+  netSalary     Float    @default(0)
+  paymentDate   String
+  status        String   @default("pending")
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SalaryBase {
+  id            String   @id @default(cuid())
+  position      String   @unique
+  baseSalary    Float    @default(0)
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Transfer {
+  id            String   @id @default(cuid())
+  date          String
+  websiteId     String?
+  websiteName   String?
+  fromBankId    String?
+  fromBankName  String?
+  toBankId      String?
+  toBankName    String?
+  amount        Float
+  fee           Float    @default(0)
+  note          String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CashWithdrawal {
+  id            String   @id @default(cuid())
+  date          String
+  websiteId     String?
+  websiteName   String?
+  bankId        String?
+  bankName      String?
+  amount        Float
+  fee           Float    @default(0)
+  note          String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DailyBalance {
+  id            String   @id @default(cuid())
+  date          String
+  bankId        String
+  bankName      String
+  openingBalance Float   @default(0)
+  closingBalance Float   @default(0)
+  deposits      Float    @default(0)
+  withdrawals   Float    @default(0)
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model DailySummary {
+  id              String   @id @default(cuid())
+  date            String
+  websiteId       String?
+  websiteName     String?
+  totalDeposit    Float    @default(0)
+  totalWithdrawal Float    @default(0)
+  totalProfit     Float    @default(0)
+  memberCount     Int      @default(0)
+  newMemberCount  Int      @default(0)
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// LINE Chat Tables
+model LineChatRoom {
+  id            String   @id @default(cuid())
+  lineUserId    String
+  lineTokenId   String?
+  displayName   String
+  pictureUrl    String?
+  statusMessage String?
+  lastMessageAt DateTime?
+  unreadCount   Int      @default(0)
+  isPinned      Boolean  @default(false)
+  isMuted       Boolean  @default(false)
+  tags          String   @default("[]")
+  status        String   @default("active")
+  assignedTo    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LineChatMessage {
+  id            String   @id @default(cuid())
+  roomId        String
+  lineMessageId String?
+  messageType   String   @default("text")
+  content       String?
+  mediaUrl      String?
+  stickerId     String?
+  packageId     String?
+  stickerPackageId String?
+  emojis        String?
+  sender        String   @default("user")
+  senderName    String?
+  status        String   @default("sent")
+  replyToId     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ChatNote {
+  id            String   @id @default(cuid())
+  roomId        String
+  content       String
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
