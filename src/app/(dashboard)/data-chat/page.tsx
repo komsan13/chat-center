@@ -665,13 +665,8 @@ export default function DataChatPage() {
         }
       }
       
-      // Move room to top (but not spam rooms)
-      updatedRooms.splice(roomIndex, 1);
-      if (room.status !== 'spam') {
-        updatedRooms.unshift(room);
-      } else {
-        updatedRooms.push(room); // Keep spam at the end
-      }
+      // Update room in place - DON'T reorder, keep stable position
+      updatedRooms[roomIndex] = room;
       return updatedRooms;
     });
   }, [playSound]);
@@ -727,7 +722,7 @@ export default function DataChatPage() {
 
   // Handle room update from socket - update rooms list when other browsers send messages
   const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number; displayName?: string; pictureUrl?: string; status?: 'active' | 'spam' | 'archived' | 'blocked'; lineTokenId?: string }) => {
-    console.log('[Chat] Room update received:', data.id, 'lineTokenId:', data.lineTokenId);
+    console.log('[Chat] Room update received:', data.id, 'unreadCount:', data.unreadCount);
     
     setRooms(prev => {
       const roomIndex = prev.findIndex(r => r.id === data.id);
@@ -737,7 +732,7 @@ export default function DataChatPage() {
         // Only add if it's not spam and we have display name
         if (data.status === 'spam') return prev;
         
-        // Create a minimal room entry
+        // Create a minimal room entry for new room
         const newRoom: ChatRoom = {
           id: data.id,
           lineUserId: '',
@@ -757,8 +752,7 @@ export default function DataChatPage() {
         
         console.log('[Chat] Adding new room from update:', newRoom.id, newRoom.displayName);
         
-        // Play sound for returning room (e.g., after being cleared)
-        // Check token filter
+        // Play sound for new room
         const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
                             !data.lineTokenId || 
                             selectedTokenIdsRef.current.has(data.lineTokenId);
@@ -769,6 +763,7 @@ export default function DataChatPage() {
         return [newRoom, ...prev];
       }
       
+      // Update existing room - DON'T reorder
       const updatedRooms = [...prev];
       const room = { ...updatedRooms[roomIndex] };
       
@@ -778,23 +773,17 @@ export default function DataChatPage() {
       if (data.lastMessageAt) {
         room.lastMessageAt = data.lastMessageAt;
       }
-      if (typeof data.unreadCount === 'number') {
-        // Only update unread count if not currently viewing this room
+      // Only update unread count if it's an increment AND we're not viewing this room
+      // Don't blindly override - the local state is more accurate
+      if (typeof data.unreadCount === 'number' && data.unreadCount > 0) {
         if (selectedRoomRef.current !== data.id) {
-          room.unreadCount = data.unreadCount;
+          // Only increment, don't set directly (local state may already be incremented)
+          // Keep the higher value between local and remote
+          room.unreadCount = Math.max(room.unreadCount || 0, data.unreadCount);
         }
       }
       
       updatedRooms[roomIndex] = room;
-      
-      // Sort by lastMessageAt
-      updatedRooms.sort((a, b) => {
-        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-        const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
-        const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
-        return timeB - timeA;
-      });
-      
       return updatedRooms;
     });
   }, [playSound]);
@@ -861,7 +850,7 @@ export default function DataChatPage() {
     }
   }, []);
 
-  const { isConnected, connectionState, connectionHealth, reconnect, forceReconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate, emitRoomDeleted } = useSocket({
+  const { isConnected, connectionState, connectionHealth, reconnect, forceReconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate, emitRoomDeleted, joinRoom, leaveRoom } = useSocket({
     onNewMessage: handleNewMessage,
     onNewRoom: handleNewRoom,
     onUserTyping: handleTypingEvent,
@@ -878,6 +867,13 @@ export default function DataChatPage() {
   useEffect(() => {
     sendTypingRef.current = sendTyping;
   }, [sendTyping]);
+
+  // Join/leave specific room when selection changes
+  useEffect(() => {
+    if (selectedRoom && joinRoom) {
+      joinRoom(selectedRoom);
+    }
+  }, [selectedRoom, joinRoom]);
 
   // Initial load
   useEffect(() => {
