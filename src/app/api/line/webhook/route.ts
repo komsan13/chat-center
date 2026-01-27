@@ -142,31 +142,45 @@ export async function POST(request: NextRequest) {
     const events = JSON.parse(body);
     console.log('[LINE Webhook] Received:', JSON.stringify(events, null, 2));
 
-    // Get LINE token for signature verification
-    const lineToken = db.prepare('SELECT * FROM LineToken WHERE status = ? ORDER BY createdAt DESC LIMIT 1').get('active') as LineTokenRecord | undefined;
+    // Get ALL active LINE tokens for signature verification
+    const allTokens = db.prepare('SELECT * FROM LineToken WHERE status = ?').all('active') as LineTokenRecord[];
 
-    if (!lineToken) {
+    if (allTokens.length === 0) {
       console.warn('[LINE Webhook] No active LINE token found');
       return NextResponse.json({ success: true });
     }
 
-    // Verify signature in production
+    // Try to verify signature with any of the active tokens
+    let matchedToken: LineTokenRecord | null = null;
+    
     if (process.env.NODE_ENV === 'production') {
-      const hash = crypto
-        .createHmac('sha256', lineToken.channelSecret)
-        .update(body)
-        .digest('base64');
+      for (const token of allTokens) {
+        const hash = crypto
+          .createHmac('sha256', token.channelSecret)
+          .update(body)
+          .digest('base64');
+        
+        if (hash === signature) {
+          matchedToken = token;
+          console.log(`[LINE Webhook] Signature matched with token: ${token.name}`);
+          break;
+        }
+      }
       
-      if (hash !== signature) {
-        console.error('[LINE Webhook] Invalid signature');
+      if (!matchedToken) {
+        console.error('[LINE Webhook] Invalid signature - no matching token found');
+        console.error('[LINE Webhook] Tried tokens:', allTokens.map(t => t.name).join(', '));
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
+    } else {
+      // In development, use first token
+      matchedToken = allTokens[0];
     }
 
-    // Process events
+    // Process events with the matched token
     if (events.events && Array.isArray(events.events)) {
       for (const event of events.events) {
-        await handleEvent(db, event, lineToken);
+        await handleEvent(db, event, matchedToken);
       }
     }
 
