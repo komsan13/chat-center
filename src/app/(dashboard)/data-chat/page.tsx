@@ -2387,11 +2387,11 @@ export default function DataChatPage() {
                             </div>
                           )}
                           
-                          {/* Time + Read status BEFORE bubble for Agent (right side messages) */}
+                          {/* Time + Sender name BEFORE bubble for Agent (right side messages) */}
                           {isAgent && showTime && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', marginRight: 6 }}>
                               <span style={{ fontSize: 10, color: colors.textMuted }}>
-                                {msg.status === 'read' ? 'Read' : msg.status === 'sent' ? 'Sent' : ''}
+                                {msg.senderName || 'Agent'}
                               </span>
                               <span style={{ fontSize: 10, color: colors.textMuted }}>
                                 {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
