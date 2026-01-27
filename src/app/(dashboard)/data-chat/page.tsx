@@ -1682,7 +1682,7 @@ export default function DataChatPage() {
                   {room.pictureUrl ? (
                     <img src={room.pictureUrl} alt="" style={{ 
                       width: 48, height: 48, borderRadius: '50%', objectFit: 'cover',
-                      border: room.unreadCount > 0 ? `2px solid ${colors.accent}` : `2px solid transparent`,
+                      border: `2px solid transparent`,
                     }} />
                   ) : (
                     <div style={{
@@ -1696,12 +1696,27 @@ export default function DataChatPage() {
                       {room.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div style={{
-                    position: 'absolute', bottom: 0, right: 0,
-                    width: 12, height: 12, borderRadius: '50%',
-                    background: room.status === 'spam' ? colors.warning : colors.online,
-                    border: `2px solid ${colors.bgSecondary}`,
-                  }} />
+                  {/* Unread Badge on Avatar */}
+                  {room.unreadCount > 0 ? (
+                    <div style={{
+                      position: 'absolute', top: -4, right: -4,
+                      minWidth: 20, height: 20, borderRadius: 10,
+                      background: '#ef4444',
+                      border: `2px solid ${colors.bgSecondary}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontSize: 10, fontWeight: 700,
+                      padding: '0 4px',
+                    }}>
+                      {room.unreadCount > 99 ? '99+' : room.unreadCount}
+                    </div>
+                  ) : (
+                    <div style={{
+                      position: 'absolute', bottom: 0, right: 0,
+                      width: 12, height: 12, borderRadius: '50%',
+                      background: room.status === 'spam' ? colors.warning : colors.online,
+                      border: `2px solid ${colors.bgSecondary}`,
+                    }} />
+                  )}
                 </div>
 
                 {/* Content */}
@@ -1793,19 +1808,6 @@ export default function DataChatPage() {
                           </span>
                         )}
                       </div>
-                    )}
-                    
-                    {/* Unread Badge */}
-                    {room.unreadCount > 0 && (
-                      <span style={{
-                        minWidth: 18, height: 18, borderRadius: 9,
-                        background: colors.accent, color: '#fff',
-                        fontSize: 10, fontWeight: 600,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        padding: '0 5px', flexShrink: 0,
-                      }}>
-                        {room.unreadCount > 99 ? '99+' : room.unreadCount}
-                      </span>
                     )}
                   </div>
                 </div>
