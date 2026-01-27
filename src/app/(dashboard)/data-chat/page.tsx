@@ -65,12 +65,13 @@ interface LineToken {
   status: 'active' | 'inactive' | 'expired';
 }
 
-const quickReplies = [
-  { id: 1, label: 'ดำเนินการฝาก-ถอน รบกวนแอดไลน์นี้นะคะ 🙏', icon: '💳' },
-  { id: 2, label: 'กรุณาส่งสลิปด้วยค่ะ', icon: '🧾' },
-  { id: 3, label: 'รบกวนแจ้งยืนตรวจสอบให้หน่อยนะคะ', icon: '✅' },
-  { id: 4, label: 'รบกวนลูกค้าติดต่อไลน์หลักนะคะ', icon: '📱' },
-];
+interface QuickReply {
+  id: string;
+  lineTokenId: string;
+  label: string;
+  icon: string;
+  createdAt: string;
+}
 
 export default function DataChatPage() {
   const { isDark } = useTheme();
@@ -85,6 +86,11 @@ export default function DataChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
+  const [quickReplyTokenId, setQuickReplyTokenId] = useState<string | null>(null);
+  const [showQuickReplyModal, setShowQuickReplyModal] = useState(false);
+  const [editingQuickReply, setEditingQuickReply] = useState<QuickReply | null>(null);
+  const [previewQuickReply, setPreviewQuickReply] = useState<QuickReply | null>(null);
   const [typingUsers, setTypingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout } }>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiPickerTab, setEmojiPickerTab] = useState<'emoji' | 'sticker'>('emoji');
@@ -293,6 +299,30 @@ export default function DataChatPage() {
     };
     fetchCurrentUser();
   }, []);
+
+  // Load Quick Replies from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('quickReplies');
+      if (saved) {
+        try {
+          setQuickReplies(JSON.parse(saved));
+        } catch (e) {
+          console.error('Failed to parse quick replies:', e);
+        }
+      }
+    }
+  }, []);
+
+  // Auto-detect LINE token from selected room
+  useEffect(() => {
+    if (selectedRoom) {
+      const room = rooms.find(r => r.id === selectedRoom);
+      if (room?.lineTokenId) {
+        setQuickReplyTokenId(room.lineTokenId);
+      }
+    }
+  }, [selectedRoom, rooms]);
 
   // Fetch LINE Tokens for filtering
   useEffect(() => {
@@ -1025,6 +1055,53 @@ export default function DataChatPage() {
       setIsSending(false);
     }
   };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // QUICK REPLIES MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════════
+  const saveQuickReply = (label: string, icon: string, lineTokenId: string, existingId?: string) => {
+    const newReply: QuickReply = {
+      id: existingId || `qr-${Date.now()}`,
+      lineTokenId,
+      label,
+      icon,
+      createdAt: existingId ? (quickReplies.find(q => q.id === existingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+    };
+    
+    setQuickReplies(prev => {
+      let updated: QuickReply[];
+      if (existingId) {
+        updated = prev.map(q => q.id === existingId ? newReply : q);
+      } else {
+        updated = [...prev, newReply];
+      }
+      localStorage.setItem('quickReplies', JSON.stringify(updated));
+      return updated;
+    });
+    
+    setShowQuickReplyModal(false);
+    setEditingQuickReply(null);
+  };
+
+  const deleteQuickReply = (id: string) => {
+    setQuickReplies(prev => {
+      const updated = prev.filter(q => q.id !== id);
+      localStorage.setItem('quickReplies', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const selectQuickReply = (reply: QuickReply) => {
+    setMessage(reply.label);
+    setPreviewQuickReply(null);
+    setShowQuickReplies(false);
+  };
+
+  // Get quick replies for current LINE token
+  const filteredQuickReplies = useMemo(() => {
+    if (!quickReplyTokenId) return quickReplies;
+    return quickReplies.filter(q => q.lineTokenId === quickReplyTokenId || q.lineTokenId === 'all');
+  }, [quickReplies, quickReplyTokenId]);
 
   // ═══════════════════════════════════════════════════════════════════
   // CHAT ROOM ACTIONS (Pin, Mute, Archive, Spam, Delete)
@@ -2638,25 +2715,238 @@ export default function DataChatPage() {
 
             {/* Quick Replies - hidden on mobile */}
             {showQuickReplies && !isMobile && (
-              <div style={{ padding: isMobile ? '10px 12px' : '12px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>Quick Replies</span>
-                  <button onClick={() => setShowQuickReplies(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {quickReplies.map((reply) => (
-                    <button key={reply.id} onClick={() => sendMessage(reply.label)} style={{
-                      padding: '8px 12px', borderRadius: 8,
-                      background: colors.bgTertiary, border: `1px solid ${colors.border}`,
-                      color: colors.textPrimary, fontSize: 12, cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.borderColor = colors.accent; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgTertiary; e.currentTarget.style.borderColor = colors.border; }}
+              <div style={{ padding: '12px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 600, textTransform: 'uppercase' }}>Quick Replies</span>
+                    {/* LINE Token Selector */}
+                    <select
+                      value={quickReplyTokenId || 'all'}
+                      onChange={(e) => setQuickReplyTokenId(e.target.value === 'all' ? null : e.target.value)}
+                      style={{
+                        padding: '4px 8px', borderRadius: 6,
+                        border: `1px solid ${colors.border}`,
+                        background: colors.bgTertiary, color: colors.textPrimary,
+                        fontSize: 11, cursor: 'pointer', outline: 'none',
+                      }}
                     >
-                      {reply.icon} {reply.label.substring(0, 30)}...
+                      <option value="all">ทุก LINE</option>
+                      {lineTokens.map(token => (
+                        <option key={token.id} value={token.id}>
+                          {token.websiteName ? `${token.websiteName} - ${token.name}` : token.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button 
+                      onClick={() => { setEditingQuickReply(null); setShowQuickReplyModal(true); }}
+                      style={{ 
+                        padding: '4px 10px', borderRadius: 6,
+                        background: colors.accent, border: 'none',
+                        color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 4,
+                      }}
+                    >
+                      <Plus size={12} /> สร้างใหม่
                     </button>
-                  ))}
+                    <button onClick={() => setShowQuickReplies(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Quick Replies Grid */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {filteredQuickReplies.length === 0 ? (
+                    <div style={{ padding: '20px', width: '100%', textAlign: 'center', color: colors.textMuted, fontSize: 13 }}>
+                      ยังไม่มีข้อความด่วน กด "สร้างใหม่" เพื่อเพิ่ม
+                    </div>
+                  ) : (
+                    filteredQuickReplies.map((reply) => (
+                      <button 
+                        key={reply.id} 
+                        onClick={() => setPreviewQuickReply(reply)}
+                        style={{
+                          padding: '8px 14px', borderRadius: 8,
+                          background: previewQuickReply?.id === reply.id ? colors.accentLight : colors.bgTertiary, 
+                          border: previewQuickReply?.id === reply.id ? `2px solid ${colors.accent}` : `1px solid ${colors.border}`,
+                          color: colors.textPrimary, fontSize: 12, cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          maxWidth: 200, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap',
+                        }}
+                        onMouseEnter={(e) => { 
+                          if (previewQuickReply?.id !== reply.id) {
+                            e.currentTarget.style.background = colors.bgHover; 
+                            e.currentTarget.style.borderColor = colors.accent; 
+                          }
+                        }}
+                        onMouseLeave={(e) => { 
+                          if (previewQuickReply?.id !== reply.id) {
+                            e.currentTarget.style.background = colors.bgTertiary; 
+                            e.currentTarget.style.borderColor = colors.border; 
+                          }
+                        }}
+                      >
+                        {reply.icon} {reply.label.length > 25 ? reply.label.substring(0, 25) + '...' : reply.label}
+                      </button>
+                    ))
+                  )}
+                </div>
+                
+                {/* Preview Panel */}
+                {previewQuickReply && (
+                  <div style={{ 
+                    marginTop: 12, padding: 12, borderRadius: 8,
+                    background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                  }}>
+                    <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8, fontWeight: 600 }}>PREVIEW</div>
+                    <div style={{ 
+                      padding: '12px 16px', borderRadius: 12,
+                      background: colors.bubbleOutgoing, color: '#fff',
+                      fontSize: 14, lineHeight: 1.5, marginBottom: 12,
+                    }}>
+                      {previewQuickReply.label}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => { setEditingQuickReply(previewQuickReply); setShowQuickReplyModal(true); }}
+                        style={{
+                          padding: '6px 12px', borderRadius: 6,
+                          background: colors.bgSecondary, border: `1px solid ${colors.border}`,
+                          color: colors.textPrimary, fontSize: 12, cursor: 'pointer',
+                        }}
+                      >
+                        <FileEdit size={12} style={{ marginRight: 4 }} /> แก้ไข
+                      </button>
+                      <button
+                        onClick={() => { deleteQuickReply(previewQuickReply.id); setPreviewQuickReply(null); }}
+                        style={{
+                          padding: '6px 12px', borderRadius: 6,
+                          background: '#fee2e2', border: '1px solid #fca5a5',
+                          color: '#dc2626', fontSize: 12, cursor: 'pointer',
+                        }}
+                      >
+                        <Trash2 size={12} style={{ marginRight: 4 }} /> ลบ
+                      </button>
+                      <button
+                        onClick={() => selectQuickReply(previewQuickReply)}
+                        style={{
+                          padding: '6px 16px', borderRadius: 6,
+                          background: colors.accent, border: 'none',
+                          color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        <Check size={12} style={{ marginRight: 4 }} /> Select
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Quick Reply Create/Edit Modal */}
+            {showQuickReplyModal && (
+              <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 9999,
+              }}
+                onClick={() => { setShowQuickReplyModal(false); setEditingQuickReply(null); }}
+              >
+                <div 
+                  style={{
+                    background: colors.bgPrimary, borderRadius: 12, padding: 24,
+                    width: '90%', maxWidth: 500, boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ fontSize: 16, fontWeight: 600, color: colors.textPrimary, marginBottom: 16 }}>
+                    {editingQuickReply ? 'แก้ไขข้อความด่วน' : 'สร้างข้อความด่วน'}
+                  </div>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.target as HTMLFormElement;
+                    const label = (form.elements.namedItem('label') as HTMLTextAreaElement).value;
+                    const icon = (form.elements.namedItem('icon') as HTMLInputElement).value || '💬';
+                    const tokenId = (form.elements.namedItem('tokenId') as HTMLSelectElement).value;
+                    if (label.trim()) {
+                      saveQuickReply(label.trim(), icon, tokenId, editingQuickReply?.id);
+                    }
+                  }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ fontSize: 12, color: colors.textMuted, display: 'block', marginBottom: 6 }}>สำหรับ LINE</label>
+                      <select
+                        name="tokenId"
+                        defaultValue={editingQuickReply?.lineTokenId || quickReplyTokenId || 'all'}
+                        style={{
+                          width: '100%', padding: '10px 12px', borderRadius: 8,
+                          border: `1px solid ${colors.border}`, background: colors.bgSecondary,
+                          color: colors.textPrimary, fontSize: 14, outline: 'none',
+                        }}
+                      >
+                        <option value="all">ทุก LINE (แสดงทุกช่อง)</option>
+                        {lineTokens.map(token => (
+                          <option key={token.id} value={token.id}>
+                            {token.websiteName ? `${token.websiteName} - ${token.name}` : token.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ fontSize: 12, color: colors.textMuted, display: 'block', marginBottom: 6 }}>Icon (Emoji)</label>
+                      <input
+                        name="icon"
+                        defaultValue={editingQuickReply?.icon || '💬'}
+                        placeholder="💬"
+                        style={{
+                          width: '100%', padding: '10px 12px', borderRadius: 8,
+                          border: `1px solid ${colors.border}`, background: colors.bgSecondary,
+                          color: colors.textPrimary, fontSize: 14, outline: 'none',
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 20 }}>
+                      <label style={{ fontSize: 12, color: colors.textMuted, display: 'block', marginBottom: 6 }}>ข้อความ</label>
+                      <textarea
+                        name="label"
+                        defaultValue={editingQuickReply?.label || ''}
+                        placeholder="พิมพ์ข้อความที่ต้องการ..."
+                        rows={4}
+                        required
+                        style={{
+                          width: '100%', padding: '10px 12px', borderRadius: 8,
+                          border: `1px solid ${colors.border}`, background: colors.bgSecondary,
+                          color: colors.textPrimary, fontSize: 14, outline: 'none',
+                          resize: 'none', fontFamily: 'inherit',
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        onClick={() => { setShowQuickReplyModal(false); setEditingQuickReply(null); }}
+                        style={{
+                          padding: '10px 20px', borderRadius: 8,
+                          background: colors.bgTertiary, border: `1px solid ${colors.border}`,
+                          color: colors.textPrimary, fontSize: 13, cursor: 'pointer',
+                        }}
+                      >
+                        ยกเลิก
+                      </button>
+                      <button
+                        type="submit"
+                        style={{
+                          padding: '10px 24px', borderRadius: 8,
+                          background: colors.accent, border: 'none',
+                          color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        {editingQuickReply ? 'บันทึก' : 'สร้าง'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}
