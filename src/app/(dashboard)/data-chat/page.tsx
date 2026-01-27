@@ -103,6 +103,7 @@ export default function DataChatPage() {
   const [quickReplySearch, setQuickReplySearch] = useState('');
   const [quickReplySortBy, setQuickReplySortBy] = useState<'recent' | 'title'>('recent');
   const [typingUsers, setTypingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout } }>({});
+  const [viewingUsers, setViewingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout }[] }>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiPickerTab, setEmojiPickerTab] = useState<'emoji' | 'sticker' | 'custom'>('emoji');
   const [pendingEmojis, setPendingEmojis] = useState<Array<{ index: number; productId: string; emojiId: string }>>([]);
@@ -737,7 +738,58 @@ export default function DataChatPage() {
     }
   }, []);
 
-  const handleRoomReadSync = useCallback((data: { roomId: string; readAt?: string }) => {
+  // Handle viewing event - show who is currently viewing a room
+  const handleViewingEvent = useCallback((data: { roomId: string; userName: string; isViewing: boolean }) => {
+    if (!data || !data.roomId || !data.userName) return;
+    
+    console.log('[Viewing Event]', data);
+    
+    setViewingUsers(prev => {
+      const roomViewers = prev[data.roomId] || [];
+      
+      if (data.isViewing) {
+        // Check if user already exists
+        const existingIndex = roomViewers.findIndex(v => v.userName === data.userName);
+        if (existingIndex >= 0) {
+          // Clear old timeout and update
+          clearTimeout(roomViewers[existingIndex].timeout);
+        }
+        
+        // Set timeout to auto-remove after 30 seconds (in case leave event is missed)
+        const timeout = setTimeout(() => {
+          setViewingUsers(p => {
+            const viewers = p[data.roomId] || [];
+            return {
+              ...p,
+              [data.roomId]: viewers.filter(v => v.userName !== data.userName)
+            };
+          });
+        }, 30000);
+        
+        const newViewer = { userName: data.userName, timeout };
+        
+        if (existingIndex >= 0) {
+          const updated = [...roomViewers];
+          updated[existingIndex] = newViewer;
+          return { ...prev, [data.roomId]: updated };
+        } else {
+          return { ...prev, [data.roomId]: [...roomViewers, newViewer] };
+        }
+      } else {
+        // Remove viewer
+        const viewer = roomViewers.find(v => v.userName === data.userName);
+        if (viewer?.timeout) clearTimeout(viewer.timeout);
+        return {
+          ...prev,
+          [data.roomId]: roomViewers.filter(v => v.userName !== data.userName)
+        };
+      }
+    });
+  }, []);
+
+  const handleRoomReadSync = useCallback((data: { roomId: string; readAt?: string; userName?: string }) => {
+    console.log('[Chat] Room read sync:', data.roomId, 'by:', data.userName);
+    
     // Update message statuses to 'read'
     setMessages(prev => prev.map(m => 
       m.roomId === data.roomId && m.sender === 'agent' ? { ...m, status: 'read' } : m
@@ -891,10 +943,11 @@ export default function DataChatPage() {
     }
   }, []);
 
-  const { isConnected, connectionState, connectionHealth, reconnect, forceReconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate, emitRoomDeleted, joinRoom, leaveRoom } = useSocket({
+  const { isConnected, connectionState, connectionHealth, reconnect, forceReconnect, sendTyping, markAsRead, emitRoomRead, emitRoomPropertyUpdate, emitRoomDeleted, joinRoom, leaveRoom, emitViewing } = useSocket({
     onNewMessage: handleNewMessage,
     onNewRoom: handleNewRoom,
     onUserTyping: handleTypingEvent,
+    onUserViewing: handleViewingEvent,
     onRoomReadUpdate: handleRoomReadSync,
     onRoomUpdate: handleRoomUpdate,
     onRoomPropertyChanged: handleRoomPropertyChanged,
@@ -909,12 +962,23 @@ export default function DataChatPage() {
     sendTypingRef.current = sendTyping;
   }, [sendTyping]);
 
-  // Join/leave specific room when selection changes
+  // Join/leave specific room and emit viewing status when selection changes
   useEffect(() => {
     if (selectedRoom && joinRoom) {
       joinRoom(selectedRoom);
+      // Emit viewing status
+      if (emitViewing && currentUser) {
+        emitViewing(selectedRoom, currentUser.name, true);
+      }
     }
-  }, [selectedRoom, joinRoom]);
+    
+    // Cleanup: emit not viewing when leaving room
+    return () => {
+      if (selectedRoom && emitViewing && currentUser) {
+        emitViewing(selectedRoom, currentUser.name, false);
+      }
+    };
+  }, [selectedRoom, joinRoom, emitViewing, currentUser]);
 
   // Initial load
   useEffect(() => {
@@ -2941,6 +3005,11 @@ export default function DataChatPage() {
                   </h3>
                   <p style={{ fontSize: isMobile ? 11 : 12, color: colors.online, margin: 0, fontWeight: 500 }}>
                     ● Online
+                    {selectedRoom && viewingUsers[selectedRoom]?.length > 0 && (
+                      <span style={{ marginLeft: 8, color: colors.accent, fontStyle: 'italic' }}>
+                        • 👁️ {viewingUsers[selectedRoom].map(v => v.userName).join(', ')} กำลังดูอยู่
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>

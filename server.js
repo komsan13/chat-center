@@ -197,6 +197,31 @@ app.prepare().then(() => {
       }
     });
 
+    // Viewing indicators - show who is currently viewing a room
+    socket.on('viewing-start', ({ roomId, userName }) => {
+      if (roomId && userName) {
+        console.log(`[Socket.IO] 👁️ Viewing start: ${userName} viewing room ${roomId}`);
+        io.to('all-rooms').emit('user-viewing', { 
+          roomId, 
+          userName, 
+          isViewing: true,
+          senderSocketId: socket.id 
+        });
+      }
+    });
+
+    socket.on('viewing-stop', ({ roomId, userName }) => {
+      if (roomId && userName) {
+        console.log(`[Socket.IO] 👁️ Viewing stop: ${userName} left room ${roomId}`);
+        io.to('all-rooms').emit('user-viewing', { 
+          roomId, 
+          userName, 
+          isViewing: false,
+          senderSocketId: socket.id 
+        });
+      }
+    });
+
     // Heartbeat/ping from client - CRITICAL for connection health
     socket.on('ping-server', () => {
       // Update last ping time

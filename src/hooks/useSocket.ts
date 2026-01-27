@@ -71,7 +71,8 @@ interface UseSocketOptions {
   onRoomUpdate?: (data: RoomUpdate) => void;
   onMessagesRead?: (data: { roomId: string; messageIds: string[] }) => void;
   onUserTyping?: (data: { roomId: string; userName: string; isTyping: boolean }) => void;
-  onRoomReadUpdate?: (data: { roomId: string; readAt: string }) => void;
+  onUserViewing?: (data: { roomId: string; userName: string; isViewing: boolean }) => void;
+  onRoomReadUpdate?: (data: { roomId: string; readAt: string; userName?: string }) => void;
   onRoomPropertyChanged?: (data: { roomId: string; updates: RoomPropertyUpdate; updatedAt: string }) => void;
   onRoomDeleted?: (data: { roomId: string; deletedAt: string }) => void;
   onConnect?: () => void;
@@ -417,7 +418,17 @@ export function useSocket(options: UseSocketOptions = {}) {
       optionsRef.current.onUserTyping?.(data);
     });
 
-    socket.on('room-read-update', (data: { roomId: string; readAt: string }) => {
+    socket.on('user-viewing', (data: { roomId: string; userName: string; isViewing: boolean; senderSocketId?: string }) => {
+      // Filter out viewing events from this same socket
+      if (data.senderSocketId && data.senderSocketId === socketIdRef.current) {
+        return;
+      }
+      console.log(`[Socket] 👁️ User viewing:`, data.userName, data.isViewing ? 'entered' : 'left', data.roomId);
+      optionsRef.current.onUserViewing?.(data);
+    });
+
+    socket.on('room-read-update', (data: { roomId: string; readAt: string; userName?: string }) => {
+      console.log(`[Socket] 📖 Room read update:`, data.roomId, 'by:', data.userName);
       optionsRef.current.onRoomReadUpdate?.(data);
     });
 
@@ -545,6 +556,11 @@ export function useSocket(options: UseSocketOptions = {}) {
     socketRef.current?.emit('room-deleted', { roomId });
   }, []);
 
+  const emitViewing = useCallback((roomId: string, userName: string, isViewing: boolean) => {
+    console.log('[Socket] 👁️ Emitting viewing:', isViewing ? 'start' : 'stop', 'room:', roomId, 'user:', userName);
+    socketRef.current?.emit(isViewing ? 'viewing-start' : 'viewing-stop', { roomId, userName });
+  }, []);
+
   const reconnect = useCallback(() => {
     if (socketRef.current && !socketRef.current.connected) {
       reconnectAttemptsRef.current = 0;
@@ -578,6 +594,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     emitRoomRead,
     emitRoomPropertyUpdate,
     emitRoomDeleted,
+    emitViewing,
     reconnect,
     forceReconnect,
     playNotificationSound,
