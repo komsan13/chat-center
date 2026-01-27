@@ -98,6 +98,7 @@ export default function DataChatPage() {
   const [typingUsers, setTypingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout } }>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiPickerTab, setEmojiPickerTab] = useState<'emoji' | 'sticker'>('emoji');
+  const [pendingEmojis, setPendingEmojis] = useState<Array<{ index: number; productId: string; emojiId: string }>>([]);
   const [selectedStickerPackage, setSelectedStickerPackage] = useState('11537');
   const [hoveredSticker, setHoveredSticker] = useState<{ stickerId: string; x: number; y: number } | null>(null);
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
@@ -931,6 +932,9 @@ export default function DataChatPage() {
     if (!content.trim() || !selectedRoom || isSending) return;
     setIsSending(true);
     
+    // Parse LINE emojis from pending array
+    const emojisToSend = pendingEmojis.length > 0 ? [...pendingEmojis] : undefined;
+    
     const tempId = `temp-${Date.now()}`;
     const tempMessage: Message = {
       id: tempId,
@@ -945,6 +949,7 @@ export default function DataChatPage() {
     
     setMessages(prev => [...prev, tempMessage]);
     setMessage('');
+    setPendingEmojis([]); // Clear pending emojis after sending
     setShowQuickReplies(false);
     setShowEmojiPicker(false);
     
@@ -957,7 +962,12 @@ export default function DataChatPage() {
       const response = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId: selectedRoom, content: content.trim(), senderName: currentUser?.name || 'Agent' }),
+        body: JSON.stringify({ 
+          roomId: selectedRoom, 
+          content: content.trim(), 
+          senderName: currentUser?.name || 'Agent',
+          emojis: emojisToSend,
+        }),
       });
       
       if (response.ok) {
@@ -1658,8 +1668,26 @@ export default function DataChatPage() {
     );
   };
 
-  // Emoji list
-  const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😱', '🤔', '👏', '💪', '🙌', '😎', '🥳', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🧾', '📝', '🎁', '🏆'];
+  // LINE Emoji packages (Official LINE Emoji)
+  // Reference: https://developers.line.biz/en/docs/messaging-api/using-line-emoji-presets/
+  const lineEmojiPackages = [
+    {
+      productId: '5ac1bfd5040ab15980c9b435',
+      name: 'Brown & Friends',
+      emojis: ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017', '018', '019', '020'],
+    },
+    {
+      productId: '5ac21a8c040ab15980c9b43f',
+      name: 'Cony',
+      emojis: ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017', '018', '019', '020'],
+    },
+    {
+      productId: '5ac21e6c040ab15980c9b440',
+      name: 'Moon',
+      emojis: ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017', '018', '019', '020'],
+    },
+  ];
+  const [selectedEmojiPackage, setSelectedEmojiPackage] = useState('5ac1bfd5040ab15980c9b435');
   
   // LINE Official Stickers grouped by package (verified working sticker IDs)
   // Reference: https://developers.line.biz/en/docs/messaging-api/sticker-list/
@@ -3098,41 +3126,50 @@ export default function DataChatPage() {
                             resize: 'vertical', fontFamily: 'inherit', minHeight: 120,
                           }}
                         />
-                        {/* Emoji Bar */}
+                        {/* LINE Emoji Bar */}
                         <div style={{ 
-                          display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap',
-                          padding: '8px 0', borderTop: `1px solid ${colors.border}`,
+                          marginTop: 8, padding: '8px 0', borderTop: `1px solid ${colors.border}`,
                         }}>
-                          {['😊', '😂', '🙏', '❤️', '👍', '🎉', '✅', '💬', '📱', '💳', '🧾', '📞', '⏰', '🔥', '✨'].map(emoji => (
-                            <button
-                              key={emoji}
-                              type="button"
-                              onClick={() => {
-                                const textarea = document.getElementById('quickReplyMessage') as HTMLTextAreaElement;
-                                if (textarea) {
-                                  const start = textarea.selectionStart;
-                                  const end = textarea.selectionEnd;
-                                  const text = textarea.value;
-                                  textarea.value = text.substring(0, start) + emoji + text.substring(end);
-                                  textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
-                                  textarea.focus();
-                                  const counter = document.getElementById('messageCount');
-                                  if (counter) counter.textContent = String(textarea.value.length);
-                                }
-                              }}
-                              style={{
-                                width: 32, height: 32, borderRadius: 6,
-                                border: `1px solid ${colors.border}`, background: colors.bgSecondary,
-                                fontSize: 16, cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.15s ease',
-                              }}
-                              onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgSecondary; e.currentTarget.style.transform = 'scale(1)'; }}
-                            >
-                              {emoji}
-                            </button>
-                          ))}
+                          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>LINE Emoji (click to insert)</div>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                            {/* Brown & Friends Emoji - productId: 5ac1bfd5040ab15980c9b435 */}
+                            {['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017', '018', '019', '020'].map(emojiId => (
+                              <button
+                                key={emojiId}
+                                type="button"
+                                onClick={() => {
+                                  const textarea = document.getElementById('quickReplyMessage') as HTMLTextAreaElement;
+                                  if (textarea) {
+                                    const start = textarea.selectionStart;
+                                    const end = textarea.selectionEnd;
+                                    const text = textarea.value;
+                                    // Insert $ placeholder for LINE emoji
+                                    textarea.value = text.substring(0, start) + '$' + text.substring(end);
+                                    textarea.selectionStart = textarea.selectionEnd = start + 1;
+                                    textarea.focus();
+                                    const counter = document.getElementById('messageCount');
+                                    if (counter) counter.textContent = String(textarea.value.length);
+                                  }
+                                }}
+                                style={{
+                                  width: 36, height: 36, borderRadius: 6,
+                                  border: `1px solid ${colors.border}`, background: colors.bgSecondary,
+                                  cursor: 'pointer', padding: 4,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'all 0.15s ease',
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgSecondary; e.currentTarget.style.transform = 'scale(1)'; }}
+                                title={`LINE Emoji ${emojiId}`}
+                              >
+                                <img 
+                                  src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/5ac1bfd5040ab15980c9b435/iPhone/${emojiId}.png`}
+                                  alt={`emoji-${emojiId}`}
+                                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                />
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -3202,25 +3239,59 @@ export default function DataChatPage() {
                   <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
                 </div>
                 
-                {/* Emoji Tab */}
+                {/* Emoji Tab - LINE Emoji */}
                 {emojiPickerTab === 'emoji' && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 6 : 4 }}>
-                    {commonEmojis.map((emoji, i) => (
-                      <button 
-                        key={i} 
-                        onClick={() => { setMessage(prev => prev + emoji); setShowEmojiPicker(false); }}
-                        style={{
-                          width: isMobile ? 38 : 32, height: isMobile ? 38 : 32, borderRadius: 6, border: 'none',
-                          background: colors.bgTertiary, fontSize: isMobile ? 20 : 18, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          transition: 'transform 0.1s',
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15)'}
-                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+                  <div>
+                    {/* Package Selector */}
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                      {lineEmojiPackages.map((pkg) => (
+                        <button
+                          key={pkg.productId}
+                          onClick={() => setSelectedEmojiPackage(pkg.productId)}
+                          style={{
+                            padding: '6px 12px', borderRadius: 6,
+                            border: selectedEmojiPackage === pkg.productId ? `1px solid ${colors.accent}` : `1px solid ${colors.border}`,
+                            background: selectedEmojiPackage === pkg.productId ? colors.accentLight : colors.bgTertiary,
+                            color: selectedEmojiPackage === pkg.productId ? colors.accent : colors.textMuted,
+                            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {pkg.name}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Emoji Grid */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 6 }}>
+                      {lineEmojiPackages.find(p => p.productId === selectedEmojiPackage)?.emojis.map((emojiId) => (
+                        <button 
+                          key={emojiId} 
+                          onClick={() => {
+                            const currentIndex = message.length;
+                            setMessage(prev => prev + '$');
+                            setPendingEmojis(prev => [...prev, { 
+                              index: currentIndex, 
+                              productId: selectedEmojiPackage, 
+                              emojiId 
+                            }]);
+                          }}
+                          style={{
+                            width: isMobile ? 42 : 36, height: isMobile ? 42 : 36, borderRadius: 8, border: 'none',
+                            background: colors.bgTertiary, cursor: 'pointer', padding: 4,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.background = colors.bgHover; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = colors.bgTertiary; }}
+                        >
+                          <img 
+                            src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${selectedEmojiPackage}/iPhone/${emojiId}.png`}
+                            alt={`emoji-${emojiId}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 

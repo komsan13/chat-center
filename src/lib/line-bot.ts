@@ -53,9 +53,13 @@ export class LineBotService {
     }
   }
 
-  // Send text message
-  async sendTextMessage(userId: string, text: string): Promise<SendMessageResult> {
-    return this.pushMessage(userId, [{ type: 'text', text }]);
+  // Send text message with optional LINE emojis
+  async sendTextMessage(userId: string, text: string, emojis?: Array<{ index: number; productId: string; emojiId: string }>): Promise<SendMessageResult> {
+    const message: LineTextMessage = { type: 'text' as const, text };
+    if (emojis && emojis.length > 0) {
+      (message as typeof message & { emojis: typeof emojis }).emojis = emojis;
+    }
+    return this.pushMessage(userId, [message]);
   }
 
   // Send sticker

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { roomId, content, messageType = 'text', stickerId, packageId, mediaUrl, senderName = 'Agent' } = body;
+    const { roomId, content, messageType = 'text', stickerId, packageId, mediaUrl, senderName = 'Agent', emojis } = body;
 
     if (!roomId) {
       return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
@@ -141,7 +141,12 @@ export async function POST(request: NextRequest) {
     try {
       switch (messageType) {
         case 'text':
-          sendResult = await botService.sendTextMessage(room.lineUserId, content);
+          // Parse LINE emojis from content if present
+          if (emojis && Array.isArray(emojis) && emojis.length > 0) {
+            sendResult = await botService.sendTextMessage(room.lineUserId, content, emojis);
+          } else {
+            sendResult = await botService.sendTextMessage(room.lineUserId, content);
+          }
           break;
         case 'sticker':
           if (packageId && stickerId) {
