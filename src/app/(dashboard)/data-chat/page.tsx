@@ -996,15 +996,41 @@ export default function DataChatPage() {
     }
   };
 
-  const deleteRoom = async (roomId: string, permanent: boolean = false) => {
+  const deleteRoom = async (roomId: string, mode: 'archive' | 'clear' | 'permanent' = 'archive') => {
     try {
-      const response = await fetch(`/api/chat/rooms/${roomId}?permanent=${permanent}`, {
+      const response = await fetch(`/api/chat/rooms/${roomId}?mode=${mode}`, {
         method: 'DELETE',
       });
       
       if (response.ok) {
-        setRooms(prev => prev.filter(r => r.id !== roomId));
-        if (selectedRoom === roomId) {
+        if (mode === 'permanent') {
+          // Remove from UI completely
+          setRooms(prev => prev.filter(r => r.id !== roomId));
+        } else if (mode === 'clear') {
+          // Keep room but clear messages, move to bottom of list
+          setRooms(prev => {
+            const updated = prev.map(r => 
+              r.id === roomId 
+                ? { ...r, lastMessage: undefined, lastMessageAt: undefined, unreadCount: 0 }
+                : r
+            );
+            // Sort: rooms with messages first
+            return updated.sort((a, b) => {
+              if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+              const timeA = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+              const timeB = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+              return timeB - timeA;
+            });
+          });
+          // Clear messages from UI
+          setMessages([]);
+          messagesCacheRef.current.delete(roomId);
+        } else {
+          // Archive - remove from active list
+          setRooms(prev => prev.filter(r => r.id !== roomId));
+        }
+        
+        if (selectedRoom === roomId && mode !== 'clear') {
           setSelectedRoom(null);
         }
         // Broadcast to all other browsers via socket
@@ -3057,8 +3083,8 @@ export default function DataChatPage() {
                   
                   <button
                     onClick={() => {
-                      if (confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
-                        deleteRoom(selectedRoom, true);
+                      if (confirm('ต้องการลบข้อความทั้งหมดในแชทนี้หรือไม่? (user จะยังสามารถส่งข้อความมาได้อีก)')) {
+                        deleteRoom(selectedRoom, 'clear');
                       }
                     }}
                     style={{
@@ -3074,7 +3100,7 @@ export default function DataChatPage() {
                     onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgPrimary; e.currentTarget.style.borderColor = colors.border; }}
                   >
                     <Trash2 size={16} />
-                    Delete Chat
+                    Clear Messages
                   </button>
                 </div>
               </div>

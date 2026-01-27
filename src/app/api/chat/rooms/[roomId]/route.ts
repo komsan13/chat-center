@@ -210,15 +210,28 @@ export async function DELETE(
   
   try {
     const { searchParams } = new URL(request.url);
-    const permanent = searchParams.get('permanent') === 'true';
+    const mode = searchParams.get('mode') || 'archive'; // 'archive' | 'clear' | 'permanent'
 
-    if (permanent) {
-      // Permanently delete messages and room
+    if (mode === 'permanent') {
+      // Permanently delete messages and room (dangerous!)
       db.prepare('DELETE FROM LineChatMessage WHERE roomId = ?').run(roomId);
       db.prepare('DELETE FROM ChatNote WHERE roomId = ?').run(roomId);
       db.prepare('DELETE FROM LineChatRoom WHERE id = ?').run(roomId);
       
       return NextResponse.json({ success: true, message: 'Room permanently deleted' });
+    } else if (mode === 'clear') {
+      // Clear messages only, keep room for future messages (broadcast)
+      db.prepare('DELETE FROM LineChatMessage WHERE roomId = ?').run(roomId);
+      db.prepare('DELETE FROM ChatNote WHERE roomId = ?').run(roomId);
+      
+      // Reset room state
+      db.prepare(`
+        UPDATE LineChatRoom 
+        SET lastMessageAt = NULL, unreadCount = 0, updatedAt = ? 
+        WHERE id = ?
+      `).run(new Date().toISOString(), roomId);
+      
+      return NextResponse.json({ success: true, message: 'Messages cleared, room kept for future messages' });
     } else {
       // Soft delete - archive the room
       db.prepare(`
