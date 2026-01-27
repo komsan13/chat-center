@@ -511,6 +511,7 @@ export default function LineTokensPage() {
               placeholder={language === 'th' ? 'เช่น Main LINE OA' : 'e.g. Main LINE OA'}
               icon={Key}
               error={!!formErrors.name}
+              autoComplete="off"
             />
           </FormGroup>
 
@@ -521,6 +522,7 @@ export default function LineTokensPage() {
               placeholder="e.g. 2008963830"
               icon={MessageSquare}
               error={!!formErrors.channelId}
+              autoComplete="off"
             />
           </FormGroup>
 
@@ -531,6 +533,7 @@ export default function LineTokensPage() {
               placeholder={editingToken ? (language === 'th' ? 'เว้นว่างถ้าไม่ต้องการเปลี่ยน' : 'Leave empty to keep current') : 'e.g. e3fecfe989126e2c474cc15757df52d4'}
               type="password"
               error={!!formErrors.channelSecret}
+              autoComplete="new-password"
             />
           </FormGroup>
 
@@ -541,6 +544,7 @@ export default function LineTokensPage() {
               placeholder={editingToken ? (language === 'th' ? 'เว้นว่างถ้าไม่ต้องการเปลี่ยน' : 'Leave empty to keep current') : 'Long-lived channel access token'}
               type="password"
               error={!!formErrors.accessToken}
+              autoComplete="new-password"
             />
           </FormGroup>
 
