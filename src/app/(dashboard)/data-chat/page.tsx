@@ -2712,13 +2712,35 @@ export default function DataChatPage() {
                 background: colors.bgSecondary,
                 minHeight: 69,
               }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>
-                    {selectedRoomToken?.websiteName || 'Website'}
-                  </span>
-                  <span style={{ fontSize: 11, color: colors.textMuted }}>
-                    {selectedRoomToken?.name || 'LINE Channel'}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {/* Website & LINE Icon */}
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: `0 2px 8px ${colors.accent}40`,
+                  }}>
+                    <MessageCircle size={20} color="#fff" />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ 
+                      fontSize: 14, 
+                      fontWeight: 600, 
+                      color: colors.textPrimary,
+                      letterSpacing: '0.3px',
+                    }}>
+                      {selectedRoomToken?.websiteName || 'Website'}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: '#06C755', // LINE green color
+                      }} />
+                      <span style={{ fontSize: 11, color: colors.textMuted, fontWeight: 500 }}>
+                        {selectedRoomToken?.name || 'LINE Channel'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <button
                   onClick={() => setSelectedRoom(null)}
