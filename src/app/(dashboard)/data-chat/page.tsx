@@ -33,6 +33,7 @@ interface Message {
   mediaUrl?: string;
   stickerId?: string;
   packageId?: string;
+  stickerPackageId?: string;  // Database column name
   emojis?: LineEmoji[];
   sender: 'user' | 'agent' | 'system';
   senderName?: string;
@@ -3017,7 +3018,7 @@ export default function DataChatPage() {
                           
                           <div style={{ maxWidth: isMobile ? '80%' : '65%' }}>
                             {msg.messageType === 'sticker' ? (
-                              <div>{renderSticker(msg.packageId, msg.stickerId)}</div>
+                              <div>{renderSticker(msg.packageId || msg.stickerPackageId, msg.stickerId)}</div>
                             ) : msg.messageType === 'image' && msg.mediaUrl ? (
                               <div style={{ 
                                 borderRadius: 12, 
