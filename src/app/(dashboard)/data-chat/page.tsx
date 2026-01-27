@@ -7,7 +7,8 @@ import {
   MessageCircle, Settings, Clock,
   Loader2, Paperclip, Image as ImageIcon, FileText, 
   Phone, Video, Bookmark, VolumeX, Volume2, Trash2, AlertTriangle,
-  ChevronDown, ChevronLeft, ChevronRight, User, Tag, FileEdit, Bell, BellOff, XCircle
+  ChevronDown, ChevronLeft, ChevronRight, User, Tag, FileEdit, Bell, BellOff, XCircle,
+  Eye, MessageSquare
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSocket } from '@/hooks/useSocket';
@@ -3025,18 +3026,88 @@ export default function DataChatPage() {
                       {/* List */}
                       <div style={{ flex: 1, overflowY: 'auto' }}>
                         {filteredQuickReplies.length === 0 ? (
-                          <div style={{ padding: 40, textAlign: 'center', color: colors.textMuted }}>
-                            <div style={{ fontSize: 14, marginBottom: 8 }}>ยังไม่มีข้อความด่วน</div>
+                          <div style={{ 
+                            padding: '60px 30px', 
+                            textAlign: 'center', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '100%',
+                          }}>
+                            {/* Animated Icon Container */}
+                            <div style={{ 
+                              width: 80, height: 80, 
+                              borderRadius: '50%',
+                              background: `linear-gradient(135deg, ${colors.accent}15 0%, ${colors.accent}08 100%)`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              marginBottom: 20,
+                              boxShadow: `0 8px 32px ${colors.accent}15`,
+                              animation: 'pulse 2s ease-in-out infinite',
+                            }}>
+                              <div style={{
+                                width: 56, height: 56,
+                                borderRadius: '50%',
+                                background: `linear-gradient(135deg, ${colors.accent}25 0%, ${colors.accent}15 100%)`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <MessageSquare size={28} color={colors.accent} />
+                              </div>
+                            </div>
+                            
+                            {/* Title */}
+                            <div style={{ 
+                              fontSize: 16, 
+                              fontWeight: 600, 
+                              color: colors.textPrimary,
+                              marginBottom: 8,
+                            }}>
+                              ยังไม่มีข้อความด่วน
+                            </div>
+                            
+                            {/* Subtitle */}
+                            <div style={{ 
+                              fontSize: 13, 
+                              color: colors.textMuted,
+                              marginBottom: 24,
+                              lineHeight: 1.5,
+                              maxWidth: 220,
+                            }}>
+                              สร้างข้อความด่วนเพื่อตอบกลับลูกค้าได้รวดเร็วขึ้น
+                            </div>
+                            
+                            {/* CTA Button */}
                             <button 
                               onClick={() => { setEditingQuickReply(null); setQuickReplyMessage(''); setQuickReplyPendingEmojis([]); setShowQuickReplyModal(true); }}
                               style={{ 
-                                padding: '8px 16px', borderRadius: 6,
-                                background: colors.accent, border: 'none',
-                                color: '#fff', fontSize: 12, cursor: 'pointer',
+                                padding: '12px 24px', borderRadius: 10,
+                                background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover || colors.accent} 100%)`,
+                                border: 'none',
+                                color: '#fff', fontSize: 14, fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                boxShadow: `0 4px 16px ${colors.accent}40`,
+                                transition: 'all 0.2s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = `0 6px 24px ${colors.accent}50`;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = `0 4px 16px ${colors.accent}40`;
                               }}
                             >
+                              <Plus size={18} />
                               สร้างข้อความด่วน
                             </button>
+                            
+                            <style>{`
+                              @keyframes pulse {
+                                0%, 100% { transform: scale(1); }
+                                50% { transform: scale(1.05); }
+                              }
+                            `}</style>
                           </div>
                         ) : (
                           filteredQuickReplies.map((reply) => (
@@ -3223,10 +3294,60 @@ export default function DataChatPage() {
                         ) : (
                           <div style={{ 
                             width: '100%', height: '100%', 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'rgba(255,255,255,0.7)', fontSize: 14,
+                            display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center',
+                            padding: 40,
                           }}>
-                            เลือกข้อความเพื่อดู Preview
+                            {/* Preview Icon */}
+                            <div style={{
+                              width: 72, height: 72,
+                              borderRadius: '50%',
+                              background: 'rgba(255,255,255,0.12)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              marginBottom: 20,
+                              backdropFilter: 'blur(8px)',
+                            }}>
+                              <div style={{
+                                width: 52, height: 52,
+                                borderRadius: '50%',
+                                background: 'rgba(255,255,255,0.18)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <Eye size={26} color="rgba(255,255,255,0.85)" />
+                              </div>
+                            </div>
+                            
+                            {/* Title */}
+                            <div style={{ 
+                              fontSize: 15, 
+                              fontWeight: 600,
+                              color: 'rgba(255,255,255,0.95)',
+                              marginBottom: 8,
+                            }}>
+                              Preview Message
+                            </div>
+                            
+                            {/* Subtitle */}
+                            <div style={{ 
+                              fontSize: 13, 
+                              color: 'rgba(255,255,255,0.6)',
+                              textAlign: 'center',
+                              lineHeight: 1.5,
+                              maxWidth: 200,
+                            }}>
+                              เลือกข้อความจากรายการทางซ้ายเพื่อดูตัวอย่าง
+                            </div>
+                            
+                            {/* Decorative Arrow */}
+                            <div style={{
+                              marginTop: 24,
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              color: 'rgba(255,255,255,0.4)',
+                              fontSize: 12,
+                            }}>
+                              <ChevronLeft size={16} />
+                              <span>Select from list</span>
+                            </div>
                           </div>
                         )}
                       </div>
