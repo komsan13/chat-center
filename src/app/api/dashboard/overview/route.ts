@@ -327,13 +327,13 @@ export async function GET(request: NextRequest) {
     try {
       const perfQuery = `
         SELECT 
-          website as name,
-          SUM(depositAmount) as deposits,
-          SUM(withdrawalAmount) as withdrawals,
-          SUM(netProfit) as profit
+          websiteName as name,
+          SUM(totalDeposit) as deposits,
+          SUM(totalWithdrawal) as withdrawals,
+          SUM(totalProfit) as profit
         FROM DailySummary 
         WHERE date >= ? AND date <= ?
-        GROUP BY website
+        GROUP BY websiteName
         ORDER BY profit DESC
         LIMIT 5
       `;
