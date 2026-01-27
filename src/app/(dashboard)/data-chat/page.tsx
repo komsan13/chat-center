@@ -216,6 +216,23 @@ export default function DataChatPage() {
     });
   }, [rooms, filterStatus, selectedTokenIds, lineTokens.length]);
 
+  // Close chat panel if selected room is no longer in filtered list
+  useEffect(() => {
+    if (selectedRoom && filteredRooms.length > 0) {
+      const isSelectedRoomVisible = filteredRooms.some(r => r.id === selectedRoom);
+      if (!isSelectedRoomVisible) {
+        setSelectedRoom(null);
+        selectedRoomRef.current = null;
+        localStorage.removeItem('selectedChatRoom');
+      }
+    } else if (selectedRoom && filteredRooms.length === 0) {
+      // No rooms visible, close chat
+      setSelectedRoom(null);
+      selectedRoomRef.current = null;
+      localStorage.removeItem('selectedChatRoom');
+    }
+  }, [filteredRooms, selectedRoom]);
+
   // ═══════════════════════════════════════════════════════════════════
   // AUDIO SETUP
   // ═══════════════════════════════════════════════════════════════════
