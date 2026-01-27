@@ -3454,27 +3454,98 @@ export default function DataChatPage() {
 
             {/* Input Area */}
             <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
-              {/* Textarea */}
-              <textarea
-                value={message}
-                onChange={handleInputChange}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
-                placeholder="Enter: Send message, Shift + Enter: New line"
-                rows={3}
-                style={{
-                  width: '100%', 
+              {/* Message Preview with Emoji Images */}
+              <div style={{ 
+                position: 'relative',
+                background: colors.bgPrimary, 
+                borderRadius: 8,
+                minHeight: 80,
+              }}>
+                {/* Preview Layer - shows emoji images */}
+                <div style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                   padding: '12px 14px',
-                  borderRadius: 8, 
-                  border: 'none',
-                  background: colors.bgPrimary, 
-                  color: colors.textPrimary,
-                  fontSize: 14, 
-                  outline: 'none',
-                  resize: 'none',
-                  fontFamily: 'inherit',
-                  lineHeight: 1.5,
-                }}
-              />
+                  pointerEvents: 'none',
+                  fontSize: 14, lineHeight: 1.5, fontFamily: 'inherit',
+                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  display: 'flex', flexWrap: 'wrap', alignItems: 'center', alignContent: 'flex-start',
+                  gap: 2,
+                }}>
+                  {message.split('').map((char, idx) => {
+                    if (char === '$') {
+                      const emojiData = pendingEmojis.find(e => e.index === idx);
+                      if (emojiData) {
+                        return (
+                          <img 
+                            key={idx}
+                            src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emojiData.productId}/iPhone/${emojiData.emojiId}.png`}
+                            alt="emoji"
+                            style={{ width: 20, height: 20, verticalAlign: 'middle', display: 'inline-block' }}
+                          />
+                        );
+                      }
+                    }
+                    return <span key={idx} style={{ color: 'transparent' }}>{char}</span>;
+                  })}
+                </div>
+                {/* Actual Textarea */}
+                <textarea
+                  value={message}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
+                  placeholder={pendingEmojis.length > 0 ? '' : 'Enter: Send message, Shift + Enter: New line'}
+                  rows={3}
+                  style={{
+                    width: '100%', 
+                    padding: '12px 14px',
+                    borderRadius: 8, 
+                    border: 'none',
+                    background: 'transparent', 
+                    color: pendingEmojis.length > 0 ? 'transparent' : colors.textPrimary,
+                    caretColor: colors.textPrimary,
+                    fontSize: 14, 
+                    outline: 'none',
+                    resize: 'none',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.5,
+                    position: 'relative',
+                    zIndex: 1,
+                  }}
+                />
+              </div>
+              
+              {/* Pending Emoji Preview Bar */}
+              {pendingEmojis.length > 0 && (
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', gap: 8, marginTop: 8,
+                  padding: '6px 10px', background: colors.bgTertiary, borderRadius: 6,
+                }}>
+                  <span style={{ fontSize: 11, color: colors.textMuted }}>Emoji:</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {pendingEmojis.map((emoji, idx) => (
+                      <img 
+                        key={idx}
+                        src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+                        alt="emoji"
+                        style={{ width: 24, height: 24 }}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setMessage(message.replace(/\$/g, ''));
+                      setPendingEmojis([]);
+                    }}
+                    style={{
+                      marginLeft: 'auto', padding: '2px 8px', borderRadius: 4,
+                      border: 'none', background: colors.danger + '20', color: colors.danger,
+                      fontSize: 11, cursor: 'pointer',
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
               
               {/* Bottom Bar: Actions + Send */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
