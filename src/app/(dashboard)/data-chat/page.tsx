@@ -1681,7 +1681,11 @@ export default function DataChatPage() {
         // Add text before this emoji
         if (emoji.index > lastIndex) {
           const textBefore = content.substring(lastIndex, emoji.index);
-          elements.push(<span key={`text-${idx}`}>{textBefore}</span>);
+          // Split text by newlines and add them as separate elements
+          textBefore.split('\n').forEach((line, lineIdx) => {
+            if (lineIdx > 0) elements.push(<br key={`br-${idx}-${lineIdx}`} />);
+            if (line) elements.push(<span key={`text-${idx}-${lineIdx}`}>{line}</span>);
+          });
         }
         
         // Add emoji image
@@ -1713,11 +1717,15 @@ export default function DataChatPage() {
       
       // Add remaining text after last emoji
       if (lastIndex < content.length) {
-        elements.push(<span key="text-end">{content.substring(lastIndex)}</span>);
+        const remainingText = content.substring(lastIndex);
+        remainingText.split('\n').forEach((line, lineIdx) => {
+          if (lineIdx > 0) elements.push(<br key={`br-end-${lineIdx}`} />);
+          if (line) elements.push(<span key={`text-end-${lineIdx}`}>{line}</span>);
+        });
       }
       
       return (
-        <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5, display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
+        <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
           {elements}
         </p>
       );
@@ -4121,7 +4129,11 @@ export default function DataChatPage() {
                 
                 {/* Send Button */}
                 <button
-                  onClick={() => sendMessage(message)}
+                  onClick={() => {
+                    sendMessage(message);
+                    // Clear editor after send
+                    if (messageEditorRef.current) messageEditorRef.current.innerHTML = '';
+                  }}
                   disabled={!message.trim() || isSending}
                   style={{
                     padding: '8px 16px', 
