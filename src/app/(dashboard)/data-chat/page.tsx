@@ -1007,11 +1007,11 @@ export default function DataChatPage() {
           // Remove from UI completely
           setRooms(prev => prev.filter(r => r.id !== roomId));
         } else if (mode === 'clear') {
-          // Keep room but clear messages, move to bottom of list
+          // Keep room but clear messages, tags, and notes
           setRooms(prev => {
             const updated = prev.map(r => 
               r.id === roomId 
-                ? { ...r, lastMessage: undefined, lastMessageAt: undefined, unreadCount: 0 }
+                ? { ...r, lastMessage: undefined, lastMessageAt: undefined, unreadCount: 0, tags: [] }
                 : r
             );
             // Sort: rooms with messages first
@@ -1025,6 +1025,12 @@ export default function DataChatPage() {
           // Clear messages from UI
           setMessages([]);
           messagesCacheRef.current.delete(roomId);
+          // Clear notes from UI
+          setRoomNotes([]);
+          setShowNoteInput(false);
+          setNewNoteContent('');
+          // Clear tag input UI
+          setShowTagInput(false);
         } else {
           // Archive - remove from active list
           setRooms(prev => prev.filter(r => r.id !== roomId));

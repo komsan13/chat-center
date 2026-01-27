@@ -224,10 +224,10 @@ export async function DELETE(
       db.prepare('DELETE FROM LineChatMessage WHERE roomId = ?').run(roomId);
       db.prepare('DELETE FROM ChatNote WHERE roomId = ?').run(roomId);
       
-      // Reset room state
+      // Reset room state including tags
       db.prepare(`
         UPDATE LineChatRoom 
-        SET lastMessageAt = NULL, unreadCount = 0, updatedAt = ? 
+        SET lastMessageAt = NULL, unreadCount = 0, tags = '[]', updatedAt = ? 
         WHERE id = ?
       `).run(new Date().toISOString(), roomId);
       
