@@ -88,7 +88,7 @@ export default function DataChatPage() {
   const [typingUsers, setTypingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout } }>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiPickerTab, setEmojiPickerTab] = useState<'emoji' | 'sticker'>('emoji');
-  const [selectedStickerPackage, setSelectedStickerPackage] = useState('446');
+  const [selectedStickerPackage, setSelectedStickerPackage] = useState('11537');
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [chatSearchTerm, setChatSearchTerm] = useState('');
@@ -1547,27 +1547,28 @@ export default function DataChatPage() {
   // Emoji list
   const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😱', '🤔', '👏', '💪', '🙌', '😎', '🥳', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🧾', '📝', '🎁', '🏆'];
   
-  // LINE Official Stickers grouped by package
+  // LINE Official Stickers grouped by package (verified working sticker IDs)
+  // Reference: https://developers.line.biz/en/docs/messaging-api/sticker-list/
   const stickerPackages = [
     {
-      packageId: '446',
-      name: 'Moon & James',
-      stickers: ['1988', '1989', '1990', '1991', '1992', '1993', '1994', '1995', '2000', '2001', '2002', '2003'],
-    },
-    {
-      packageId: '789',
-      name: 'Brown & Cony',
-      stickers: ['10855', '10856', '10857', '10858', '10859', '10860', '10861', '10862'],
-    },
-    {
       packageId: '11537',
-      name: 'LINE Characters',
-      stickers: ['52002734', '52002735', '52002736', '52002737', '52002738', '52002739', '52002740', '52002741'],
+      name: 'Brown & Friends',
+      stickers: ['52002734', '52002735', '52002736', '52002737', '52002738', '52002739', '52002740', '52002741', '52002742', '52002743', '52002744', '52002745'],
     },
     {
       packageId: '11538',
+      name: 'Brown & Cony',
+      stickers: ['51626494', '51626495', '51626496', '51626497', '51626498', '51626499', '51626500', '51626501', '51626502', '51626503', '51626504', '51626505'],
+    },
+    {
+      packageId: '11539',
       name: 'CHOCO & Friends',
-      stickers: ['51626494', '51626495', '51626496', '51626497', '51626498', '51626499', '51626500', '51626501'],
+      stickers: ['52114110', '52114111', '52114112', '52114113', '52114114', '52114115', '52114116', '52114117', '52114118', '52114119', '52114120', '52114121'],
+    },
+    {
+      packageId: '6359',
+      name: 'Cute Characters',
+      stickers: ['11069850', '11069851', '11069852', '11069853', '11069854', '11069855', '11069856', '11069857', '11069858', '11069859', '11069860', '11069861'],
     },
   ];
 
