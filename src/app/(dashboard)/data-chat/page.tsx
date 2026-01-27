@@ -3788,44 +3788,12 @@ export default function DataChatPage() {
                 borderRadius: 8,
                 minHeight: 80,
               }}>
-                {/* Preview Layer - shows text and emoji images */}
-                <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                  padding: '12px 14px',
-                  pointerEvents: 'none',
-                  fontSize: 14, lineHeight: 1.5, fontFamily: 'inherit',
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  display: 'flex', flexWrap: 'wrap', alignItems: 'center', alignContent: 'flex-start',
-                  gap: 0,
-                  color: colors.textPrimary,
-                }}>
-                  {pendingEmojis.length > 0 ? (
-                    // When we have emojis, render text + emoji images
-                    message.split('').map((char, idx) => {
-                      if (char === '$') {
-                        const emojiData = pendingEmojis.find(e => e.index === idx);
-                        if (emojiData) {
-                          return (
-                            <img 
-                              key={idx}
-                              src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emojiData.productId}/iPhone/${emojiData.emojiId}.png`}
-                              alt="emoji"
-                              style={{ width: 20, height: 20, verticalAlign: 'middle', display: 'inline-block' }}
-                            />
-                          );
-                        }
-                      }
-                      // Show text characters normally (visible)
-                      return <span key={idx}>{char}</span>;
-                    })
-                  ) : null}
-                </div>
-                {/* Actual Textarea */}
+                {/* Actual Textarea - show $ as placeholder, emoji images shown in preview bar below */}
                 <textarea
                   value={message}
                   onChange={handleInputChange}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
-                  placeholder={pendingEmojis.length > 0 ? '' : 'Enter: Send message, Shift + Enter: New line'}
+                  placeholder="Enter: Send message, Shift + Enter: New line"
                   rows={3}
                   style={{
                     width: '100%', 
@@ -3833,35 +3801,59 @@ export default function DataChatPage() {
                     borderRadius: 8, 
                     border: 'none',
                     background: 'transparent', 
-                    color: pendingEmojis.length > 0 ? 'transparent' : colors.textPrimary,
+                    color: colors.textPrimary,
                     caretColor: colors.textPrimary,
                     fontSize: 14, 
                     outline: 'none',
                     resize: 'none',
                     fontFamily: 'inherit',
                     lineHeight: 1.5,
-                    position: 'relative',
-                    zIndex: 1,
                   }}
                 />
               </div>
               
-              {/* Pending Emoji Preview Bar */}
+              {/* Pending Emoji Preview Bar - shows how message will look when sent */}
               {pendingEmojis.length > 0 && (
                 <div style={{ 
-                  display: 'flex', alignItems: 'center', gap: 8, marginTop: 8,
-                  padding: '6px 10px', background: colors.bgTertiary, borderRadius: 6,
+                  marginTop: 8,
+                  padding: '10px 12px', 
+                  background: colors.bgTertiary, 
+                  borderRadius: 8,
+                  border: `1px solid ${colors.border}`,
                 }}>
-                  <span style={{ fontSize: 11, color: colors.textMuted }}>Emoji:</span>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {pendingEmojis.map((emoji, idx) => (
-                      <img 
-                        key={idx}
-                        src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
-                        alt="emoji"
-                        style={{ width: 24, height: 24 }}
-                      />
-                    ))}
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 6 }}>Preview:</div>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    alignItems: 'center',
+                    gap: 0,
+                    fontSize: 14,
+                    lineHeight: 1.5,
+                    color: colors.textPrimary,
+                  }}>
+                    {(() => {
+                      const elements: React.ReactNode[] = [];
+                      const sortedEmojis = [...pendingEmojis].sort((a, b) => a.index - b.index);
+                      let lastIndex = 0;
+                      sortedEmojis.forEach((emoji, idx) => {
+                        if (emoji.index > lastIndex) {
+                          elements.push(<span key={`t-${idx}`}>{message.substring(lastIndex, emoji.index)}</span>);
+                        }
+                        elements.push(
+                          <img 
+                            key={`e-${idx}`}
+                            src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+                            alt="emoji"
+                            style={{ width: 22, height: 22, verticalAlign: 'middle', margin: '0 1px' }}
+                          />
+                        );
+                        lastIndex = emoji.index + 1; // $ is 1 character
+                      });
+                      if (lastIndex < message.length) {
+                        elements.push(<span key="t-end">{message.substring(lastIndex)}</span>);
+                      }
+                      return elements;
+                    })()}
                   </div>
                   <button
                     onClick={() => {
@@ -3869,12 +3861,12 @@ export default function DataChatPage() {
                       setPendingEmojis([]);
                     }}
                     style={{
-                      marginLeft: 'auto', padding: '2px 8px', borderRadius: 4,
+                      marginTop: 8, padding: '4px 12px', borderRadius: 4,
                       border: 'none', background: colors.danger + '20', color: colors.danger,
-                      fontSize: 11, cursor: 'pointer',
+                      fontSize: 11, cursor: 'pointer', fontWeight: 500,
                     }}
                   >
-                    Clear
+                    Clear Emojis
                   </button>
                 </div>
               )}
