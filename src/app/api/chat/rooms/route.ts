@@ -143,7 +143,8 @@ export async function GET(request: NextRequest) {
           'messageType', m.messageType,
           'sender', m.sender,
           'senderName', m.senderName,
-          'createdAt', m.createdAt
+          'createdAt', m.createdAt,
+          'emojis', m.emojis
         ) FROM LineChatMessage m WHERE m.roomId = r.id ORDER BY m.createdAt DESC LIMIT 1) as lastMessage
       FROM LineChatRoom r
       WHERE 1=1

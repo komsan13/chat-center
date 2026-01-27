@@ -3788,7 +3788,7 @@ export default function DataChatPage() {
                 borderRadius: 8,
                 minHeight: 80,
               }}>
-                {/* Preview Layer - shows emoji images */}
+                {/* Preview Layer - shows text and emoji images */}
                 <div style={{
                   position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
                   padding: '12px 14px',
@@ -3796,24 +3796,29 @@ export default function DataChatPage() {
                   fontSize: 14, lineHeight: 1.5, fontFamily: 'inherit',
                   whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                   display: 'flex', flexWrap: 'wrap', alignItems: 'center', alignContent: 'flex-start',
-                  gap: 2,
+                  gap: 0,
+                  color: colors.textPrimary,
                 }}>
-                  {message.split('').map((char, idx) => {
-                    if (char === '$') {
-                      const emojiData = pendingEmojis.find(e => e.index === idx);
-                      if (emojiData) {
-                        return (
-                          <img 
-                            key={idx}
-                            src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emojiData.productId}/iPhone/${emojiData.emojiId}.png`}
-                            alt="emoji"
-                            style={{ width: 20, height: 20, verticalAlign: 'middle', display: 'inline-block' }}
-                          />
-                        );
+                  {pendingEmojis.length > 0 ? (
+                    // When we have emojis, render text + emoji images
+                    message.split('').map((char, idx) => {
+                      if (char === '$') {
+                        const emojiData = pendingEmojis.find(e => e.index === idx);
+                        if (emojiData) {
+                          return (
+                            <img 
+                              key={idx}
+                              src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emojiData.productId}/iPhone/${emojiData.emojiId}.png`}
+                              alt="emoji"
+                              style={{ width: 20, height: 20, verticalAlign: 'middle', display: 'inline-block' }}
+                            />
+                          );
+                        }
                       }
-                    }
-                    return <span key={idx} style={{ color: 'transparent' }}>{char}</span>;
-                  })}
+                      // Show text characters normally (visible)
+                      return <span key={idx}>{char}</span>;
+                    })
+                  ) : null}
                 </div>
                 {/* Actual Textarea */}
                 <textarea
