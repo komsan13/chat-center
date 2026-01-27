@@ -3320,7 +3320,7 @@ export default function DataChatPage() {
                       </p>
                     </div>
                     
-                    {/* Messages Field with Emoji Preview */}
+                    {/* Messages Field - shows $ placeholder, preview below */}
                     <div style={{ marginBottom: 20 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>        
                         <label style={{ 
@@ -3337,76 +3337,94 @@ export default function DataChatPage() {
                           <span id="messageCount">{quickReplyMessage.length}</span>/1000
                         </span>
                       </div>
-                      <div style={{ position: 'relative' }}>
-                        {/* Preview Layer - Shows emoji images and text */}
-                        {quickReplyPendingEmojis.length > 0 && (
-                          <div style={{
-                            position: 'absolute', top: 0, left: 0, right: 0,
-                            padding: '12px 14px', pointerEvents: 'none', zIndex: 2,
-                            fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap',
-                            display: 'flex', flexWrap: 'wrap', alignItems: 'center',
-                            color: colors.textPrimary,
+                      {/* Textarea - show $ as placeholder */}
+                      <textarea
+                        id="quickReplyMessage"
+                        name="label"
+                        value={quickReplyMessage}
+                        placeholder="Type your message here..."
+                        maxLength={1000}
+                        rows={5}
+                        required
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          const oldValue = quickReplyMessage;
+                          setQuickReplyMessage(newValue);
+                          // Update emoji positions if text changed before emojis
+                          if (newValue.length !== oldValue.length && quickReplyPendingEmojis.length > 0) {
+                            const diff = newValue.length - oldValue.length;
+                            const cursorPos = e.target.selectionStart || 0;
+                            setQuickReplyPendingEmojis(prev => prev.map(em => ({
+                              ...em,
+                              index: em.index >= cursorPos - (diff > 0 ? diff : 0) ? em.index + diff : em.index
+                            })).filter(em => em.index >= 0 && em.index < newValue.length && newValue[em.index] === '$'));
+                          }
+                        }}
+                        style={{
+                          width: '100%', padding: '12px 14px', borderRadius: 10,
+                          border: `1px solid ${colors.border}`, background: colors.bgPrimary,
+                          color: colors.textPrimary,
+                          caretColor: colors.textPrimary,
+                          fontSize: 14, outline: 'none',
+                          resize: 'none', fontFamily: 'inherit', minHeight: 100,
+                          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                        }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${colors.accent}20`; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
+                      />
+                      
+                      {/* Preview Bar - shows how message will look when sent */}
+                      {quickReplyPendingEmojis.length > 0 && (
+                        <div style={{ 
+                          marginTop: 10, padding: '10px 12px', 
+                          background: colors.bgTertiary, borderRadius: 8,
+                          border: `1px solid ${colors.border}`,
+                        }}>
+                          <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 6 }}>Preview:</div>
+                          <div style={{ 
+                            display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0,
+                            fontSize: 14, lineHeight: 1.5, color: colors.textPrimary,
                           }}>
                             {(() => {
                               const elements: React.ReactNode[] = [];
                               const sortedEmojis = [...quickReplyPendingEmojis].sort((a, b) => a.index - b.index);
-                              let emojiIndex = 0;
-                              for (let i = 0; i < quickReplyMessage.length; i++) {
-                                const char = quickReplyMessage[i];
-                                if (char === '$' && emojiIndex < sortedEmojis.length && sortedEmojis[emojiIndex].index === i) {
-                                  const emoji = sortedEmojis[emojiIndex];
-                                  elements.push(
-                                    <img key={`qr-emoji-${i}`}
-                                      src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
-                                      alt="emoji" style={{ width: 20, height: 20, display: 'inline-block', verticalAlign: 'middle', margin: '0 1px' }}
-                                    />
-                                  );
-                                  emojiIndex++;
-                                } else {
-                                  // Show regular character with visible color
-                                  elements.push(<span key={`qr-char-${i}`}>{char}</span>);
+                              let lastIndex = 0;
+                              sortedEmojis.forEach((emoji, idx) => {
+                                if (emoji.index > lastIndex) {
+                                  elements.push(<span key={`t-${idx}`}>{quickReplyMessage.substring(lastIndex, emoji.index)}</span>);
                                 }
+                                elements.push(
+                                  <img 
+                                    key={`e-${idx}`}
+                                    src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+                                    alt="emoji"
+                                    style={{ width: 22, height: 22, verticalAlign: 'middle', margin: '0 1px' }}
+                                  />
+                                );
+                                lastIndex = emoji.index + 1;
+                              });
+                              if (lastIndex < quickReplyMessage.length) {
+                                elements.push(<span key="t-end">{quickReplyMessage.substring(lastIndex)}</span>);
                               }
                               return elements;
                             })()}
                           </div>
-                        )}
-                        <textarea
-                          id="quickReplyMessage"
-                          name="label"
-                          value={quickReplyMessage}
-                          placeholder="Type your message here..."
-                          maxLength={1000}
-                          rows={5}
-                          required
-                          onChange={(e) => {
-                            const newValue = e.target.value;
-                            const oldValue = quickReplyMessage;
-                            setQuickReplyMessage(newValue);
-                            // Update emoji positions if text changed before emojis
-                            if (newValue.length !== oldValue.length && quickReplyPendingEmojis.length > 0) {
-                              const diff = newValue.length - oldValue.length;
-                              const cursorPos = e.target.selectionStart || 0;
-                              setQuickReplyPendingEmojis(prev => prev.map(em => ({
-                                ...em,
-                                index: em.index >= cursorPos - (diff > 0 ? diff : 0) ? em.index + diff : em.index
-                              })).filter(em => em.index >= 0 && em.index < newValue.length && newValue[em.index] === '$'));
-                            }
-                          }}
-                          style={{
-                            width: '100%', padding: '12px 14px', borderRadius: 10,
-                            border: `1px solid ${colors.border}`, background: colors.bgPrimary,
-                            color: quickReplyPendingEmojis.length > 0 ? 'transparent' : colors.textPrimary,
-                            caretColor: colors.textPrimary,
-                            fontSize: 14, outline: 'none',
-                            resize: 'none', fontFamily: 'inherit', minHeight: 100,
-                            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                            position: 'relative', zIndex: 1,
-                          }}
-                          onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${colors.accent}20`; }}
-                          onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
-                        />
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuickReplyMessage(quickReplyMessage.replace(/\$/g, ''));
+                              setQuickReplyPendingEmojis([]);
+                            }}
+                            style={{
+                              marginTop: 8, padding: '4px 12px', borderRadius: 4,
+                              border: 'none', background: colors.danger + '20', color: colors.danger,
+                              fontSize: 11, cursor: 'pointer', fontWeight: 500,
+                            }}
+                          >
+                            Clear Emojis
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* LINE Emoji Picker with Categories */}
