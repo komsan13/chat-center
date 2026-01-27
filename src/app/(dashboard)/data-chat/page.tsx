@@ -1743,6 +1743,8 @@ export default function DataChatPage() {
   ];
   const [selectedEmojiCategory, setSelectedEmojiCategory] = useState('brown');
   const [quickReplyEmojiCategory, setQuickReplyEmojiCategory] = useState('brown');
+  const [quickReplyPendingEmojis, setQuickReplyPendingEmojis] = useState<Array<{ index: number; productId: string; emojiId: string }>>([]);
+  const [quickReplyMessage, setQuickReplyMessage] = useState('');
   
   // LINE Official Stickers grouped by package (verified working sticker IDs)
   // Reference: https://developers.line.biz/en/docs/messaging-api/sticker-list/
@@ -2921,7 +2923,7 @@ export default function DataChatPage() {
                           <div style={{ padding: 40, textAlign: 'center', color: colors.textMuted }}>
                             <div style={{ fontSize: 14, marginBottom: 8 }}>ยังไม่มีข้อความด่วน</div>
                             <button 
-                              onClick={() => { setEditingQuickReply(null); setShowQuickReplyModal(true); }}
+                              onClick={() => { setEditingQuickReply(null); setQuickReplyMessage(''); setQuickReplyPendingEmojis([]); setShowQuickReplyModal(true); }}
                               style={{ 
                                 padding: '8px 16px', borderRadius: 6,
                                 background: colors.accent, border: 'none',
@@ -2977,7 +2979,7 @@ export default function DataChatPage() {
                       {/* Create Button */}
                       <div style={{ padding: 12, borderTop: `1px solid ${colors.border}` }}>
                         <button
-                          onClick={() => { setEditingQuickReply(null); setShowQuickReplyModal(true); }}
+                          onClick={() => { setEditingQuickReply(null); setQuickReplyMessage(''); setQuickReplyPendingEmojis([]); setShowQuickReplyModal(true); }}
                           style={{
                             width: '100%', padding: '12px 16px', borderRadius: 8,
                             background: colors.bgSecondary, border: `1px solid ${colors.border}`,
@@ -2997,7 +2999,7 @@ export default function DataChatPage() {
                         {previewQuickReply && (
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
-                              onClick={() => { setEditingQuickReply(previewQuickReply); setShowQuickReplyModal(true); }}
+                              onClick={() => { setEditingQuickReply(previewQuickReply); setQuickReplyMessage(previewQuickReply?.label || ''); setQuickReplyPendingEmojis([]); setShowQuickReplyModal(true); }}
                               style={{
                                 padding: '6px 12px', borderRadius: 6,
                                 background: colors.bgSecondary, border: `1px solid ${colors.border}`,
@@ -3105,7 +3107,7 @@ export default function DataChatPage() {
                 background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 zIndex: 10000, backdropFilter: 'blur(4px)',
               }}
-                onClick={() => { setShowQuickReplyModal(false); setEditingQuickReply(null); }}
+                onClick={() => { setShowQuickReplyModal(false); setEditingQuickReply(null); setQuickReplyPendingEmojis([]); setQuickReplyMessage(''); }}
               >
                 <div 
                   style={{
@@ -3212,7 +3214,7 @@ export default function DataChatPage() {
                       </p>
                     </div>
                     
-                    {/* Messages Field */}
+                    {/* Messages Field with Emoji Preview */}
                     <div style={{ marginBottom: 20 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>        
                         <label style={{ 
@@ -3226,31 +3228,77 @@ export default function DataChatPage() {
                           fontSize: 11, color: colors.textMuted,
                           background: colors.bgTertiary, padding: '2px 8px', borderRadius: 10,
                         }}>
-                          <span id="messageCount">0</span>/1000
+                          <span id="messageCount">{quickReplyMessage.length}</span>/1000
                         </span>
                       </div>
-                      <textarea
-                        id="quickReplyMessage"
-                        name="label"
-                        defaultValue={editingQuickReply?.label || ''}
-                        placeholder="Type your message here..."
-                        maxLength={1000}
-                        rows={5}
-                        required
-                        onChange={(e) => {
-                          const counter = document.getElementById('messageCount');
-                          if (counter) counter.textContent = String(e.target.value.length);
-                        }}
-                        style={{
-                          width: '100%', padding: '12px 14px', borderRadius: 10,
-                          border: `1px solid ${colors.border}`, background: colors.bgPrimary,
-                          color: colors.textPrimary, fontSize: 14, outline: 'none',
-                          resize: 'none', fontFamily: 'inherit', minHeight: 100,
-                          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                        }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${colors.accent}20`; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        {/* Preview Layer - Shows emoji images */}
+                        {quickReplyPendingEmojis.length > 0 && (
+                          <div style={{
+                            position: 'absolute', top: 0, left: 0, right: 0,
+                            padding: '12px 14px', pointerEvents: 'none', zIndex: 1,
+                            fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap',
+                            display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+                          }}>
+                            {(() => {
+                              const elements: React.ReactNode[] = [];
+                              const sortedEmojis = [...quickReplyPendingEmojis].sort((a, b) => a.index - b.index);
+                              let emojiIndex = 0;
+                              for (let i = 0; i < quickReplyMessage.length; i++) {
+                                const char = quickReplyMessage[i];
+                                if (char === '$' && emojiIndex < sortedEmojis.length && sortedEmojis[emojiIndex].index === i) {
+                                  const emoji = sortedEmojis[emojiIndex];
+                                  elements.push(
+                                    <img key={`qr-emoji-${i}`}
+                                      src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+                                      alt="emoji" style={{ width: 20, height: 20, display: 'inline-block', verticalAlign: 'middle', margin: '0 1px' }}
+                                    />
+                                  );
+                                  emojiIndex++;
+                                } else {
+                                  elements.push(<span key={`qr-char-${i}`} style={{ color: 'transparent' }}>{char}</span>);
+                                }
+                              }
+                              return elements;
+                            })()}
+                          </div>
+                        )}
+                        <textarea
+                          id="quickReplyMessage"
+                          name="label"
+                          value={quickReplyMessage}
+                          placeholder="Type your message here..."
+                          maxLength={1000}
+                          rows={5}
+                          required
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            const oldValue = quickReplyMessage;
+                            setQuickReplyMessage(newValue);
+                            // Update emoji positions if text changed before emojis
+                            if (newValue.length !== oldValue.length && quickReplyPendingEmojis.length > 0) {
+                              const diff = newValue.length - oldValue.length;
+                              const cursorPos = e.target.selectionStart || 0;
+                              setQuickReplyPendingEmojis(prev => prev.map(em => ({
+                                ...em,
+                                index: em.index >= cursorPos - (diff > 0 ? diff : 0) ? em.index + diff : em.index
+                              })).filter(em => em.index >= 0 && em.index < newValue.length && newValue[em.index] === '$'));
+                            }
+                          }}
+                          style={{
+                            width: '100%', padding: '12px 14px', borderRadius: 10,
+                            border: `1px solid ${colors.border}`, background: colors.bgPrimary,
+                            color: quickReplyPendingEmojis.length > 0 ? 'transparent' : colors.textPrimary,
+                            caretColor: colors.textPrimary,
+                            fontSize: 14, outline: 'none',
+                            resize: 'none', fontFamily: 'inherit', minHeight: 100,
+                            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                            position: 'relative', zIndex: 2,
+                          }}
+                          onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${colors.accent}20`; }}
+                          onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
+                        />
+                      </div>
                     </div>
 
                     {/* LINE Emoji Picker with Categories */}
@@ -3292,14 +3340,28 @@ export default function DataChatPage() {
                               onClick={() => {
                                 const messageField = document.getElementById('quickReplyMessage') as HTMLTextAreaElement;
                                 if (messageField) {
-                                  const start = messageField.selectionStart || messageField.value.length;
-                                  const end = messageField.selectionEnd || messageField.value.length;
-                                  const text = messageField.value;
-                                  messageField.value = text.substring(0, start) + '$' + text.substring(end);
-                                  messageField.selectionStart = messageField.selectionEnd = start + 1;
-                                  messageField.focus();
-                                  const counter = document.getElementById('messageCount');
-                                  if (counter) counter.textContent = String(messageField.value.length);
+                                  const start = messageField.selectionStart ?? quickReplyMessage.length;
+                                  const end = messageField.selectionEnd ?? quickReplyMessage.length;
+                                  const newText = quickReplyMessage.substring(0, start) + '$' + quickReplyMessage.substring(end);
+                                  
+                                  // Update message text
+                                  setQuickReplyMessage(newText);
+                                  
+                                  // Add emoji data with adjusted positions
+                                  setQuickReplyPendingEmojis(prev => {
+                                    const adjusted = prev.map(em => ({
+                                      ...em,
+                                      index: em.index >= start ? em.index + 1 : em.index
+                                    }));
+                                    return [...adjusted, { index: start, productId: pkg.productId, emojiId }]
+                                      .sort((a, b) => a.index - b.index);
+                                  });
+                                  
+                                  // Focus and set cursor
+                                  setTimeout(() => {
+                                    messageField.focus();
+                                    messageField.selectionStart = messageField.selectionEnd = start + 1;
+                                  }, 0);
                                 }
                               }}
                               style={{
