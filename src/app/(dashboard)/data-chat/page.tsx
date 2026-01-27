@@ -3017,7 +3017,7 @@ export default function DataChatPage() {
                           )}
                           
                           <div style={{ maxWidth: isMobile ? '80%' : '65%' }}>
-                            {msg.messageType === 'sticker' ? (
+                            {msg.stickerId ? (
                               <div>{renderSticker(msg.packageId || msg.stickerPackageId, msg.stickerId)}</div>
                             ) : msg.messageType === 'image' && msg.mediaUrl ? (
                               <div style={{ 
