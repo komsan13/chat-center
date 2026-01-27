@@ -385,24 +385,26 @@ export function useSocket(options: UseSocketOptions = {}) {
     // ═══════════════════════════════════════════════════════════════════════
 
     socket.on('new-message', (message: ChatMessage) => {
-      console.log(`[Socket] 📨 New message: ${message.id}`);
+      console.log(`[Socket] 📨 New message received:`, message.id, message.roomId);
       // Always call the callback - let the page decide what to do
       // This ensures all messages are recorded regardless of channel selection
       optionsRef.current.onNewMessage?.(message);
     });
 
     socket.on('new-room', (room: ChatRoom) => {
-      console.log(`[Socket] 🆕 New room: ${room.id}`);
+      console.log(`[Socket] 🆕 New room received:`, room.id, room.displayName);
       // Always call the callback - let the page decide what to do
       // This ensures all rooms are recorded regardless of channel selection
       optionsRef.current.onNewRoom?.(room);
     });
 
     socket.on('room-update', (data: RoomUpdate) => {
+      console.log(`[Socket] 📝 Room update received:`, data.id, 'unread:', data.unreadCount);
       optionsRef.current.onRoomUpdate?.(data);
     });
 
     socket.on('messages-read', (data: { roomId: string; messageIds: string[] }) => {
+      console.log(`[Socket] ✅ Messages read:`, data.roomId);
       optionsRef.current.onMessagesRead?.(data);
     });
 

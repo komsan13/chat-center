@@ -605,6 +605,8 @@ export default function DataChatPage() {
       return;
     }
     
+    console.log('[Chat] 📨 handleNewMessage called:', msg.id, 'room:', msg.roomId, 'sender:', msg.sender);
+    
     // Skip if this is a temp message (we already have it locally)
     if (msg.id?.startsWith('temp-')) return;
     
@@ -656,9 +658,12 @@ export default function DataChatPage() {
       setRooms(prev => {
         const roomIndex = prev.findIndex(r => r.id === msg.roomId);
         if (roomIndex === -1) {
-          // Room not in state yet - sound will be played by handleNewRoom
+          console.log('[Chat] Room not found in state, will be added by new-room event or room-update');
+          // Room not in state yet - it should be added by handleNewRoom or handleRoomUpdate
           return prev;
         }
+        
+        console.log('[Chat] Updating room:', msg.roomId, 'current unread:', prev[roomIndex].unreadCount);
         
         const updatedRooms = [...prev];
         const room = { ...updatedRooms[roomIndex] };
@@ -670,6 +675,7 @@ export default function DataChatPage() {
         if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user' && room.status !== 'spam' && !room.isMuted) {
           // Increment locally for immediate UI feedback
           room.unreadCount = (room.unreadCount || 0) + 1;
+          console.log('[Chat] Incremented unread to:', room.unreadCount);
           
           // Play sound if token is selected (or no token filter)
           const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
@@ -751,7 +757,7 @@ export default function DataChatPage() {
 
   // Handle room update from socket - update rooms list when other browsers send messages
   const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number; displayName?: string; pictureUrl?: string; status?: 'active' | 'spam' | 'archived' | 'blocked'; lineTokenId?: string }) => {
-    console.log('[Chat] Room update received:', data.id, 'unreadCount:', data.unreadCount);
+    console.log('[Chat] 📝 handleRoomUpdate called:', data.id, 'unreadCount:', data.unreadCount, 'lastMessage:', data.lastMessage?.content?.substring(0, 20));
     
     setRooms(prev => {
       const roomIndex = prev.findIndex(r => r.id === data.id);
@@ -779,7 +785,7 @@ export default function DataChatPage() {
           updatedAt: new Date().toISOString(),
         };
         
-        console.log('[Chat] Adding new room from update:', newRoom.id, newRoom.displayName);
+        console.log('[Chat] Adding new room from room-update:', newRoom.id, newRoom.displayName, 'unread:', newRoom.unreadCount);
         
         // Play sound for new room
         const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
@@ -792,7 +798,7 @@ export default function DataChatPage() {
         return [newRoom, ...prev];
       }
       
-      // Update existing room - DON'T reorder
+      // Update existing room
       const updatedRooms = [...prev];
       const room = { ...updatedRooms[roomIndex] };
       
@@ -802,13 +808,19 @@ export default function DataChatPage() {
       if (data.lastMessageAt) {
         room.lastMessageAt = data.lastMessageAt;
       }
-      // Only update unread count if it's an increment AND we're not viewing this room
-      // Don't blindly override - the local state is more accurate
-      if (typeof data.unreadCount === 'number' && data.unreadCount > 0) {
+      
+      // Update unread count - use the server's count if we're not viewing this room
+      // This ensures cross-browser sync works properly
+      if (typeof data.unreadCount === 'number') {
         if (selectedRoomRef.current !== data.id) {
-          // Only increment, don't set directly (local state may already be incremented)
-          // Keep the higher value between local and remote
-          room.unreadCount = Math.max(room.unreadCount || 0, data.unreadCount);
+          // Use server's unread count for cross-browser sync
+          // Take the max to handle race conditions
+          const newUnread = Math.max(room.unreadCount || 0, data.unreadCount);
+          console.log('[Chat] Updating unread from', room.unreadCount, 'to', newUnread);
+          room.unreadCount = newUnread;
+        } else {
+          // We're viewing this room, keep unread at 0
+          room.unreadCount = 0;
         }
       }
       
