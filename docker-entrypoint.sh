@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+# Wait for PostgreSQL to be ready
+echo "Waiting for PostgreSQL..."
+until nc -z db 5432; do
+  sleep 1
+done
+echo "PostgreSQL is ready!"
+
+# Push schema to database (create tables)
+echo "Pushing database schema..."
+npx drizzle-kit push --config=drizzle.config.ts
+
+# Start the application
+echo "Starting application..."
+exec node server.js

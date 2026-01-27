@@ -2,13 +2,8 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Install build dependencies for better-sqlite3
-RUN apk add --no-cache python3 make g++
-
 COPY package*.json ./
-COPY prisma ./prisma
 RUN npm ci
-RUN npx prisma generate
 
 # Builder stage
 FROM node:20-alpine AS builder
@@ -21,8 +16,8 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Install ffmpeg for video thumbnail generation
-RUN apk add --no-cache ffmpeg
+# Install ffmpeg and netcat for health checks
+RUN apk add --no-cache ffmpeg netcat-openbsd
 
 ENV NODE_ENV=production
 ENV PORT=3001
@@ -32,12 +27,13 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/server.js ./server.js
-COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/src/lib/db ./src/lib/db
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 
-# Create data directory for SQLite
-RUN mkdir -p /app/data
+RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 3001
 
-CMD ["node", "server.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
