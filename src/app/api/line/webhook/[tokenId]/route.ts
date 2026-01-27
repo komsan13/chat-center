@@ -14,12 +14,154 @@ function generateId(prefix: string = '') {
   return `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Global broadcast function
+// Global broadcast function declaration - use 'any' to avoid type conflicts
 declare global {
-  // eslint-disable-next-line no-var
+  // eslint-disable-next-line no-var, @typescript-eslint/no-explicit-any
   var __broadcastToRoom: ((roomId: string, event: string, data: unknown) => void) | undefined;
-  // eslint-disable-next-line no-var
+  // eslint-disable-next-line no-var, @typescript-eslint/no-explicit-any
   var __broadcast: ((event: string, data: unknown) => void) | undefined;
+  // eslint-disable-next-line no-var, @typescript-eslint/no-explicit-any
+  var __io: any;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RELIABLE BROADCAST SYSTEM - Multiple fallback mechanisms
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Method 1: Try global.__broadcast (set by server.js)
+// Method 2: Try global.__io directly
+// Method 3: HTTP request to internal broadcast endpoint (most reliable)
+
+async function reliableBroadcast(event: string, data: unknown, room: string = 'all-rooms'): Promise<boolean> {
+  let success = false;
+  
+  // Method 1: Use global.__broadcast if available
+  if (room === 'all-rooms' && global.__broadcast) {
+    try {
+      global.__broadcast(event, data);
+      console.log(`[Webhook Broadcast] ✅ Method 1 (global.__broadcast): ${event}`);
+      success = true;
+    } catch (e) {
+      console.warn(`[Webhook Broadcast] Method 1 failed:`, e);
+    }
+  }
+  
+  // Method 2: Use global.__io directly if available
+  if (!success && global.__io) {
+    try {
+      global.__io.to(room).emit(event, data);
+      console.log(`[Webhook Broadcast] ✅ Method 2 (global.__io): ${event} -> ${room}`);
+      success = true;
+    } catch (e) {
+      console.warn(`[Webhook Broadcast] Method 2 failed:`, e);
+    }
+  }
+  
+  // Method 3: HTTP fallback to internal endpoint
+  if (!success) {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
+                      'http://localhost:3001';
+      
+      const response = await fetch(`${baseUrl}/api/internal/broadcast`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-token': 'aurix-internal-2024',
+        },
+        body: JSON.stringify({ event, data, room }),
+      });
+      
+      if (response.ok) {
+        console.log(`[Webhook Broadcast] ✅ Method 3 (HTTP): ${event} -> ${room}`);
+        success = true;
+      } else {
+        console.warn(`[Webhook Broadcast] Method 3 HTTP ${response.status}`);
+      }
+    } catch (e) {
+      console.warn(`[Webhook Broadcast] Method 3 failed:`, e);
+    }
+  }
+  
+  if (!success) {
+    console.error(`[Webhook Broadcast] ❌ All methods failed for ${event}`);
+  }
+  
+  return success;
+}
+
+async function reliableBroadcastToRoom(roomId: string, event: string, data: unknown): Promise<boolean> {
+  let success = false;
+  
+  // Method 1: Use global.__broadcastToRoom if available
+  if (global.__broadcastToRoom) {
+    try {
+      global.__broadcastToRoom(roomId, event, data);
+      console.log(`[Webhook Broadcast] ✅ Method 1 (global.__broadcastToRoom): ${event} -> room:${roomId}`);
+      success = true;
+    } catch (e) {
+      console.warn(`[Webhook Broadcast] Method 1 failed:`, e);
+    }
+  }
+  
+  // Method 2: Use global.__io directly - emit to room AND all-rooms
+  if (!success && global.__io) {
+    try {
+      if (roomId) {
+        global.__io.to(roomId).emit(event, data);
+      }
+      global.__io.to('all-rooms').emit(event, data);
+      console.log(`[Webhook Broadcast] ✅ Method 2 (global.__io): ${event} -> room:${roomId} + all-rooms`);
+      success = true;
+    } catch (e) {
+      console.warn(`[Webhook Broadcast] Method 2 failed:`, e);
+    }
+  }
+  
+  // Method 3: HTTP fallback - send to both room and all-rooms
+  if (!success) {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
+                      'http://localhost:3001';
+      
+      // Emit to specific room
+      if (roomId) {
+        await fetch(`${baseUrl}/api/internal/broadcast`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-token': 'aurix-internal-2024',
+          },
+          body: JSON.stringify({ event, data, room: roomId }),
+        });
+      }
+      
+      // Emit to all-rooms
+      const response = await fetch(`${baseUrl}/api/internal/broadcast`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-token': 'aurix-internal-2024',
+        },
+        body: JSON.stringify({ event, data, room: 'all-rooms' }),
+      });
+      
+      if (response.ok) {
+        console.log(`[Webhook Broadcast] ✅ Method 3 (HTTP): ${event} -> room:${roomId} + all-rooms`);
+        success = true;
+      }
+    } catch (e) {
+      console.warn(`[Webhook Broadcast] Method 3 failed:`, e);
+    }
+  }
+  
+  if (!success) {
+    console.error(`[Webhook Broadcast] ❌ All methods failed for ${event} to room:${roomId}`);
+  }
+  
+  return success;
 }
 
 interface LineTokenRecord {
@@ -194,10 +336,9 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       updatedAt: now,
     };
     
-    if (global.__broadcast) {
-      global.__broadcast('new-room', newRoomData);
-      console.log(`[LINE Webhook/${token.id}] 📡 Broadcast new-room: ${roomId}`);
-    }
+    // Use reliable broadcast with multiple fallbacks
+    await reliableBroadcast('new-room', newRoomData);
+    console.log(`[LINE Webhook/${token.id}] 📡 Broadcast new-room: ${roomId}`);
   }
 
   // Handle message events
@@ -272,25 +413,22 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       createdAt: now,
     };
     
-    if (global.__broadcastToRoom) {
-      global.__broadcastToRoom(room.id, 'new-message', messageData);
-      console.log(`[LINE Webhook/${token.id}] 📡 Broadcast new-message to room ${room.id}`);
-    }
+    // Use reliable broadcast with multiple fallbacks
+    await reliableBroadcastToRoom(room.id, 'new-message', messageData);
+    console.log(`[LINE Webhook/${token.id}] 📡 Broadcast new-message to room ${room.id}`);
     
     // Broadcast room-update with full data for multi-browser sync
-    if (global.__broadcast) {
-      global.__broadcast('room-update', {
-        id: room.id,
-        lineTokenId: token.id,
-        displayName: room.displayName,
-        pictureUrl: room.pictureUrl,
-        status: 'active',
-        lastMessage: messageData,
-        lastMessageAt: now,
-        unreadCount: (room.unreadCount || 0) + 1,
-      });
-      console.log(`[LINE Webhook/${token.id}] 📡 Broadcast room-update`);
-    }
+    await reliableBroadcast('room-update', {
+      id: room.id,
+      lineTokenId: token.id,
+      displayName: room.displayName,
+      pictureUrl: room.pictureUrl,
+      status: 'active',
+      lastMessage: messageData,
+      lastMessageAt: now,
+      unreadCount: (room.unreadCount || 0) + 1,
+    });
+    console.log(`[LINE Webhook/${token.id}] 📡 Broadcast room-update`);
     
     console.log(`[LINE Webhook/${token.id}] Saved message: ${msgId} to room: ${room.id}`);
   }

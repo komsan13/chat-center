@@ -7,6 +7,7 @@
 // - Room-based broadcasting with fallback
 // - Connection state tracking per client
 // - Memory-efficient client management
+// - Global broadcast functions for API routes
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const { createServer } = require('http');
@@ -22,9 +23,16 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 // Global storage for socket instance and connected clients
+// These globals are shared with API routes in production mode
 global.__chatEvents = [];
 global.__io = null;
 global.__connectedClients = new Map();
+global.__broadcast = null;
+global.__broadcastToRoom = null;
+
+console.log('[Server] 🚀 Starting enterprise server...');
+console.log(`[Server] Environment: ${dev ? 'development' : 'production'}`);
+console.log(`[Server] Port: ${port}`);
 
 app.prepare().then(() => {
   const server = createServer((req, res) => {
@@ -210,7 +218,10 @@ app.prepare().then(() => {
     if (global.__io) {
       global.__io.to('all-rooms').emit(event, data);
       console.log(`[Socket.IO] 📡 Broadcast to all-rooms: ${event}`);
+      return true;
     }
+    console.warn(`[Socket.IO] ⚠️ __broadcast called but __io is null`);
+    return false;
   };
 
   // Broadcast to specific room AND all-rooms
@@ -224,8 +235,16 @@ app.prepare().then(() => {
       // ALWAYS emit to all-rooms for dashboard updates
       global.__io.to('all-rooms').emit(event, data);
       console.log(`[Socket.IO] 📡 Broadcast to all-rooms: ${event}`);
+      return true;
     }
+    console.warn(`[Socket.IO] ⚠️ __broadcastToRoom called but __io is null`);
+    return false;
   };
+
+  console.log('[Server] ✅ Global broadcast functions registered');
+  console.log(`[Server] global.__io: ${global.__io ? 'SET' : 'NULL'}`);
+  console.log(`[Server] global.__broadcast: ${typeof global.__broadcast}`);
+  console.log(`[Server] global.__broadcastToRoom: ${typeof global.__broadcastToRoom}`);
 
   server.listen(port, () => {
     console.log(`
