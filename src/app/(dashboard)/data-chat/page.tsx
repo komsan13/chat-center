@@ -1648,8 +1648,8 @@ export default function DataChatPage() {
       );
     }
     
-    // Check for sticker pattern (like "[sticker]" or "(crying Cony)(sick Moon)") - only if no emojis data
-    if (content.startsWith('[sticker') || (content && /^\([a-zA-Z\s]+\)(\([a-zA-Z\s]+\))*$/.test(content.trim()))) {
+    // Check for sticker message type (NOT text patterns - those should display as text)
+    if (msg.messageType === 'sticker' || content.startsWith('[sticker:')) {
       return (
         <p style={{ fontSize: 40, margin: 0, textAlign: 'center' }}>
           {convertStickerText(content)}
@@ -3246,13 +3246,14 @@ export default function DataChatPage() {
                         </span>
                       </div>
                       <div style={{ position: 'relative' }}>
-                        {/* Preview Layer - Shows emoji images */}
+                        {/* Preview Layer - Shows emoji images and text */}
                         {quickReplyPendingEmojis.length > 0 && (
                           <div style={{
                             position: 'absolute', top: 0, left: 0, right: 0,
-                            padding: '12px 14px', pointerEvents: 'none', zIndex: 1,
+                            padding: '12px 14px', pointerEvents: 'none', zIndex: 2,
                             fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap',
                             display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+                            color: colors.textPrimary,
                           }}>
                             {(() => {
                               const elements: React.ReactNode[] = [];
@@ -3270,7 +3271,8 @@ export default function DataChatPage() {
                                   );
                                   emojiIndex++;
                                 } else {
-                                  elements.push(<span key={`qr-char-${i}`} style={{ color: 'transparent' }}>{char}</span>);
+                                  // Show regular character with visible color
+                                  elements.push(<span key={`qr-char-${i}`}>{char}</span>);
                                 }
                               }
                               return elements;
@@ -3307,7 +3309,7 @@ export default function DataChatPage() {
                             fontSize: 14, outline: 'none',
                             resize: 'none', fontFamily: 'inherit', minHeight: 100,
                             transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                            position: 'relative', zIndex: 2,
+                            position: 'relative', zIndex: 1,
                           }}
                           onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${colors.accent}20`; }}
                           onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
