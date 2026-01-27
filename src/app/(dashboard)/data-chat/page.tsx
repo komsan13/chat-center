@@ -2372,6 +2372,7 @@ export default function DataChatPage() {
                     return (
                       <div key={msg.id} style={{ marginBottom: showTime ? 12 : 2 }}>
                         <div style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: isMobile ? 6 : 8 }}>
+                          {/* User avatar (left side) */}
                           {!isAgent && (
                             <div style={{ width: isMobile ? 28 : 32, flexShrink: 0 }}>
                               {showAvatar && (
@@ -2383,6 +2384,18 @@ export default function DataChatPage() {
                                   </div>
                                 )
                               )}
+                            </div>
+                          )}
+                          
+                          {/* Time + Read status BEFORE bubble for Agent (right side messages) */}
+                          {isAgent && showTime && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', marginRight: 6 }}>
+                              <span style={{ fontSize: 10, color: colors.textMuted }}>
+                                {msg.status === 'read' ? 'Read' : msg.status === 'sent' ? 'Sent' : ''}
+                              </span>
+                              <span style={{ fontSize: 10, color: colors.textMuted }}>
+                                {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
                             </div>
                           )}
                           
@@ -2490,22 +2503,15 @@ export default function DataChatPage() {
                             )}
                           </div>
                           
-                          {isAgent && showTime && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          {/* Time AFTER bubble for User (left side messages) */}
+                          {!isAgent && showTime && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-end', marginLeft: 6 }}>
                               <span style={{ fontSize: 10, color: colors.textMuted }}>
-                                {msg.status === 'read' ? 'Read' : msg.status === 'sent' ? 'Sent' : ''}
+                                {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
                           )}
                         </div>
-                        
-                        {showTime && (
-                          <div style={{ marginTop: 4, marginLeft: isAgent ? 0 : 40, textAlign: isAgent ? 'right' : 'left' }}>
-                            <span style={{ fontSize: 10, color: colors.textMuted }}>
-                              {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
