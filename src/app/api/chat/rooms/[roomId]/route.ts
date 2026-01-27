@@ -220,14 +220,15 @@ export async function DELETE(
       
       return NextResponse.json({ success: true, message: 'Room permanently deleted' });
     } else if (mode === 'clear') {
-      // Clear messages only, keep room for future messages (broadcast)
+      // Clear messages only, keep room, tags, and notes for future messages
       db.prepare('DELETE FROM LineChatMessage WHERE roomId = ?').run(roomId);
-      db.prepare('DELETE FROM ChatNote WHERE roomId = ?').run(roomId);
+      // Keep notes - don't delete them
+      // db.prepare('DELETE FROM ChatNote WHERE roomId = ?').run(roomId);
       
-      // Reset room state including tags
+      // Reset room state (keep tags)
       db.prepare(`
         UPDATE LineChatRoom 
-        SET lastMessageAt = NULL, unreadCount = 0, tags = '[]', updatedAt = ? 
+        SET lastMessageAt = NULL, unreadCount = 0, updatedAt = ? 
         WHERE id = ?
       `).run(new Date().toISOString(), roomId);
       

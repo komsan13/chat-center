@@ -798,12 +798,21 @@ export default function DataChatPage() {
       setShowTagInput(false);
       setNewTag('');
       
-      // Fetch room details including notes
+      // Fetch room details including notes and tags
       fetch(`/api/chat/rooms/${selectedRoom}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
-          if (data?.notes) {
-            setRoomNotes(data.notes);
+          if (data) {
+            // Update notes
+            if (data.notes) {
+              setRoomNotes(data.notes);
+            }
+            // Update tags in rooms state
+            if (data.tags) {
+              setRooms(prev => prev.map(r => 
+                r.id === selectedRoom ? { ...r, tags: data.tags } : r
+              ));
+            }
           }
         })
         .catch(err => console.error('Failed to fetch room details:', err));
@@ -1007,11 +1016,11 @@ export default function DataChatPage() {
           // Remove from UI completely
           setRooms(prev => prev.filter(r => r.id !== roomId));
         } else if (mode === 'clear') {
-          // Keep room but clear messages, tags, and notes
+          // Keep room but clear messages only (keep tags and notes)
           setRooms(prev => {
             const updated = prev.map(r => 
               r.id === roomId 
-                ? { ...r, lastMessage: undefined, lastMessageAt: undefined, unreadCount: 0, tags: [] }
+                ? { ...r, lastMessage: undefined, lastMessageAt: undefined, unreadCount: 0 }
                 : r
             );
             // Sort: rooms with messages first
@@ -1025,12 +1034,6 @@ export default function DataChatPage() {
           // Clear messages from UI
           setMessages([]);
           messagesCacheRef.current.delete(roomId);
-          // Clear notes from UI
-          setRoomNotes([]);
-          setShowNoteInput(false);
-          setNewNoteContent('');
-          // Clear tag input UI
-          setShowTagInput(false);
         } else {
           // Archive - remove from active list
           setRooms(prev => prev.filter(r => r.id !== roomId));
