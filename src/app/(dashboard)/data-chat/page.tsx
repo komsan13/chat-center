@@ -872,7 +872,7 @@ export default function DataChatPage() {
   // ═══════════════════════════════════════════════════════════════════
   // TYPING INDICATOR & INPUT HANDLING
   // ═══════════════════════════════════════════════════════════════════
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setMessage(e.target.value);
     
     if (selectedRoom && currentUser && sendTypingRef.current) {
@@ -2807,96 +2807,128 @@ export default function DataChatPage() {
             )}
 
             {/* Input Area */}
-            <div style={{ padding: isMobile ? '10px 12px' : '14px 20px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
-              {!isMobile && (
-                <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 8 }}>
-                  <kbd style={{ padding: '2px 6px', background: colors.bgTertiary, borderRadius: 4, fontSize: 10 }}>Enter</kbd> to send
-                  <span style={{ margin: '0 6px' }}>•</span>
-                  <kbd style={{ padding: '2px 6px', background: colors.bgTertiary, borderRadius: 4, fontSize: 10 }}>Shift + Enter</kbd> for new line
-                </div>
-              )}
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: isMobile ? 8 : 12 }}>
-                <div style={{ flex: 1 }}>
-                  <input
-                    type="text"
-                    value={message}
-                    onChange={handleInputChange}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
-                    placeholder="Type your message..."
-                    style={{
-                      width: '100%', height: isMobile ? 40 : 44, padding: '0 14px',
-                      borderRadius: 8, border: `1px solid ${colors.border}`,
-                      background: colors.bgInput, color: colors.textPrimary,
-                      fontSize: isMobile ? 16 : 14, outline: 'none',
-                      transition: 'border-color 0.15s ease',
+            <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+              {/* Textarea */}
+              <textarea
+                value={message}
+                onChange={handleInputChange}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(message); } }}
+                placeholder="Enter: Send message, Shift + Enter: New line"
+                rows={3}
+                style={{
+                  width: '100%', 
+                  padding: '12px 14px',
+                  borderRadius: 8, 
+                  border: `1px solid ${colors.border}`,
+                  background: colors.bgPrimary, 
+                  color: colors.textPrimary,
+                  fontSize: 14, 
+                  outline: 'none',
+                  resize: 'none',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.5,
+                  transition: 'border-color 0.15s ease',
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = colors.accent}
+                onBlur={(e) => e.currentTarget.style.borderColor = colors.border}
+              />
+              
+              {/* Bottom Bar: Actions + Send */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button 
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    style={{ 
+                      width: 36, height: 36, borderRadius: '50%', border: 'none',
+                      background: showEmojiPicker ? colors.accentLight : 'transparent',
+                      color: showEmojiPicker ? colors.accent : colors.textMuted,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s ease',
                     }}
-                    onFocus={(e) => e.currentTarget.style.borderColor = colors.accent}
-                    onBlur={(e) => e.currentTarget.style.borderColor = colors.border}
+                    title="Emoji & Sticker"
+                  >
+                    <Smile size={20} />
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                    style={{ display: 'none' }}
                   />
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    style={{ 
+                      width: 36, height: 36, borderRadius: '50%', border: 'none', 
+                      background: isUploading ? colors.accentLight : 'transparent', 
+                      color: isUploading ? colors.accent : colors.textMuted, 
+                      cursor: isUploading ? 'not-allowed' : 'pointer', 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Attach file"
+                  >
+                    {isUploading ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <Paperclip size={20} />}
+                  </button>
+                  <button 
+                    onClick={() => setShowQuickReplies(!showQuickReplies)}
+                    style={{ 
+                      width: 36, height: 36, borderRadius: '50%', border: 'none',
+                      background: showQuickReplies ? colors.accentLight : 'transparent',
+                      color: showQuickReplies ? colors.accent : colors.textMuted,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Quick replies"
+                  >
+                    <Plus size={20} />
+                  </button>
+                  <button 
+                    onClick={() => { setShowEmojiPicker(true); setEmojiPickerTab('sticker'); }}
+                    style={{ 
+                      width: 36, height: 36, borderRadius: '50%', border: 'none',
+                      background: showEmojiPicker && emojiPickerTab === 'sticker' ? colors.accentLight : 'transparent',
+                      color: showEmojiPicker && emojiPickerTab === 'sticker' ? colors.accent : colors.textMuted,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Stickers"
+                  >
+                    <MessageCircle size={20} />
+                  </button>
                 </div>
+                
+                {/* Send Button */}
                 <button
                   onClick={() => sendMessage(message)}
                   disabled={!message.trim() || isSending}
                   style={{
-                    padding: isMobile ? '10px 14px' : '12px 20px', borderRadius: 8, border: 'none',
-                    background: message.trim() && !isSending ? colors.accent : colors.bgTertiary,
-                    color: message.trim() && !isSending ? '#fff' : colors.textMuted,
-                    fontSize: 13, fontWeight: 600,
+                    padding: '8px 16px', 
+                    borderRadius: 6, 
+                    border: 'none',
+                    background: colors.accent,
+                    color: '#fff',
+                    fontSize: 13, 
+                    fontWeight: 600,
                     cursor: message.trim() && !isSending ? 'pointer' : 'default',
-                    display: 'flex', alignItems: 'center', gap: 6,
+                    opacity: message.trim() && !isSending ? 1 : 0.6,
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 6,
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  {isSending ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : isMobile ? <Send size={18} /> : <><Send size={15} /> Send</>}
+                  {isSending ? (
+                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      Send
+                    </>
+                  )}
                 </button>
-              </div>
-              
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: 4, marginTop: isMobile ? 8 : 10 }}>
-                <button 
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  style={{ 
-                    width: 34, height: 34, borderRadius: 6, border: 'none',
-                    background: showEmojiPicker ? colors.accentLight : 'transparent',
-                    color: showEmojiPicker ? colors.accent : colors.textMuted,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <Smile size={18} />
-                </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-                  style={{ display: 'none' }}
-                />
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  style={{ 
-                    width: 34, height: 34, borderRadius: 6, border: 'none', 
-                    background: isUploading ? colors.accentLight : 'transparent', 
-                    color: isUploading ? colors.accent : colors.textMuted, 
-                    cursor: isUploading ? 'not-allowed' : 'pointer', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center' 
-                  }}
-                >
-                  {isUploading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Paperclip size={18} />}
-                </button>
-                {!isMobile && (
-                  <button 
-                    onClick={() => setShowQuickReplies(!showQuickReplies)}
-                    style={{ 
-                      width: 34, height: 34, borderRadius: 6, border: 'none',
-                      background: showQuickReplies ? colors.accentLight : 'transparent',
-                      color: showQuickReplies ? colors.accent : colors.textMuted,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
-                    <Plus size={18} />
-                  </button>
-                )}
               </div>
             </div>
           </div>
