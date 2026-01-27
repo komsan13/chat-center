@@ -210,9 +210,11 @@ export async function GET(request: NextRequest) {
       if (lastMessage && typeof lastMessage.emojis === 'string') {
         lastMessage.emojis = JSON.parse(lastMessage.emojis);
       }
-      // Parse emojis in recentMessages and map stickerPackageId to packageId
+      // Parse emojis in recentMessages and map column names for frontend
       const recentMessages = (recentMessagesMap[room.id] || []).map(msg => ({
         ...msg,
+        messageType: msg.messageType || msg.type || 'text',
+        sender: msg.sender || msg.senderType || 'user',
         packageId: msg.packageId || msg.stickerPackageId,
         emojis: msg.emojis ? JSON.parse(msg.emojis as string) : null,
       }));
@@ -314,13 +316,15 @@ interface MessageRecord {
   id: string;
   roomId: string;
   lineMessageId?: string;
-  messageType: string;
+  messageType?: string;
+  type?: string;  // Database column name (alias)
   content: string;
   mediaUrl?: string;
   stickerId?: string;
   packageId?: string;
   stickerPackageId?: string;  // Database column name
-  sender: string;
+  sender?: string;
+  senderType?: string;  // Database column name (alias)
   senderName?: string;
   status: string;
   replyToId?: string;

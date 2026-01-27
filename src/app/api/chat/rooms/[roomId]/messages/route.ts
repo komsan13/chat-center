@@ -43,7 +43,9 @@ export async function GET(
     // Parse emojis JSON for each message and map column names
     const parsedMessages = messages.map(msg => ({
       ...msg,
-      // Map stickerPackageId to packageId for frontend compatibility
+      // Map database column names to frontend expected names
+      messageType: msg.messageType || msg.type || 'text',
+      sender: msg.sender || msg.senderType || 'user',
       packageId: msg.packageId || msg.stickerPackageId,
       emojis: msg.emojis ? JSON.parse(msg.emojis as string) : null,
     }));
@@ -95,13 +97,15 @@ interface MessageRecord {
   id: string;
   roomId: string;
   lineMessageId?: string;
-  messageType: string;
+  messageType?: string;
+  type?: string;  // Database column name (alias)
   content: string;
   mediaUrl?: string;
   stickerId?: string;
   packageId?: string;
   stickerPackageId?: string;  // Database column name
-  sender: string;
+  sender?: string;
+  senderType?: string;  // Database column name (alias)
   senderName?: string;
   status: string;
   replyToId?: string;
