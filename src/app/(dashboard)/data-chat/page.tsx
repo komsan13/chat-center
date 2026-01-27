@@ -2916,22 +2916,30 @@ export default function DataChatPage() {
                             <button
                               onClick={() => { setEditingQuickReply(previewQuickReply); setShowQuickReplyModal(true); }}
                               style={{
-                                padding: '4px 8px', borderRadius: 4,
-                                background: 'transparent', border: `1px solid ${colors.border}`,
-                                color: colors.textMuted, fontSize: 11, cursor: 'pointer',
+                                padding: '6px 12px', borderRadius: 6,
+                                background: colors.bgSecondary, border: `1px solid ${colors.border}`,
+                                color: colors.textPrimary, fontSize: 12, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                transition: 'all 0.15s ease',
                               }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgSecondary; }}
                             >
-                              Edit
+                              <FileEdit size={12} /> Edit
                             </button>
                             <button
                               onClick={() => { deleteQuickReply(previewQuickReply.id); setPreviewQuickReply(null); }}
                               style={{
-                                padding: '4px 8px', borderRadius: 4,
-                                background: 'transparent', border: '1px solid #fca5a5',
-                                color: '#dc2626', fontSize: 11, cursor: 'pointer',
+                                padding: '6px 12px', borderRadius: 6,
+                                background: '#fef2f2', border: '1px solid #fca5a5',
+                                color: '#dc2626', fontSize: 12, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                transition: 'all 0.15s ease',
                               }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
                             >
-                              Delete
+                              <Trash2 size={12} /> Delete
                             </button>
                           </div>
                         )}
@@ -3064,30 +3072,69 @@ export default function DataChatPage() {
                     
                     {/* Messages Field */}
                     <div style={{ marginBottom: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>        
                         <label style={{ fontSize: 14, color: colors.textPrimary, fontWeight: 500 }}>Messages</label>
                         <span style={{ fontSize: 12, color: colors.textMuted }}>
                           <span id="messageCount">0</span>/1000
                         </span>
                       </div>
-                      <textarea
-                        name="label"
-                        defaultValue={editingQuickReply?.label || ''}
-                        placeholder="Enter message"
-                        maxLength={1000}
-                        rows={6}
-                        required
-                        onChange={(e) => {
-                          const counter = document.getElementById('messageCount');
-                          if (counter) counter.textContent = String(e.target.value.length);
-                        }}
-                        style={{
-                          width: '100%', padding: '12px 14px', borderRadius: 8,
-                          border: `1px solid ${colors.border}`, background: colors.bgPrimary,
-                          color: colors.textPrimary, fontSize: 14, outline: 'none',
-                          resize: 'vertical', fontFamily: 'inherit', minHeight: 120,
-                        }}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        <textarea
+                          id="quickReplyMessage"
+                          name="label"
+                          defaultValue={editingQuickReply?.label || ''}
+                          placeholder="Enter message"
+                          maxLength={1000}
+                          rows={6}
+                          required
+                          onChange={(e) => {
+                            const counter = document.getElementById('messageCount');
+                            if (counter) counter.textContent = String(e.target.value.length);
+                          }}
+                          style={{
+                            width: '100%', padding: '12px 14px', borderRadius: 8,
+                            border: `1px solid ${colors.border}`, background: colors.bgPrimary,
+                            color: colors.textPrimary, fontSize: 14, outline: 'none',
+                            resize: 'vertical', fontFamily: 'inherit', minHeight: 120,
+                          }}
+                        />
+                        {/* Emoji Bar */}
+                        <div style={{ 
+                          display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap',
+                          padding: '8px 0', borderTop: `1px solid ${colors.border}`,
+                        }}>
+                          {['😊', '😂', '🙏', '❤️', '👍', '🎉', '✅', '💬', '📱', '💳', '🧾', '📞', '⏰', '🔥', '✨'].map(emoji => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => {
+                                const textarea = document.getElementById('quickReplyMessage') as HTMLTextAreaElement;
+                                if (textarea) {
+                                  const start = textarea.selectionStart;
+                                  const end = textarea.selectionEnd;
+                                  const text = textarea.value;
+                                  textarea.value = text.substring(0, start) + emoji + text.substring(end);
+                                  textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+                                  textarea.focus();
+                                  const counter = document.getElementById('messageCount');
+                                  if (counter) counter.textContent = String(textarea.value.length);
+                                }
+                              }}
+                              style={{
+                                width: 32, height: 32, borderRadius: 6,
+                                border: `1px solid ${colors.border}`, background: colors.bgSecondary,
+                                fontSize: 16, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgHover; e.currentTarget.style.transform = 'scale(1.1)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = colors.bgSecondary; e.currentTarget.style.transform = 'scale(1)'; }}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                     
                     {/* LINE Token (hidden select, use current token) */}
