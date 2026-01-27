@@ -151,8 +151,48 @@ export default function DataChatPage() {
     }
   }, [selectedRoom, isMobile]);
   
+  // Initialize Quick Reply Editor when modal opens
+  useEffect(() => {
+    if (showQuickReplyModal && quickReplyEditorRef.current) {
+      setTimeout(() => {
+        const editor = quickReplyEditorRef.current;
+        if (!editor) return;
+        
+        if (editingQuickReply?.emojis && editingQuickReply.emojis.length > 0) {
+          let html = '';
+          const content = editingQuickReply.label || '';
+          const sortedEmojis = [...editingQuickReply.emojis].sort((a, b) => a.index - b.index);
+          let lastIndex = 0;
+          sortedEmojis.forEach((emoji) => {
+            if (emoji.index > lastIndex) {
+              html += content.substring(lastIndex, emoji.index).replace(/\n/g, '<br>');
+            }
+            html += `<img src="https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png" data-product-id="${emoji.productId}" data-emoji-id="${emoji.emojiId}" alt="emoji" style="width:20px;height:20px;vertical-align:middle;margin:0 1px;" />`;
+            lastIndex = emoji.index + 1;
+          });
+          if (lastIndex < content.length) {
+            html += content.substring(lastIndex).replace(/\n/g, '<br>');
+          }
+          editor.innerHTML = html;
+          setQuickReplyMessage(editingQuickReply.label);
+          setQuickReplyPendingEmojis(editingQuickReply.emojis);
+        } else if (editingQuickReply?.label) {
+          editor.innerHTML = editingQuickReply.label.replace(/\n/g, '<br>');
+          setQuickReplyMessage(editingQuickReply.label);
+          setQuickReplyPendingEmojis([]);
+        } else {
+          editor.innerHTML = '';
+          setQuickReplyMessage('');
+          setQuickReplyPendingEmojis([]);
+        }
+      }, 50);
+    }
+  }, [showQuickReplyModal, editingQuickReply]);
+  
   const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const quickReplyEditorRef = useRef<HTMLDivElement>(null);
+  const messageEditorRef = useRef<HTMLDivElement>(null);
   const selectedRoomRef = useRef<string | null>(
     typeof window !== 'undefined' ? localStorage.getItem('selectedChatRoom') : null
   );
@@ -3364,6 +3404,7 @@ export default function DataChatPage() {
                       </div>
                       {/* ContentEditable div - shows emoji as images inline */}
                       <div
+                        ref={quickReplyEditorRef}
                         id="quickReplyEditor"
                         contentEditable
                         suppressContentEditableWarning
@@ -3373,7 +3414,7 @@ export default function DataChatPage() {
                           let text = '';
                           const emojis: Array<{ index: number; productId: string; emojiId: string }> = [];
                           
-                          editor.childNodes.forEach((node) => {
+                          const processNode = (node: ChildNode) => {
                             if (node.nodeType === Node.TEXT_NODE) {
                               text += node.textContent || '';
                             } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -3387,11 +3428,16 @@ export default function DataChatPage() {
                                 text += '$';
                               } else if (el.tagName === 'BR') {
                                 text += '\n';
+                              } else if (el.tagName === 'DIV' || el.tagName === 'P') {
+                                if (text.length > 0 && !text.endsWith('\n')) text += '\n';
+                                el.childNodes.forEach(processNode);
                               } else {
-                                text += el.textContent || '';
+                                el.childNodes.forEach(processNode);
                               }
                             }
-                          });
+                          };
+                          
+                          editor.childNodes.forEach(processNode);
                           
                           setQuickReplyMessage(text);
                           setQuickReplyPendingEmojis(emojis);
@@ -3408,27 +3454,6 @@ export default function DataChatPage() {
                         }}
                         onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = `0 0 0 3px ${colors.accent}20`; }}
                         onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = 'none'; }}
-                        dangerouslySetInnerHTML={{ 
-                          __html: editingQuickReply?.emojis && editingQuickReply.emojis.length > 0
-                            ? (() => {
-                                let html = '';
-                                const content = editingQuickReply.label || '';
-                                const sortedEmojis = [...editingQuickReply.emojis].sort((a, b) => a.index - b.index);
-                                let lastIndex = 0;
-                                sortedEmojis.forEach((emoji) => {
-                                  if (emoji.index > lastIndex) {
-                                    html += content.substring(lastIndex, emoji.index).replace(/\n/g, '<br>');
-                                  }
-                                  html += `<img src="https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png" data-product-id="${emoji.productId}" data-emoji-id="${emoji.emojiId}" alt="emoji" style="width:20px;height:20px;vertical-align:middle;margin:0 1px;" />`;
-                                  lastIndex = emoji.index + 1;
-                                });
-                                if (lastIndex < content.length) {
-                                  html += content.substring(lastIndex).replace(/\n/g, '<br>');
-                                }
-                                return html;
-                              })()
-                            : (editingQuickReply?.label || '').replace(/\n/g, '<br>') 
-                        }}
                       />
                       {/* Hidden input for form submission */}
                       <input type="hidden" name="label" value={quickReplyMessage} />
@@ -3471,7 +3496,7 @@ export default function DataChatPage() {
                               key={`${pkg.productId}-${emojiId}`}
                               type="button"
                               onClick={() => {
-                                const editor = document.getElementById('quickReplyEditor');
+                                const editor = quickReplyEditorRef.current;
                                 if (editor) {
                                   editor.focus();
                                   
@@ -3668,7 +3693,7 @@ export default function DataChatPage() {
                           <button 
                             key={`${pkg.productId}-${emojiId}`} 
                             onClick={() => {
-                              const editor = document.getElementById('messageEditor');
+                              const editor = messageEditorRef.current;
                               if (editor) {
                                 editor.focus();
                                 
@@ -3844,6 +3869,7 @@ export default function DataChatPage() {
                 minHeight: 80,
               }}>
                 <div
+                  ref={messageEditorRef}
                   id="messageEditor"
                   contentEditable
                   suppressContentEditableWarning
@@ -3854,7 +3880,7 @@ export default function DataChatPage() {
                     let text = '';
                     const emojis: Array<{ index: number; productId: string; emojiId: string }> = [];
                     
-                    editor.childNodes.forEach((node) => {
+                    const processNode = (node: ChildNode) => {
                       if (node.nodeType === Node.TEXT_NODE) {
                         text += node.textContent || '';
                       } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -3868,11 +3894,16 @@ export default function DataChatPage() {
                           text += '$';
                         } else if (el.tagName === 'BR') {
                           text += '\n';
+                        } else if (el.tagName === 'DIV' || el.tagName === 'P') {
+                          if (text.length > 0 && !text.endsWith('\n')) text += '\n';
+                          el.childNodes.forEach(processNode);
                         } else {
-                          text += el.textContent || '';
+                          el.childNodes.forEach(processNode);
                         }
                       }
-                    });
+                    };
+                    
+                    editor.childNodes.forEach(processNode);
                     
                     setMessage(text);
                     setPendingEmojis(emojis);
@@ -3882,8 +3913,7 @@ export default function DataChatPage() {
                       e.preventDefault(); 
                       sendMessage(message); 
                       // Clear editor after send
-                      const editor = document.getElementById('messageEditor');
-                      if (editor) editor.innerHTML = '';
+                      if (messageEditorRef.current) messageEditorRef.current.innerHTML = '';
                     } 
                   }}
                   style={{
