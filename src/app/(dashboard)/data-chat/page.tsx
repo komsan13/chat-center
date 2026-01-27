@@ -73,6 +73,7 @@ interface QuickReply {
   icon: string;
   isFavorite: boolean;
   createdAt: string;
+  emojis?: LineEmoji[];
 }
 
 export default function DataChatPage() {
@@ -1074,7 +1075,7 @@ export default function DataChatPage() {
   // ═══════════════════════════════════════════════════════════════════
   // QUICK REPLIES MANAGEMENT
   // ═══════════════════════════════════════════════════════════════════
-  const saveQuickReply = (title: string, label: string, lineTokenId: string, existingId?: string) => {
+  const saveQuickReply = (title: string, label: string, lineTokenId: string, existingId?: string, emojis?: LineEmoji[]) => {
     const newReply: QuickReply = {
       id: existingId || `qr-${Date.now()}`,
       lineTokenId,
@@ -1083,6 +1084,7 @@ export default function DataChatPage() {
       icon: '💬',
       isFavorite: existingId ? (quickReplies.find(q => q.id === existingId)?.isFavorite || false) : false,
       createdAt: existingId ? (quickReplies.find(q => q.id === existingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+      emojis: emojis && emojis.length > 0 ? emojis : undefined,
     };
     
     setQuickReplies(prev => {
@@ -1118,6 +1120,12 @@ export default function DataChatPage() {
 
   const selectQuickReply = (reply: QuickReply) => {
     setMessage(reply.label);
+    // Set emojis for sending
+    if (reply.emojis && reply.emojis.length > 0) {
+      setPendingEmojis(reply.emojis);
+    } else {
+      setPendingEmojis([]);
+    }
     setPreviewQuickReply(null);
     setShowQuickReplies(false);
   };
@@ -2061,6 +2069,7 @@ export default function DataChatPage() {
                       fontSize: 12, color: colors.textMuted,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       flex: 1, minWidth: 0,
+                      display: 'flex', alignItems: 'center',
                     }}>
                       {typingUsers[room.id] ? (
                         <span style={{ color: colors.accent, fontStyle: 'italic' }}>
@@ -2080,16 +2089,36 @@ export default function DataChatPage() {
                                   : room.lastMessage?.messageType === 'file'
                                     ? '📎 File'
                                     : room.lastMessage?.emojis && room.lastMessage.emojis.length > 0
-                                      ? room.lastMessage.emojis.slice(0, 3).map((emoji, i) => (
-                                          <img 
-                                            key={i}
-                                            src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
-                                            alt="emoji"
-                                            style={{ width: 16, height: 16, verticalAlign: 'middle', marginRight: 2 }}
-                                          />
-                                        ))
+                                      ? (() => {
+                                          // Render text with embedded emojis
+                                          const content = room.lastMessage.content || '';
+                                          const elements: React.ReactNode[] = [];
+                                          const sortedEmojis = [...room.lastMessage.emojis].sort((a, b) => a.index - b.index);
+                                          let lastIndex = 0;
+                                          sortedEmojis.slice(0, 3).forEach((emoji, idx) => {
+                                            if (emoji.index > lastIndex) {
+                                              const text = content.substring(lastIndex, emoji.index);
+                                              if (text) elements.push(<span key={`t-${idx}`}>{text.substring(0, 15)}</span>);
+                                            }
+                                            elements.push(
+                                              <img 
+                                                key={`e-${idx}`}
+                                                src={emoji.url || `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+                                                alt="emoji"
+                                                style={{ width: 16, height: 16, verticalAlign: 'middle', marginRight: 2 }}
+                                              />
+                                            );
+                                            lastIndex = emoji.index + (emoji.length || 1);
+                                          });
+                                          // Add remaining text (truncated)
+                                          if (lastIndex < content.length) {
+                                            const remaining = content.substring(lastIndex, lastIndex + 15);
+                                            if (remaining) elements.push(<span key="t-end">{remaining}</span>);
+                                          }
+                                          return elements;
+                                        })()
                                       : room.lastMessage?.content 
-                                        ? convertStickerText(room.lastMessage.content).substring(0, 30)
+                                        ? room.lastMessage.content.substring(0, 30)
                                         : 'Start conversation'}
                         </>
                       )}
@@ -2968,8 +2997,37 @@ export default function DataChatPage() {
                                 <div style={{ 
                                   fontSize: 12, color: colors.textMuted,
                                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                  display: 'flex', alignItems: 'center',
                                 }}>
-                                  {reply.label.length > 40 ? reply.label.substring(0, 40) + '...' : reply.label}
+                                  {reply.emojis && reply.emojis.length > 0 ? (
+                                    (() => {
+                                      const content = reply.label;
+                                      const elements: React.ReactNode[] = [];
+                                      const sortedEmojis = [...reply.emojis].sort((a, b) => a.index - b.index);
+                                      let lastIndex = 0;
+                                      sortedEmojis.slice(0, 3).forEach((emoji, idx) => {
+                                        if (emoji.index > lastIndex) {
+                                          const text = content.substring(lastIndex, emoji.index);
+                                          if (text) elements.push(<span key={`t-${idx}`}>{text.substring(0, 20)}</span>);
+                                        }
+                                        elements.push(
+                                          <img 
+                                            key={`e-${idx}`}
+                                            src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+                                            alt="emoji"
+                                            style={{ width: 14, height: 14, verticalAlign: 'middle', marginRight: 2 }}
+                                          />
+                                        );
+                                        lastIndex = emoji.index + (emoji.length || 1);
+                                      });
+                                      if (lastIndex < content.length) {
+                                        elements.push(<span key="t-end">{content.substring(lastIndex, lastIndex + 20)}</span>);
+                                      }
+                                      return elements;
+                                    })()
+                                  ) : (
+                                    reply.label.length > 40 ? reply.label.substring(0, 40) + '...' : reply.label
+                                  )}
                                 </div>
                               </div>
                               <button
@@ -3010,7 +3068,7 @@ export default function DataChatPage() {
                         {previewQuickReply && (
                           <div style={{ display: 'flex', gap: 8 }}>
                             <button
-                              onClick={() => { setEditingQuickReply(previewQuickReply); setQuickReplyMessage(previewQuickReply?.label || ''); setQuickReplyPendingEmojis([]); setShowQuickReplyModal(true); }}
+                              onClick={() => { setEditingQuickReply(previewQuickReply); setQuickReplyMessage(previewQuickReply?.label || ''); setQuickReplyPendingEmojis(previewQuickReply?.emojis || []); setShowQuickReplyModal(true); }}
                               style={{
                                 padding: '8px 14px', borderRadius: 8,
                                 background: `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}08)`,
@@ -3063,8 +3121,39 @@ export default function DataChatPage() {
                             lineHeight: 1.5,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                             whiteSpace: 'pre-wrap',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
                           }}>
-                            {previewQuickReply.label}
+                            {previewQuickReply.emojis && previewQuickReply.emojis.length > 0 ? (
+                              // Render text with emojis
+                              (() => {
+                                const content = previewQuickReply.label;
+                                const elements: React.ReactNode[] = [];
+                                const sortedEmojis = [...previewQuickReply.emojis].sort((a, b) => a.index - b.index);
+                                let lastIndex = 0;
+                                sortedEmojis.forEach((emoji, idx) => {
+                                  if (emoji.index > lastIndex) {
+                                    elements.push(<span key={`t-${idx}`}>{content.substring(lastIndex, emoji.index)}</span>);
+                                  }
+                                  elements.push(
+                                    <img 
+                                      key={`e-${idx}`}
+                                      src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+                                      alt="emoji"
+                                      style={{ width: 22, height: 22, display: 'inline-block', verticalAlign: 'middle', margin: '0 1px' }}
+                                    />
+                                  );
+                                  lastIndex = emoji.index + (emoji.length || 1);
+                                });
+                                if (lastIndex < content.length) {
+                                  elements.push(<span key="t-end">{content.substring(lastIndex)}</span>);
+                                }
+                                return elements;
+                              })()
+                            ) : (
+                              previewQuickReply.label
+                            )}
                           </div>
                         ) : (
                           <div style={{ 
@@ -3183,7 +3272,9 @@ export default function DataChatPage() {
                       const label = (form.elements.namedItem('label') as HTMLTextAreaElement).value;
                       const tokenId = (form.elements.namedItem('tokenId') as HTMLSelectElement).value;
                       if (title.trim() && label.trim()) {
-                        saveQuickReply(title.trim(), label.trim(), tokenId, editingQuickReply?.id);
+                        saveQuickReply(title.trim(), label.trim(), tokenId, editingQuickReply?.id, quickReplyPendingEmojis.length > 0 ? quickReplyPendingEmojis : undefined);
+                        setQuickReplyPendingEmojis([]);
+                        setQuickReplyMessage('');
                       }
                     }}
                   >
