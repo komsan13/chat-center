@@ -219,6 +219,7 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
         emojisJson = JSON.stringify(msg.emojis);
       }
     } else if (msg.type === 'sticker') {
+      messageType = 'sticker';
       stickerId = msg.stickerId;
       stickerPackageId = msg.packageId;
       content = `[Sticker]`;
