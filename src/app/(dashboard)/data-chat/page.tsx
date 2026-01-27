@@ -147,7 +147,6 @@ export default function DataChatPage() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
   const sendTypingRef = useRef<((roomId: string, userName: string, isTyping: boolean) => void) | null>(null);
-  const roomsRef = useRef<ChatRoom[]>([]);
 
   // ═══════════════════════════════════════════════════════════════════
   // THEME COLORS - Clean Professional Design
@@ -312,11 +311,6 @@ export default function DataChatPage() {
     selectedTokenIdsRef.current = selectedTokenIds;
     localStorage.setItem('selectedChatTokens', JSON.stringify([...selectedTokenIds]));
   }, [selectedTokenIds]);
-
-  // Sync rooms to roomsRef for notification filtering
-  useEffect(() => {
-    roomsRef.current = rooms;
-  }, [rooms]);
 
   // Toggle token selection
   const toggleTokenSelection = useCallback((tokenId: string) => {
@@ -740,10 +734,9 @@ export default function DataChatPage() {
     onRoomUpdate: handleRoomUpdate,
     onRoomPropertyChanged: handleRoomPropertyChanged,
     onRoomDeleted: handleRoomDeleted,
-    currentRoomId: selectedRoom, // Pass current room to avoid sound notification for active room
+    currentRoomId: selectedRoom,
     enableSound: true,
-    selectedTokenIds: [...selectedTokenIds], // Convert Set to array for notification filtering
-    roomsRef: roomsRef, // Pass rooms ref to check room's lineTokenId
+    // Note: Sound filtering is handled in handleNewMessage based on selectedTokenIds
   });
 
   // Store sendTyping in ref

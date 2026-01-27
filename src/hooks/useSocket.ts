@@ -80,8 +80,7 @@ interface UseSocketOptions {
   onConnectionQualityChange?: (quality: ConnectionQuality) => void;
   enableSound?: boolean;
   currentRoomId?: string | null;
-  selectedTokenIds?: string[];
-  roomsRef?: React.RefObject<ChatRoom[]>;
+  // Note: selectedTokenIds and roomsRef removed - filtering done at page level
 }
 
 type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'suspended';
@@ -380,43 +379,20 @@ export function useSocket(options: UseSocketOptions = {}) {
     });
 
     // ═══════════════════════════════════════════════════════════════════════
-    // CHAT EVENTS
+    // CHAT EVENTS - Always pass data to callbacks, let page handle filtering
     // ═══════════════════════════════════════════════════════════════════════
 
     socket.on('new-message', (message: ChatMessage) => {
       console.log(`[Socket] 📨 New message: ${message.id}`);
-      const currentRoom = optionsRef.current.currentRoomId;
-      const selectedTokenIds = optionsRef.current.selectedTokenIds || [];
-      const rooms = optionsRef.current.roomsRef?.current || [];
-      
-      // Find the room to check its lineTokenId
-      const messageRoom = rooms.find(r => r.id === message.roomId);
-      const isFromSelectedToken = selectedTokenIds.length === 0 || 
-        (messageRoom?.lineTokenId && selectedTokenIds.includes(messageRoom.lineTokenId));
-      
-      if (message.sender === 'user' && message.roomId !== currentRoom && isFromSelectedToken) {
-        playNotificationSound();
-        // Browser notification if tab hidden
-        if (!isPageVisibleRef.current && 'Notification' in window && Notification.permission === 'granted') {
-          new Notification('New Message', {
-            body: message.content || 'New message received',
-            icon: '/icon-192.png',
-            tag: message.roomId,
-          });
-        }
-      }
+      // Always call the callback - let the page decide what to do
+      // This ensures all messages are recorded regardless of channel selection
       optionsRef.current.onNewMessage?.(message);
     });
 
     socket.on('new-room', (room: ChatRoom) => {
       console.log(`[Socket] 🆕 New room: ${room.id}`);
-      const selectedTokenIds = optionsRef.current.selectedTokenIds || [];
-      const isFromSelectedToken = selectedTokenIds.length === 0 || 
-        (room.lineTokenId && selectedTokenIds.includes(room.lineTokenId));
-      
-      if (isFromSelectedToken) {
-        playNotificationSound();
-      }
+      // Always call the callback - let the page decide what to do
+      // This ensures all rooms are recorded regardless of channel selection
       optionsRef.current.onNewRoom?.(room);
     });
 
