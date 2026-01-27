@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: aurix-dashboard
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - COOKIE_SECURE=true
+    volumes:
+      - ./data:/app/data
+      - ./prisma/dev.db:/app/prisma/dev.db
+    restart: unless-stopped
