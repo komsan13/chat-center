@@ -89,6 +89,7 @@ export default function DataChatPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiPickerTab, setEmojiPickerTab] = useState<'emoji' | 'sticker'>('emoji');
   const [selectedStickerPackage, setSelectedStickerPackage] = useState('11537');
+  const [hoveredSticker, setHoveredSticker] = useState<{ stickerId: string; x: number; y: number } | null>(null);
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [chatSearchTerm, setChatSearchTerm] = useState('');
@@ -2740,13 +2741,18 @@ export default function DataChatPage() {
                     </div>
                     
                     {/* Stickers Grid */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 6 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 6, position: 'relative' }}>
                       {stickerPackages
                         .find(pkg => pkg.packageId === selectedStickerPackage)
                         ?.stickers.map((stickerId, i) => (
                         <button 
                           key={`${selectedStickerPackage}-${stickerId}`}
                           onClick={() => sendSticker(selectedStickerPackage, stickerId)}
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setHoveredSticker({ stickerId, x: rect.left + rect.width / 2, y: rect.top });
+                          }}
+                          onMouseLeave={() => setHoveredSticker(null)}
                           className="sticker-btn"
                           style={{
                             width: isMobile ? 64 : 56, height: isMobile ? 64 : 56, borderRadius: 8, 
@@ -2765,6 +2771,36 @@ export default function DataChatPage() {
                         </button>
                       ))}
                     </div>
+                    
+                    {/* Sticker Preview Tooltip */}
+                    {hoveredSticker && (
+                      <div
+                        style={{
+                          position: 'fixed',
+                          left: hoveredSticker.x,
+                          top: hoveredSticker.y - 160,
+                          transform: 'translateX(-50%)',
+                          width: 140,
+                          height: 140,
+                          background: colors.bgPrimary,
+                          borderRadius: 12,
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                          border: `1px solid ${colors.border}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 12,
+                          zIndex: 9999,
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        <img
+                          src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${hoveredSticker.stickerId}/iPhone/sticker.png`}
+                          alt="preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
