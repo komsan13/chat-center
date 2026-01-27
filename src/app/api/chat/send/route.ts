@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { roomId, content, messageType = 'text', stickerId, packageId, mediaUrl } = body;
+    const { roomId, content, messageType = 'text', stickerId, packageId, mediaUrl, senderName = 'Agent' } = body;
 
     if (!roomId) {
       return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       stickerId || null,
       packageId || null,
       'agent',
-      'Admin', // Could be dynamic based on logged-in user
+      senderName,
       'sending',
       now
     );
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       stickerId,
       packageId,
       sender: 'agent',
-      senderName: 'Admin',
+      senderName: senderName,
       status: 'sending',
       createdAt: now,
     };
