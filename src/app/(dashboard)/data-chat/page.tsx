@@ -194,6 +194,12 @@ export default function DataChatPage() {
   }), [isDark]);
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
+  
+  // Get LINE token info for selected room
+  const selectedRoomToken = useMemo(() => {
+    if (!selectedRoomData?.lineTokenId) return null;
+    return lineTokens.find(t => t.id === selectedRoomData.lineTokenId) || null;
+  }, [selectedRoomData?.lineTokenId, lineTokens]);
 
   // Filter rooms based on selected tokens
   const filteredRooms = useMemo(() => {
@@ -2706,7 +2712,14 @@ export default function DataChatPage() {
                 background: colors.bgSecondary,
                 minHeight: 69,
               }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Customer Info</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>
+                    {selectedRoomToken?.websiteName || 'Website'}
+                  </span>
+                  <span style={{ fontSize: 11, color: colors.textMuted }}>
+                    {selectedRoomToken?.name || 'LINE Channel'}
+                  </span>
+                </div>
                 <button
                   onClick={() => setSelectedRoom(null)}
                   title="Close Chat"
