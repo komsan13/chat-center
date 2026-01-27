@@ -8,7 +8,9 @@ import {
   Loader2, Paperclip, Image as ImageIcon, FileText, 
   Phone, Video, Bookmark, VolumeX, Volume2, Trash2, AlertTriangle,
   ChevronDown, ChevronLeft, ChevronRight, User, Tag, FileEdit, Bell, BellOff, XCircle,
-  Eye, MessageSquare
+  Eye, MessageSquare, Coins, Headphones, MessageCircleHeart, CheckCircle2, Building2,
+  Sparkles, BadgeDollarSign, Receipt, HandHeart, Star, ClipboardList, Smartphone,
+  Heart, HeartHandshake, Timer, Wrench, Info, Zap, ArrowRight
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSocket } from '@/hooks/useSocket';
@@ -1854,45 +1856,51 @@ export default function DataChatPage() {
     },
   ];
 
-  // Quick Message Templates (ส่งเป็น text message พร้อม emoji)
+  // Quick Message Templates (ส่งเป็น text message พร้อม emoji) - Pro Design
   const quickMessageTemplates = [
     {
       id: 'casino',
-      name: '🎰 คาสิโน',
-      color: '#6366f1',
+      name: 'คาสิโน',
+      icon: 'Coins',
+      color: '#8b5cf6',
+      gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
       messages: [
-        { id: 'credit-done', text: '✅ เครดิตเข้าเรียบร้อยแล้วนะคะลูกค้า 💕', emoji: '✅' },
-        { id: 'checking', text: '🔍 แอดตรวจสอบให้สักครู่ค่ะ', emoji: '🔍' },
-        { id: 'bank-delay', text: '🏦 ธนาคารดีเลย์ กรุณารอสักครู่นะคะ 🙏', emoji: '🏦' },
-        { id: 'good-luck', text: '🎰 เฮงๆรวยๆแตกเยอะๆนะคะ 💰🍀', emoji: '🎰' },
-        { id: 'credit-in', text: '💸 เครดิตเข้าแล้ว เฮงๆปังๆน๊า 🎉', emoji: '💸' },
-        { id: 'send-slip', text: '🧾 แจ้งสลิปให้แอดมินด้วยน๊า 📷', emoji: '🧾' },
+        { id: 'credit-done', text: 'เครดิตเข้าเรียบร้อยแล้วนะคะลูกค้า', icon: 'CheckCircle2', iconColor: '#10b981' },
+        { id: 'checking', text: 'แอดตรวจสอบให้สักครู่ค่ะ', icon: 'Search', iconColor: '#3b82f6' },
+        { id: 'bank-delay', text: 'ธนาคารดีเลย์ กรุณารอสักครู่นะคะ', icon: 'Building2', iconColor: '#f59e0b' },
+        { id: 'good-luck', text: 'เฮงๆ รวยๆ แตกเยอะๆ นะคะ', icon: 'Sparkles', iconColor: '#eab308' },
+        { id: 'credit-in', text: 'เครดิตเข้าแล้ว เฮงๆปังๆน๊า', icon: 'BadgeDollarSign', iconColor: '#22c55e' },
+        { id: 'send-slip', text: 'แจ้งสลิปให้แอดมินด้วยน๊า', icon: 'Receipt', iconColor: '#6366f1' },
       ],
     },
     {
       id: 'service',
-      name: '💬 บริการ',
+      name: 'บริการ',
+      icon: 'Headphones',
       color: '#10b981',
+      gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
       messages: [
-        { id: 'hello', text: '👋 สวัสดีค่า ทำรายการอะไรดีคะ 😊', emoji: '👋' },
-        { id: 'welcome', text: '🌟 แอดมินยินดีให้บริการค่า 💖', emoji: '🌟' },
-        { id: 'wait-process', text: '⏳ รอสักครู่ อยู่ระหว่างดำเนินการนะคะ', emoji: '⏳' },
-        { id: 'complete-info', text: '📝 แจ้งข้อมูลให้ครบด้วยนะคะ', emoji: '📝' },
-        { id: 'screenshot', text: '📱 แคปหน้าจอให้แอดหน่อยน๊า', emoji: '📱' },
-        { id: 'fighting', text: '💪 สู้ๆ แอดมินเป็นกำลังใจให้นะคะ ❤️', emoji: '💪' },
+        { id: 'hello', text: 'สวัสดีค่า ทำรายการอะไรดีคะ', icon: 'HandHeart', iconColor: '#ec4899' },
+        { id: 'welcome', text: 'แอดมินยินดีให้บริการค่า', icon: 'Star', iconColor: '#f59e0b' },
+        { id: 'wait-process', text: 'รอสักครู่ อยู่ระหว่างดำเนินการนะคะ', icon: 'Clock', iconColor: '#3b82f6' },
+        { id: 'complete-info', text: 'แจ้งข้อมูลให้ครบด้วยนะคะ', icon: 'ClipboardList', iconColor: '#8b5cf6' },
+        { id: 'screenshot', text: 'แคปหน้าจอให้แอดหน่อยน๊า', icon: 'Smartphone', iconColor: '#06b6d4' },
+        { id: 'fighting', text: 'สู้ๆ แอดมินเป็นกำลังใจให้นะคะ', icon: 'Heart', iconColor: '#ef4444' },
       ],
     },
     {
       id: 'apology',
-      name: '🙏 ขออภัย',
+      name: 'ขออภัย',
+      icon: 'MessageCircleHeart',
       color: '#f59e0b',
+      gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
       messages: [
-        { id: 'sorry', text: '🙇 ขออภัยด้วยน๊า 🙏', emoji: '🙇' },
-        { id: 'sorry-delay', text: '⏰ ทำรายการให้เรียบร้อย ขออภัยในความล่าช้าค่ะ 🙏', emoji: '⏰' },
-        { id: 'calm-down', text: '😌 ใจเย็นๆนะคะ แอดรับเรื่องให้แล้วค่ะ 💕', emoji: '😌' },
-        { id: 'wrong-slip', text: '❌ ไม่ใช่สลิปของทางเรานะคะ', emoji: '❌' },
-        { id: 'maintenance', text: '🔧 ห้องเกมปิดปรับปรุงชั่วคราวค่า 🛠️', emoji: '🔧' },
-        { id: 'one-line-one-user', text: '📌 1 ไลน์ ต่อ 1 ยูส ค่ะ', emoji: '📌' },
+        { id: 'sorry', text: 'ขออภัยด้วยน๊า', icon: 'HeartHandshake', iconColor: '#ec4899' },
+        { id: 'sorry-delay', text: 'ทำรายการให้เรียบร้อย ขออภัยในความล่าช้าค่ะ', icon: 'Timer', iconColor: '#f59e0b' },
+        { id: 'calm-down', text: 'ใจเย็นๆนะคะ แอดรับเรื่องให้แล้วค่ะ', icon: 'Smile', iconColor: '#10b981' },
+        { id: 'wrong-slip', text: 'ไม่ใช่สลิปของทางเรานะคะ', icon: 'XCircle', iconColor: '#ef4444' },
+        { id: 'maintenance', text: 'ห้องเกมปิดปรับปรุงชั่วคราวค่า', icon: 'Wrench', iconColor: '#6366f1' },
+        { id: 'one-line-one-user', text: '1 ไลน์ ต่อ 1 ยูส ค่ะ', icon: 'Info', iconColor: '#3b82f6' },
       ],
     },
   ];
@@ -4110,98 +4118,159 @@ export default function DataChatPage() {
                   </div>
                 )}
 
-                {/* Quick Message Templates Tab */}
+                {/* Quick Message Templates Tab - Pro Design */}
                 {emojiPickerTab === 'custom' && (
-                  <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-                    {/* Category Selector */}
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                      {quickMessageTemplates.map((category) => (
-                        <button
-                          key={category.id}
-                          onClick={() => setSelectedTemplateCategory(category.id)}
-                          style={{
-                            padding: '6px 12px', borderRadius: 6,
-                            border: selectedTemplateCategory === category.id ? `1px solid ${category.color}` : `1px solid ${colors.border}`,
-                            background: selectedTemplateCategory === category.id ? `${category.color}20` : colors.bgTertiary,
-                            color: selectedTemplateCategory === category.id ? category.color : colors.textMuted,
-                            fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          {category.name}
-                        </button>
-                      ))}
+                  <div style={{ maxHeight: 340, overflowY: 'auto' }}>
+                    {/* Category Tabs - Pill Style */}
+                    <div style={{ 
+                      display: 'flex', gap: 8, marginBottom: 16,
+                      padding: '4px',
+                      background: colors.bgTertiary,
+                      borderRadius: 12,
+                    }}>
+                      {quickMessageTemplates.map((category) => {
+                        const isActive = selectedTemplateCategory === category.id;
+                        const IconComponent = category.icon === 'Coins' ? Coins : 
+                                             category.icon === 'Headphones' ? Headphones : MessageCircleHeart;
+                        return (
+                          <button
+                            key={category.id}
+                            onClick={() => setSelectedTemplateCategory(category.id)}
+                            style={{
+                              flex: 1,
+                              padding: '10px 16px', 
+                              borderRadius: 10,
+                              border: 'none',
+                              background: isActive ? category.gradient : 'transparent',
+                              color: isActive ? '#fff' : colors.textMuted,
+                              fontSize: 12, 
+                              fontWeight: 600, 
+                              cursor: 'pointer',
+                              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                              boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                            }}
+                          >
+                            <IconComponent size={14} />
+                            {category.name}
+                          </button>
+                        );
+                      })}
                     </div>
                     
-                    {/* Info Banner */}
+                    {/* Quick Tip */}
                     <div style={{
-                      padding: '8px 12px', borderRadius: 8,
-                      background: `${colors.accent}15`,
-                      border: `1px solid ${colors.accent}30`,
-                      marginBottom: 12,
-                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '10px 14px', 
+                      borderRadius: 10,
+                      background: `linear-gradient(135deg, ${colors.accent}08 0%, ${colors.accent}15 100%)`,
+                      marginBottom: 14,
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 10,
                     }}>
-                      <span style={{ fontSize: 16 }}>⚡</span>
-                      <span style={{ fontSize: 11, color: colors.textSecondary }}>
-                        คลิกเพื่อส่งข้อความสำเร็จรูปทันที
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 8,
+                        background: `${colors.accent}20`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Zap size={14} style={{ color: colors.accent }} />
+                      </div>
+                      <span style={{ fontSize: 12, color: colors.textSecondary, fontWeight: 500 }}>
+                        คลิกเพื่อส่งข้อความทันที
                       </span>
                     </div>
                     
-                    {/* Messages List */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {/* Messages Grid */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {quickMessageTemplates
                         .find(cat => cat.id === selectedTemplateCategory)
-                        ?.messages.map((msg) => (
-                        <button
-                          key={msg.id}
-                          onClick={() => sendQuickTemplate(msg.text)}
-                          disabled={isSending}
-                          style={{
-                            padding: '12px 14px', borderRadius: 10,
-                            border: `1px solid ${colors.border}`,
-                            background: colors.bgTertiary,
-                            cursor: isSending ? 'not-allowed' : 'pointer',
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            transition: 'all 0.15s ease',
-                            textAlign: 'left',
-                            opacity: isSending ? 0.6 : 1,
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!isSending) {
-                              const category = quickMessageTemplates.find(cat => cat.id === selectedTemplateCategory);
-                              e.currentTarget.style.background = `${category?.color}15`;
-                              e.currentTarget.style.borderColor = category?.color || colors.accent;
-                              e.currentTarget.style.transform = 'translateX(4px)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = colors.bgTertiary;
-                            e.currentTarget.style.borderColor = colors.border;
-                            e.currentTarget.style.transform = 'translateX(0)';
-                          }}
-                        >
-                          {/* Emoji Icon */}
-                          <div style={{
-                            width: 40, height: 40, borderRadius: 10,
-                            background: `${quickMessageTemplates.find(cat => cat.id === selectedTemplateCategory)?.color}20`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 20,
-                            flexShrink: 0,
-                          }}>
-                            {msg.emoji}
-                          </div>
-                          {/* Text */}
-                          <span style={{
-                            fontSize: 13, color: colors.textPrimary,
-                            lineHeight: 1.4,
-                            flex: 1,
-                          }}>
-                            {msg.text}
-                          </span>
-                          {/* Send Icon */}
-                          <Send size={14} style={{ color: colors.textMuted, flexShrink: 0 }} />
-                        </button>
-                      ))}
+                        ?.messages.map((msg) => {
+                          const category = quickMessageTemplates.find(cat => cat.id === selectedTemplateCategory);
+                          const IconMap: { [key: string]: React.ComponentType<{ size?: number; style?: React.CSSProperties }> } = {
+                            CheckCircle2, Search, Building2, Sparkles, BadgeDollarSign, Receipt,
+                            HandHeart, Star, Clock, ClipboardList, Smartphone, Heart,
+                            HeartHandshake, Timer, Smile, XCircle, Wrench, Info
+                          };
+                          const MsgIcon = IconMap[msg.icon] || MessageCircle;
+                          
+                          return (
+                            <button
+                              key={msg.id}
+                              onClick={() => sendQuickTemplate(msg.text)}
+                              disabled={isSending}
+                              style={{
+                                padding: '14px 16px', 
+                                borderRadius: 12,
+                                border: `1px solid transparent`,
+                                background: colors.bgTertiary,
+                                cursor: isSending ? 'not-allowed' : 'pointer',
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 14,
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                textAlign: 'left',
+                                opacity: isSending ? 0.6 : 1,
+                                position: 'relative',
+                                overflow: 'hidden',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSending) {
+                                  e.currentTarget.style.background = `${category?.color}12`;
+                                  e.currentTarget.style.borderColor = `${category?.color}40`;
+                                  e.currentTarget.style.transform = 'translateX(4px)';
+                                  e.currentTarget.style.boxShadow = `0 2px 8px ${category?.color}20`;
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = colors.bgTertiary;
+                                e.currentTarget.style.borderColor = 'transparent';
+                                e.currentTarget.style.transform = 'translateX(0)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }}
+                            >
+                              {/* Icon Container */}
+                              <div style={{
+                                width: 38, 
+                                height: 38, 
+                                borderRadius: 10,
+                                background: `${msg.iconColor}15`,
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                transition: 'all 0.2s ease',
+                              }}>
+                                <MsgIcon size={18} style={{ color: msg.iconColor }} />
+                              </div>
+                              
+                              {/* Text */}
+                              <span style={{
+                                fontSize: 13, 
+                                color: colors.textPrimary,
+                                lineHeight: 1.5,
+                                flex: 1,
+                                fontWeight: 500,
+                              }}>
+                                {msg.text}
+                              </span>
+                              
+                              {/* Send Arrow */}
+                              <div style={{
+                                width: 28, height: 28, borderRadius: 8,
+                                background: `${category?.color}15`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0,
+                                opacity: 0.7,
+                                transition: 'all 0.2s ease',
+                              }}>
+                                <ArrowRight size={14} style={{ color: category?.color }} />
+                              </div>
+                            </button>
+                          );
+                        })}
                     </div>
                   </div>
                 )}
