@@ -3544,7 +3544,7 @@ export default function DataChatPage() {
                               color: 'rgba(255,255,255,0.95)',
                               marginBottom: 8,
                             }}>
-                              Preview Message
+                              {t('dataChat.previewMessage')}
                             </div>
                             
                             {/* Subtitle */}
@@ -3555,7 +3555,7 @@ export default function DataChatPage() {
                               lineHeight: 1.5,
                               maxWidth: 200,
                             }}>
-                              เลือกข้อความจากรายการทางซ้ายเพื่อดูตัวอย่าง
+                              {t('dataChat.selectMessagePreview')}
                             </div>
                             
                             {/* Decorative Arrow */}
@@ -3566,7 +3566,7 @@ export default function DataChatPage() {
                               fontSize: 12,
                             }}>
                               <ChevronLeft size={16} />
-                              <span>{t('dataChat.noChannelSelected')}</span>
+                              <span>{t('dataChat.selectFromLeft')}</span>
                             </div>
                           </div>
                         )}
