@@ -241,9 +241,9 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       mediaUrl = `https://api-data.line.me/v2/bot/message/${msg.id}/content`;
     }
     
-    // Insert message
+    // Insert message - use correct column names: messageType, sender (not type, senderType)
     db.prepare(`
-      INSERT INTO LineChatMessage (id, roomId, lineMessageId, content, type, senderType, stickerId, stickerPackageId, emojis, mediaUrl, createdAt)
+      INSERT INTO LineChatMessage (id, roomId, lineMessageId, content, messageType, sender, stickerId, stickerPackageId, emojis, mediaUrl, createdAt)
       VALUES (?, ?, ?, ?, ?, 'user', ?, ?, ?, ?, ?)
     `).run(msgId, room.id, msg.id, content, messageType, stickerId, stickerPackageId, emojisJson, mediaUrl, now);
     
@@ -276,8 +276,20 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       global.__broadcastToRoom(room.id, 'new-message', messageData);
       console.log(`[LINE Webhook/${token.id}] 📡 Broadcast new-message to room ${room.id}`);
     }
+    
+    // Broadcast room-update with full data for multi-browser sync
     if (global.__broadcast) {
-      global.__broadcast('room-updated', { roomId: room.id });
+      global.__broadcast('room-update', {
+        id: room.id,
+        lineTokenId: token.id,
+        displayName: room.displayName,
+        pictureUrl: room.pictureUrl,
+        status: 'active',
+        lastMessage: messageData,
+        lastMessageAt: now,
+        unreadCount: (room.unreadCount || 0) + 1,
+      });
+      console.log(`[LINE Webhook/${token.id}] 📡 Broadcast room-update`);
     }
     
     console.log(`[LINE Webhook/${token.id}] Saved message: ${msgId} to room: ${room.id}`);

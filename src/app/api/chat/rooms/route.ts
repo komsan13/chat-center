@@ -82,7 +82,7 @@ function ensureSchema(db: Database.Database) {
       )
     `);
     
-    // Create LineChatMessage table if not exists
+    // Create LineChatMessage table if not exists - use correct column names
     db.exec(`
       CREATE TABLE IF NOT EXISTS LineChatMessage (
         id TEXT PRIMARY KEY,
@@ -93,6 +93,7 @@ function ensureSchema(db: Database.Database) {
         mediaUrl TEXT,
         stickerId TEXT,
         packageId TEXT,
+        stickerPackageId TEXT,
         emojis TEXT,
         sender TEXT NOT NULL DEFAULT 'user',
         senderName TEXT,

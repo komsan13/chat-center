@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
       // Column already exists
     }
     
+    // Insert using correct column names: messageType, sender, packageId
     db.prepare(`
       INSERT INTO LineChatMessage (id, roomId, messageType, content, mediaUrl, stickerId, packageId, emojis, sender, senderName, status, createdAt)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

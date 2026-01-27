@@ -1207,8 +1207,8 @@ export default function DataChatPage() {
       setPendingEmojis([]);
     }
     
-    // Update contentEditable editor with HTML
-    const editor = document.getElementById('messageEditor');
+    // Update contentEditable editor with HTML using ref
+    const editor = messageEditorRef.current;
     if (editor) {
       if (reply.emojis && reply.emojis.length > 0) {
         let html = '';
@@ -1229,6 +1229,8 @@ export default function DataChatPage() {
       } else {
         editor.textContent = reply.label;
       }
+      // Focus the editor
+      editor.focus();
     }
     
     setPreviewQuickReply(null);

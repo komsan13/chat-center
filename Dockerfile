@@ -38,6 +38,7 @@ COPY --from=builder /app/add-position-column.js ./add-position-column.js
 COPY --from=builder /app/create-quick-reply-table.js ./create-quick-reply-table.js
 COPY --from=builder /app/fix-room-unique-constraint.js ./fix-room-unique-constraint.js
 COPY --from=builder /app/fix-message-columns.js ./fix-message-columns.js
+COPY --from=builder /app/fix-message-schema.js ./fix-message-schema.js
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data
