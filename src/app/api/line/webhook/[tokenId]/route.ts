@@ -231,16 +231,19 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       WHERE id = ?
     `).run(content, now, now, room.id);
     
-    // Broadcast new message
+    // Broadcast new message - use correct format for frontend ChatMessage interface
     const messageData = {
       id: msgId,
       roomId: room.id,
+      lineMessageId: msg.id,
       lineTokenId: token.id,
+      messageType: messageType,  // Use 'messageType' not 'type'
       content,
-      type: messageType,
-      senderType: 'user',
+      sender: 'user',  // Use 'sender' not 'senderType'
+      senderName: room.displayName,
+      status: 'sent',
       stickerId,
-      stickerPackageId,
+      packageId: stickerPackageId,
       emojis: msg.emojis,
       mediaUrl,
       createdAt: now,
@@ -248,6 +251,7 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
     
     if (global.__broadcastToRoom) {
       global.__broadcastToRoom(room.id, 'new-message', messageData);
+      console.log(`[LINE Webhook/${token.id}] 📡 Broadcast new-message to room ${room.id}`);
     }
     if (global.__broadcast) {
       global.__broadcast('room-updated', { roomId: room.id });

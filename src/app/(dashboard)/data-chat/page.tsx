@@ -263,14 +263,6 @@ export default function DataChatPage() {
 
   // Filter rooms based on selected tokens
   const filteredRooms = useMemo(() => {
-    console.log('[DEBUG] filteredRooms calculation:', {
-      roomsCount: rooms.length,
-      lineTokensCount: lineTokens.length,
-      selectedTokenIdsSize: selectedTokenIds.size,
-      selectedTokenIds: [...selectedTokenIds],
-      filterStatus
-    });
-    
     return rooms.filter(room => {
       // First filter by status
       if (filterStatus === 'spam') {
@@ -392,22 +384,18 @@ export default function DataChatPage() {
         const response = await fetch('/api/line-tokens');
         if (response.ok) {
           const data = await response.json();
-          console.log('[DEBUG] fetchLineTokens response:', data);
           if (data.success && data.data) {
             // Only show active tokens with websiteName
             const activeTokens = data.data.filter((t: LineToken) => t.status === 'active');
-            console.log('[DEBUG] Active tokens:', activeTokens.map((t: LineToken) => ({ id: t.id, name: t.websiteName })));
             setLineTokens(activeTokens);
             
             // Check if any saved selection is still valid
             const activeIds = new Set(activeTokens.map((t: LineToken) => t.id));
             const savedValid = [...selectedTokenIds].filter(id => activeIds.has(id));
-            console.log('[DEBUG] savedValid tokens:', savedValid, 'current selectedTokenIds:', [...selectedTokenIds]);
             
             // If no valid tokens selected, select all by default
             if (savedValid.length === 0 && activeTokens.length > 0) {
               const allIds = new Set<string>(activeTokens.map((t: LineToken) => t.id));
-              console.log('[DEBUG] Setting all tokens as selected:', [...allIds]);
               setSelectedTokenIds(allIds);
               selectedTokenIdsRef.current = allIds;
               localStorage.setItem('selectedChatTokens', JSON.stringify([...allIds]));
@@ -520,11 +508,9 @@ export default function DataChatPage() {
     try {
       const params = new URLSearchParams({ filter: filterStatus });
       if (searchTerm) params.append('search', searchTerm);
-      console.log('[DEBUG] fetchRooms called, filterStatus:', filterStatus);
       const response = await fetch(`/api/chat/rooms?${params}`);
       if (response.ok) {
         const data = await response.json();
-        console.log('[DEBUG] fetchRooms response:', data.length, 'rooms', data.map((r: ChatRoom) => ({ id: r.id, name: r.displayName, tokenId: r.lineTokenId, status: r.status })));
         const currentRoom = selectedRoomRef.current;
         if (currentRoom) {
           setRooms(data.map((r: ChatRoom) => r.id === currentRoom ? { ...r, unreadCount: 0 } : r));
@@ -536,8 +522,6 @@ export default function DataChatPage() {
             messagesCacheRef.current.set(room.id, room.recentMessages);
           }
         });
-      } else {
-        console.error('[DEBUG] fetchRooms failed with status:', response.status);
       }
     } catch (error) {
       console.error('Failed to fetch rooms:', error);
