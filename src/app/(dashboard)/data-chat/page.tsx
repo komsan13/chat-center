@@ -2143,21 +2143,57 @@ export default function DataChatPage() {
               {filteredRooms.length} conversations
             </span>
             <div style={{ 
-              display: 'flex', alignItems: 'center', gap: 6,
+              display: 'flex', alignItems: 'center', gap: 8,
               padding: '4px 10px', borderRadius: 12,
               background: connectionState === 'connected' 
                 ? 'rgba(34, 197, 94, 0.1)' 
                 : 'rgba(245, 158, 11, 0.1)',
             }}>
-              <div style={{ 
-                width: 6, height: 6, borderRadius: '50%',
-                background: connectionState === 'connected' ? colors.online : colors.warning,
-              }} />
+              {/* WiFi Signal Icon */}
+              <div style={{ position: 'relative', width: 16, height: 12 }}>
+                {/* Signal bars */}
+                {[0, 1, 2, 3].map((i) => {
+                  const quality = connectionHealth?.quality || 'offline';
+                  const activeBars = quality === 'excellent' ? 4 : quality === 'good' ? 3 : quality === 'fair' ? 2 : quality === 'poor' ? 1 : 0;
+                  const isActive = i < activeBars;
+                  const barColor = connectionState === 'connected' 
+                    ? (isActive ? colors.online : `${colors.online}30`)
+                    : (isActive ? colors.warning : `${colors.warning}30`);
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: i * 4,
+                        width: 3,
+                        height: 3 + i * 3,
+                        borderRadius: 1,
+                        background: barColor,
+                        transition: 'all 0.3s ease',
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              
+              {/* Status text with ping */}
               <span style={{ 
                 fontSize: 11, fontWeight: 600,
                 color: connectionState === 'connected' ? colors.online : colors.warning,
+                display: 'flex', alignItems: 'center', gap: 4,
               }}>
-                {connectionState === 'connected' ? 'Live' : 'Connecting...'}
+                {connectionState === 'connected' ? (
+                  <>
+                    <span style={{ 
+                      fontFamily: 'monospace',
+                      minWidth: 32,
+                      textAlign: 'right',
+                    }}>
+                      {connectionHealth?.latency || 0}ms
+                    </span>
+                  </>
+                ) : 'Connecting...'}
               </span>
             </div>
           </div>
