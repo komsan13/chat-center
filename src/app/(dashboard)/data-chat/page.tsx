@@ -88,6 +88,7 @@ export default function DataChatPage() {
   const [typingUsers, setTypingUsers] = useState<{ [roomId: string]: { userName: string; timeout: NodeJS.Timeout } }>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiPickerTab, setEmojiPickerTab] = useState<'emoji' | 'sticker'>('emoji');
+  const [selectedStickerPackage, setSelectedStickerPackage] = useState('446');
   const [currentUser, setCurrentUser] = useState<{ name: string; username: string } | null>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [chatSearchTerm, setChatSearchTerm] = useState('');
@@ -1546,40 +1547,28 @@ export default function DataChatPage() {
   // Emoji list
   const commonEmojis = ['😊', '😂', '❤️', '👍', '🙏', '😍', '🎉', '🔥', '✨', '💯', '😢', '😱', '🤔', '👏', '💪', '🙌', '😎', '🥳', '💕', '✅', '❌', '⭐', '🌟', '💰', '📱', '💳', '🧾', '📝', '🎁', '🏆'];
   
-  // LINE Official Stickers (free to use with Messaging API)
-  // These are the only stickers bots can send
-  const lineStickers = [
-    // Package 446 - Moon & James
-    { packageId: '446', stickerId: '1988', name: 'OK' },
-    { packageId: '446', stickerId: '1989', name: 'Love' },
-    { packageId: '446', stickerId: '1990', name: 'Happy' },
-    { packageId: '446', stickerId: '1991', name: 'Angry' },
-    { packageId: '446', stickerId: '1992', name: 'Cry' },
-    { packageId: '446', stickerId: '1993', name: 'Hi' },
-    { packageId: '446', stickerId: '1994', name: 'Question' },
-    { packageId: '446', stickerId: '1995', name: 'Excited' },
-    { packageId: '446', stickerId: '2000', name: 'Bye' },
-    { packageId: '446', stickerId: '2001', name: 'Thank you' },
-    { packageId: '446', stickerId: '2002', name: 'Sleepy' },
-    { packageId: '446', stickerId: '2003', name: 'Surprise' },
-    // Package 789 - Brown & Cony
-    { packageId: '789', stickerId: '10855', name: 'Love' },
-    { packageId: '789', stickerId: '10856', name: 'Kiss' },
-    { packageId: '789', stickerId: '10857', name: 'Hug' },
-    { packageId: '789', stickerId: '10858', name: 'Heart' },
-    { packageId: '789', stickerId: '10859', name: 'Happy' },
-    { packageId: '789', stickerId: '10860', name: 'Dance' },
-    { packageId: '789', stickerId: '10861', name: 'Cry' },
-    { packageId: '789', stickerId: '10862', name: 'Angry' },
-    // Package 11537 - LINE Characters
-    { packageId: '11537', stickerId: '52002734', name: 'Hi' },
-    { packageId: '11537', stickerId: '52002735', name: 'OK' },
-    { packageId: '11537', stickerId: '52002736', name: 'Love' },
-    { packageId: '11537', stickerId: '52002737', name: 'Thanks' },
-    { packageId: '11537', stickerId: '52002738', name: 'Wow' },
-    { packageId: '11537', stickerId: '52002739', name: 'Sad' },
-    { packageId: '11537', stickerId: '52002740', name: 'Happy' },
-    { packageId: '11537', stickerId: '52002741', name: 'Sleep' },
+  // LINE Official Stickers grouped by package
+  const stickerPackages = [
+    {
+      packageId: '446',
+      name: 'Moon & James',
+      stickers: ['1988', '1989', '1990', '1991', '1992', '1993', '1994', '1995', '2000', '2001', '2002', '2003'],
+    },
+    {
+      packageId: '789',
+      name: 'Brown & Cony',
+      stickers: ['10855', '10856', '10857', '10858', '10859', '10860', '10861', '10862'],
+    },
+    {
+      packageId: '11537',
+      name: 'LINE Characters',
+      stickers: ['52002734', '52002735', '52002736', '52002737', '52002738', '52002739', '52002740', '52002741'],
+    },
+    {
+      packageId: '11538',
+      name: 'CHOCO & Friends',
+      stickers: ['51626494', '51626495', '51626496', '51626497', '51626498', '51626499', '51626500', '51626501'],
+    },
   ];
 
   // Typing indicator component - shows who is typing
@@ -2729,32 +2718,48 @@ export default function DataChatPage() {
                 {/* Sticker Tab */}
                 {emojiPickerTab === 'sticker' && (
                   <div>
-                    <div style={{ fontSize: 10, color: colors.textMuted, marginBottom: 8, padding: '4px 8px', background: colors.bgTertiary, borderRadius: 4, display: 'inline-block' }}>
-                      💡 LINE Official Stickers (Free)
+                    {/* Package Selector */}
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                      {stickerPackages.map((pkg) => (
+                        <button
+                          key={pkg.packageId}
+                          onClick={() => setSelectedStickerPackage(pkg.packageId)}
+                          style={{
+                            padding: '6px 12px', borderRadius: 6,
+                            border: selectedStickerPackage === pkg.packageId ? `1px solid ${colors.accent}` : `1px solid ${colors.border}`,
+                            background: selectedStickerPackage === pkg.packageId ? colors.accentLight : colors.bgTertiary,
+                            color: selectedStickerPackage === pkg.packageId ? colors.accent : colors.textMuted,
+                            fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {pkg.name}
+                        </button>
+                      ))}
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 6, maxHeight: 200, overflowY: 'auto' }}>
-                      {lineStickers.map((sticker, i) => (
+                    
+                    {/* Stickers Grid */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 6 }}>
+                      {stickerPackages
+                        .find(pkg => pkg.packageId === selectedStickerPackage)
+                        ?.stickers.map((stickerId, i) => (
                         <button 
-                          key={i} 
-                          onClick={() => sendSticker(sticker.packageId, sticker.stickerId)}
-                          title={sticker.name}
+                          key={`${selectedStickerPackage}-${stickerId}`}
+                          onClick={() => sendSticker(selectedStickerPackage, stickerId)}
                           className="sticker-btn"
                           style={{
-                            width: isMobile ? 60 : 52, height: isMobile ? 60 : 52, borderRadius: 8, 
+                            width: isMobile ? 64 : 56, height: isMobile ? 64 : 56, borderRadius: 8, 
                             border: `1px solid ${colors.border}`,
                             background: colors.bgTertiary, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            padding: 4,
+                            padding: 6,
                           }}
                         >
                           <img 
-                            src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${sticker.stickerId}/iPhone/sticker.png`}
-                            alt={sticker.name}
+                            src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/iPhone/sticker.png`}
+                            alt="sticker"
+                            loading="lazy"
                             style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                            onError={(e) => {
-                              // Fallback to Android version if iPhone fails
-                              (e.target as HTMLImageElement).src = `https://stickershop.line-scdn.net/stickershop/v1/sticker/${sticker.stickerId}/android/sticker.png`;
-                            }}
                           />
                         </button>
                       ))}
