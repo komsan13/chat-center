@@ -1668,26 +1668,83 @@ export default function DataChatPage() {
     );
   };
 
-  // LINE Emoji packages (Official LINE Emoji)
-  // Reference: https://developers.line.biz/en/docs/messaging-api/using-line-emoji-presets/
-  const lineEmojiPackages = [
+  // LINE Emoji packages (Official LINE Emoji) - organized by category like LINE OA Manager
+  // Reference: https://developers.line.biz/en/docs/messaging-api/emoji-list/
+  const lineEmojiCategories = [
     {
-      productId: '5ac1bfd5040ab15980c9b435',
-      name: 'Brown & Friends',
-      emojis: ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017', '018', '019', '020'],
+      id: 'brown',
+      name: 'Brown',
+      icon: '🐻',
+      packages: [
+        { productId: '5ac1bfd5040ab15980c9b435', name: 'Brown & Friends', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+        { productId: '5ac21ae3040ab15980c9b440', name: 'Brown Special', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+      ],
     },
     {
-      productId: '5ac21a8c040ab15980c9b43f',
+      id: 'cony',
       name: 'Cony',
-      emojis: ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017', '018', '019', '020'],
+      icon: '🐰',
+      packages: [
+        { productId: '5ac21a8c040ab15980c9b43f', name: 'Cony', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+        { productId: '5ac21c4e031a6752fb806d5b', name: 'Cony Special', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+      ],
     },
     {
-      productId: '5ac21e6c040ab15980c9b440',
-      name: 'Moon',
-      emojis: ['001', '002', '003', '004', '005', '006', '007', '008', '009', '010', '011', '012', '013', '014', '015', '016', '017', '018', '019', '020'],
+      id: 'moon',
+      name: 'Moon & James',
+      icon: '🌙',
+      packages: [
+        { productId: '5ac21e6c040ab15980c9b444', name: 'Moon', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+        { productId: '5ac2213e040ab15980c9b447', name: 'James', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+      ],
+    },
+    {
+      id: 'sally',
+      name: 'Sally & Choco',
+      icon: '🐤',
+      packages: [
+        { productId: '5ac22775040ab15980c9b44c', name: 'Sally', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+        { productId: '5ac22e85040ab15980c9b44f', name: 'Choco', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+      ],
+    },
+    {
+      id: 'face',
+      name: 'Faces',
+      icon: '😊',
+      packages: [
+        { productId: '5ac2197b040ab15980c9b43d', name: 'Faces 1', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+        { productId: '5ac21869040ab15980c9b43b', name: 'Faces 2', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+      ],
+    },
+    {
+      id: 'objects',
+      name: 'Objects',
+      icon: '🏠',
+      packages: [
+        { productId: '5ac21d59031a6752fb806d5d', name: 'Objects 1', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+        { productId: '5ac221ca040ab15980c9b449', name: 'Objects 2', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+      ],
+    },
+    {
+      id: 'symbols',
+      name: 'Symbols',
+      icon: '❤️',
+      packages: [
+        { productId: '5ac22bad031a6752fb806d67', name: 'Symbols 1', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+        { productId: '5ac2211e031a6752fb806d61', name: 'Symbols 2', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+      ],
+    },
+    {
+      id: 'text',
+      name: 'Text',
+      icon: '🔤',
+      packages: [
+        { productId: '5ac21b4f031a6752fb806d59', name: 'Text 1', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+        { productId: '5ac21cce040ab15980c9b443', name: 'Text 2', emojis: Array.from({ length: 40 }, (_, i) => String(i + 1).padStart(3, '0')) },
+      ],
     },
   ];
-  const [selectedEmojiPackage, setSelectedEmojiPackage] = useState('5ac1bfd5040ab15980c9b435');
+  const [selectedEmojiCategory, setSelectedEmojiCategory] = useState('brown');
   
   // LINE Official Stickers grouped by package (verified working sticker IDs)
   // Reference: https://developers.line.biz/en/docs/messaging-api/sticker-list/
@@ -3239,56 +3296,67 @@ export default function DataChatPage() {
                   <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
                 </div>
                 
-                {/* Emoji Tab - LINE Emoji */}
+                {/* Emoji Tab - LINE Emoji with Categories */}
                 {emojiPickerTab === 'emoji' && (
-                  <div>
-                    {/* Package Selector */}
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-                      {lineEmojiPackages.map((pkg) => (
-                        <button
-                          key={pkg.productId}
-                          onClick={() => setSelectedEmojiPackage(pkg.productId)}
-                          style={{
-                            padding: '6px 12px', borderRadius: 6,
-                            border: selectedEmojiPackage === pkg.productId ? `1px solid ${colors.accent}` : `1px solid ${colors.border}`,
-                            background: selectedEmojiPackage === pkg.productId ? colors.accentLight : colors.bgTertiary,
-                            color: selectedEmojiPackage === pkg.productId ? colors.accent : colors.textMuted,
-                            fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          {pkg.name}
-                        </button>
-                      ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', height: 280 }}>
+                    {/* Emoji Grid with Scroll */}
+                    <div style={{ 
+                      flex: 1, overflow: 'auto', 
+                      display: 'flex', flexWrap: 'wrap', gap: isMobile ? 6 : 4, 
+                      alignContent: 'flex-start', padding: '4px 0',
+                    }}>
+                      {lineEmojiCategories.find(c => c.id === selectedEmojiCategory)?.packages.flatMap((pkg) => 
+                        pkg.emojis.map((emojiId) => (
+                          <button 
+                            key={`${pkg.productId}-${emojiId}`} 
+                            onClick={() => {
+                              const currentIndex = message.length;
+                              setMessage(prev => prev + '$');
+                              setPendingEmojis(prev => [...prev, { 
+                                index: currentIndex, 
+                                productId: pkg.productId, 
+                                emojiId 
+                              }]);
+                            }}
+                            style={{
+                              width: isMobile ? 40 : 36, height: isMobile ? 40 : 36, borderRadius: 6, border: 'none',
+                              background: 'transparent', cursor: 'pointer', padding: 3,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'all 0.1s ease', flexShrink: 0,
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.2)'; e.currentTarget.style.background = colors.bgHover; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <img 
+                              src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${pkg.productId}/iPhone/${emojiId}.png`}
+                              alt={`emoji-${emojiId}`}
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          </button>
+                        ))
+                      )}
                     </div>
-                    {/* Emoji Grid */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 6 }}>
-                      {lineEmojiPackages.find(p => p.productId === selectedEmojiPackage)?.emojis.map((emojiId) => (
-                        <button 
-                          key={emojiId} 
-                          onClick={() => {
-                            const currentIndex = message.length;
-                            setMessage(prev => prev + '$');
-                            setPendingEmojis(prev => [...prev, { 
-                              index: currentIndex, 
-                              productId: selectedEmojiPackage, 
-                              emojiId 
-                            }]);
-                          }}
+                    {/* Category Tabs at Bottom - Like LINE OA Manager */}
+                    <div style={{ 
+                      display: 'flex', gap: 2, borderTop: `1px solid ${colors.border}`, 
+                      paddingTop: 8, marginTop: 8, justifyContent: 'center',
+                    }}>
+                      {lineEmojiCategories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setSelectedEmojiCategory(cat.id)}
                           style={{
-                            width: isMobile ? 42 : 36, height: isMobile ? 42 : 36, borderRadius: 8, border: 'none',
-                            background: colors.bgTertiary, cursor: 'pointer', padding: 4,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 36, height: 36, borderRadius: 6,
+                            border: 'none', cursor: 'pointer',
+                            background: selectedEmojiCategory === cat.id ? colors.accentLight : 'transparent',
+                            color: selectedEmojiCategory === cat.id ? colors.accent : colors.textMuted,
+                            fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
                             transition: 'all 0.15s ease',
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.background = colors.bgHover; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = colors.bgTertiary; }}
+                          title={cat.name}
                         >
-                          <img 
-                            src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${selectedEmojiPackage}/iPhone/${emojiId}.png`}
-                            alt={`emoji-${emojiId}`}
-                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                          />
+                          {cat.icon}
                         </button>
                       ))}
                     </div>
