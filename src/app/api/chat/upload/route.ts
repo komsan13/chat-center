@@ -1,41 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
-import Database from 'better-sqlite3';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import { LineBotService } from '@/lib/line-bot';
+import { db, lineChatRooms, lineChatMessages, lineTokens, generateId } from '@/lib/db';
+import { eq, desc } from 'drizzle-orm';
 
 // Route segment config for larger uploads
 export const maxDuration = 60; // 60 seconds timeout
-
-interface RoomRecord {
-  id: string;
-  lineUserId: string;
-  lineTokenId: string;
-  displayName: string;
-  status: string;
-}
-
-interface LineTokenRecord {
-  id: string;
-  accessToken: string;
-  channelSecret: string;
-  status: string;
-}
-
-function getDb() {
-  const prismaPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  const dataPath = path.join(process.cwd(), 'data', 'dev.db');
-  
-  if (fs.existsSync(prismaPath)) {
-    return new Database(prismaPath);
-  }
-  if (fs.existsSync(dataPath)) {
-    return new Database(dataPath);
-  }
-  return new Database(prismaPath);
-}
 
 // Get base URL for public access
 function getBaseUrl(request: NextRequest): string {
@@ -46,8 +19,6 @@ function getBaseUrl(request: NextRequest): string {
 
 // POST - Upload file and send as message
 export async function POST(request: NextRequest) {
-  const db = getDb();
-  
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -86,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename
     const fileExt = path.extname(file.name);
-    const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}${fileExt}`;
+    const fileName = `${Date.now()}_${generateId()}${fileExt}`;
     const filePath = path.join(uploadsDir, fileName);
 
     // Write file
@@ -122,7 +93,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get room info for LINE
-    const room = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(roomId) as RoomRecord | undefined;
+    const [room] = await db
+      .select()
+      .from(lineChatRooms)
+      .where(eq(lineChatRooms.id, roomId))
+      .limit(1);
 
     // Send to LINE if it's media and we have room info
     let lineResult: { success: boolean; error?: string } = { success: false, error: 'Not sent to LINE' };
@@ -130,10 +105,21 @@ export async function POST(request: NextRequest) {
     // Send images and videos to LINE
     if (room && (messageType === 'image' || messageType === 'video')) {
       // Get LINE token
-      let lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ? AND status = ?').get(room.lineTokenId, 'active') as LineTokenRecord | undefined;
+      let [lineToken] = room.lineTokenId 
+        ? await db
+            .select()
+            .from(lineTokens)
+            .where(eq(lineTokens.id, room.lineTokenId))
+            .limit(1)
+        : [];
       
       if (!lineToken) {
-        lineToken = db.prepare('SELECT * FROM LineToken WHERE status = ? ORDER BY createdAt DESC LIMIT 1').get('active') as LineTokenRecord | undefined;
+        [lineToken] = await db
+          .select()
+          .from(lineTokens)
+          .where(eq(lineTokens.status, 'active'))
+          .orderBy(desc(lineTokens.createdAt))
+          .limit(1);
       }
       
       if (lineToken) {
@@ -170,22 +156,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Create message in database
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
+    const messageId = `msg_${generateId()}`;
+    const now = new Date();
     const status = lineResult.success ? 'sent' : 'failed';
 
-    db.prepare(`
-      INSERT INTO LineChatMessage (
-        id, roomId, messageType, content, mediaUrl, sender, senderName, status, isDeleted, createdAt
-      ) VALUES (?, ?, ?, ?, ?, 'agent', ?, ?, 0, ?)
-    `).run(messageId, roomId, messageType, file.name, mediaUrl, senderName, status, now);
+    await db.insert(lineChatMessages).values({
+      id: messageId,
+      roomId,
+      messageType,
+      content: file.name,
+      mediaUrl,
+      sender: 'agent',
+      senderName,
+      status,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     // Update room's lastMessageAt
-    db.prepare(`
-      UPDATE LineChatRoom 
-      SET lastMessageAt = ?, updatedAt = ?
-      WHERE id = ?
-    `).run(now, now, roomId);
+    await db
+      .update(lineChatRooms)
+      .set({
+        lastMessageAt: now,
+        updatedAt: now,
+      })
+      .where(eq(lineChatRooms.id, roomId));
 
     const message = {
       id: messageId,
@@ -196,7 +191,7 @@ export async function POST(request: NextRequest) {
       sender: 'agent',
       senderName,
       status,
-      createdAt: now,
+      createdAt: now.toISOString(),
     };
 
     return NextResponse.json({
@@ -207,7 +202,5 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[Upload API] Error:', error);
     return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
-  } finally {
-    db.close();
   }
 }

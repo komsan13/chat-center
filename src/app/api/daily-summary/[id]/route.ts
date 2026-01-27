@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  return new Database(dbPath);
-}
+import { db, dailySummaries } from '@/lib/db';
+import { eq, and, ne } from 'drizzle-orm';
 
 // GET single daily summary
 export async function GET(
@@ -15,9 +9,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
-    const summary = db.prepare('SELECT * FROM DailySummary WHERE id = ?').get(id);
-    db.close();
+    
+    const [summary] = await db
+      .select()
+      .from(dailySummaries)
+      .where(eq(dailySummaries.id, id))
+      .limit(1);
     
     if (!summary) {
       return NextResponse.json({ success: false, error: 'Daily summary not found' }, { status: 404 });
@@ -44,19 +41,29 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Date and website are required' }, { status: 400 });
     }
     
-    const db = getDb();
-    
     // Check if record exists
-    const existing = db.prepare('SELECT * FROM DailySummary WHERE id = ?').get(id);
+    const [existing] = await db
+      .select()
+      .from(dailySummaries)
+      .where(eq(dailySummaries.id, id))
+      .limit(1);
+    
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Daily summary not found' }, { status: 404 });
     }
     
     // Check for duplicate date + website (excluding current record)
-    const duplicate = db.prepare('SELECT * FROM DailySummary WHERE date = ? AND websiteName = ? AND id != ?').get(date, website, id);
+    const [duplicate] = await db
+      .select()
+      .from(dailySummaries)
+      .where(and(
+        eq(dailySummaries.date, date),
+        eq(dailySummaries.websiteName, website),
+        ne(dailySummaries.id, id)
+      ))
+      .limit(1);
+    
     if (duplicate) {
-      db.close();
       return NextResponse.json({ 
         success: false, 
         error: 'มีข้อมูลของวันที่และเว็บไซต์นี้อยู่แล้ว' 
@@ -68,16 +75,18 @@ export async function PUT(
     const withdrawal = parseFloat(withdrawalAmount) || 0;
     const profit = deposit - withdrawal;
     
-    const now = new Date().toISOString();
-    
-    db.prepare(`
-      UPDATE DailySummary 
-      SET date = ?, websiteName = ?, totalDeposit = ?, totalWithdrawal = ?, totalProfit = ?, updatedAt = ?
-      WHERE id = ?
-    `).run(date, website, deposit, withdrawal, profit, now, id);
-    
-    const updated = db.prepare('SELECT * FROM DailySummary WHERE id = ?').get(id) as any;
-    db.close();
+    const [updated] = await db
+      .update(dailySummaries)
+      .set({
+        date,
+        websiteName: website,
+        totalDeposit: deposit,
+        totalWithdrawal: withdrawal,
+        totalProfit: profit,
+        updatedAt: new Date(),
+      })
+      .where(eq(dailySummaries.id, id))
+      .returning();
     
     // Transform data for frontend compatibility
     return NextResponse.json({ 
@@ -103,17 +112,19 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
     
     // Check if record exists
-    const existing = db.prepare('SELECT * FROM DailySummary WHERE id = ?').get(id);
+    const [existing] = await db
+      .select()
+      .from(dailySummaries)
+      .where(eq(dailySummaries.id, id))
+      .limit(1);
+    
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Daily summary not found' }, { status: 404 });
     }
     
-    db.prepare('DELETE FROM DailySummary WHERE id = ?').run(id);
-    db.close();
+    await db.delete(dailySummaries).where(eq(dailySummaries.id, id));
     
     return NextResponse.json({ success: true, message: 'Daily summary deleted successfully' });
   } catch (error) {

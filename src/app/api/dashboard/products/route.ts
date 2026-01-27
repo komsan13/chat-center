@@ -1,43 +1,31 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-interface ProductSalesRow {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  totalSold: number;
-  totalRevenue: number;
-}
+import { db } from '@/lib/db';
+import { products, orderItems, orders } from '@/lib/db/schema';
+import { eq, desc, sql } from 'drizzle-orm';
 
 export async function GET(request: Request) {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  const db = new Database(dbPath);
-
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '5');
 
     // Get top selling products
-    const products = db.prepare(`
-      SELECT 
-        p.id,
-        p.name,
-        p.category,
-        p.price,
-        COALESCE(SUM(oi.quantity), 0) as totalSold,
-        COALESCE(SUM(oi.quantity * oi.price), 0) as totalRevenue
-      FROM Product p
-      LEFT JOIN OrderItem oi ON p.id = oi.productId
-      LEFT JOIN "Order" o ON oi.orderId = o.id AND o.status = 'Completed'
-      GROUP BY p.id
-      ORDER BY totalRevenue DESC
-      LIMIT ?
-    `).all(limit) as ProductSalesRow[];
+    const productsData = await db.select({
+      id: products.id,
+      name: products.name,
+      category: products.category,
+      price: products.price,
+      totalSold: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)`,
+      totalRevenue: sql<number>`COALESCE(SUM(${orderItems.quantity} * ${orderItems.price}), 0)`,
+    })
+      .from(products)
+      .leftJoin(orderItems, eq(products.id, orderItems.productId))
+      .leftJoin(orders, sql`${orderItems.orderId} = ${orders.id} AND ${orders.status} = 'Completed'`)
+      .groupBy(products.id, products.name, products.category, products.price)
+      .orderBy(desc(sql`COALESCE(SUM(${orderItems.quantity} * ${orderItems.price}), 0)`))
+      .limit(limit);
 
     // Calculate previous month data for growth (simplified - using random for demo)
-    const formattedProducts = products.map((product, index) => {
+    const formattedProducts = productsData.map((product, index) => {
       // Simulate growth percentage
       const growthRates = [12.5, 8.2, 15.7, -3.2, 22.4, 5.1, -1.8, 9.3];
       const growth = growthRates[index % growthRates.length];
@@ -65,30 +53,26 @@ export async function GET(request: Request) {
     });
 
     // Get total stats
-    const totalStats = db.prepare(`
-      SELECT 
-        COUNT(DISTINCT p.id) as totalProducts,
-        COALESCE(SUM(oi.quantity), 0) as totalSold,
-        COALESCE(SUM(oi.quantity * oi.price), 0) as totalRevenue
-      FROM Product p
-      LEFT JOIN OrderItem oi ON p.id = oi.productId
-      LEFT JOIN "Order" o ON oi.orderId = o.id AND o.status = 'Completed'
-    `).get() as { totalProducts: number; totalSold: number; totalRevenue: number };
-
-    db.close();
+    const totalStats = await db.select({
+      totalProducts: sql<number>`COUNT(DISTINCT ${products.id})`,
+      totalSold: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)`,
+      totalRevenue: sql<number>`COALESCE(SUM(${orderItems.quantity} * ${orderItems.price}), 0)`,
+    })
+      .from(products)
+      .leftJoin(orderItems, eq(products.id, orderItems.productId))
+      .leftJoin(orders, sql`${orderItems.orderId} = ${orders.id} AND ${orders.status} = 'Completed'`);
 
     return NextResponse.json({
       success: true,
       data: formattedProducts,
       summary: {
-        totalProducts: totalStats.totalProducts,
-        totalSold: totalStats.totalSold,
-        totalRevenue: totalStats.totalRevenue,
+        totalProducts: totalStats[0]?.totalProducts || 0,
+        totalSold: totalStats[0]?.totalSold || 0,
+        totalRevenue: totalStats[0]?.totalRevenue || 0,
       },
     });
   } catch (error) {
     console.error('Products API error:', error);
-    db.close();
     return NextResponse.json(
       { success: false, error: 'Failed to fetch products' },
       { status: 500 }

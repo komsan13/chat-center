@@ -1,41 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-// Initialize SQLite database
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-const db = new Database(dbPath);
-
-interface RoleRow {
-  id: string;
-  name: string;
-  description: string;
-  color: string;
-  permissions: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface UserRow {
-  id: string;
-  name: string;
-  roleId: string;
-}
+import { db, roles, users, generateId } from '@/lib/db';
+import { eq, asc, ne, count } from 'drizzle-orm';
 
 // GET - ดึงรายการ roles ทั้งหมด
 export async function GET() {
   try {
-    const roles = db.prepare('SELECT * FROM Role ORDER BY createdAt ASC').all() as RoleRow[];
+    const allRoles = await db
+      .select()
+      .from(roles)
+      .orderBy(asc(roles.createdAt));
     
     // Get user count for each role
-    const rolesWithUserCount = roles.map(role => {
-      const userCount = db.prepare('SELECT COUNT(*) as count FROM User WHERE roleId = ?').get(role.id) as { count: number };
-      return {
-        ...role,
-        permissions: JSON.parse(role.permissions || '{}'),
-        usersCount: userCount?.count || 0
-      };
-    });
+    const rolesWithUserCount = await Promise.all(
+      allRoles.map(async (role) => {
+        const [userCount] = await db
+          .select({ count: count() })
+          .from(users)
+          .where(eq(users.roleId, role.id));
+        
+        return {
+          ...role,
+          permissions: typeof role.permissions === 'string' 
+            ? JSON.parse(role.permissions || '{}') 
+            : role.permissions || {},
+          usersCount: userCount?.count || 0
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,
@@ -64,36 +55,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if role name already exists
-    const existingRole = db.prepare('SELECT id FROM Role WHERE name = ?').get(name);
-    if (existingRole) {
+    const existingRole = await db
+      .select({ id: roles.id })
+      .from(roles)
+      .where(eq(roles.name, name))
+      .limit(1);
+      
+    if (existingRole.length > 0) {
       return NextResponse.json(
         { success: false, error: 'Role name already exists' },
         { status: 400 }
       );
     }
 
-    const id = 'role_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    
-    const stmt = db.prepare(`
-      INSERT INTO Role (id, name, description, color, permissions, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `);
-    
-    stmt.run(
-      id, 
-      name, 
-      description || '', 
-      color || '#22c55e', 
-      JSON.stringify(permissions || {})
-    );
-
-    const role = db.prepare('SELECT * FROM Role WHERE id = ?').get(id) as RoleRow;
+    // Insert - let schema handle id and timestamps
+    const [role] = await db.insert(roles).values({
+      name,
+      description: description || '',
+      color: color || '#22c55e',
+      permissions: JSON.stringify(permissions || {}),
+    }).returning();
 
     return NextResponse.json({
       success: true,
       data: {
         ...role,
-        permissions: JSON.parse(role.permissions || '{}'),
+        permissions: typeof role.permissions === 'string' 
+          ? JSON.parse(role.permissions || '{}') 
+          : role.permissions || {},
         usersCount: 0
       },
       message: 'Role created successfully',
@@ -121,7 +110,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if role exists
-    const existingRole = db.prepare('SELECT * FROM Role WHERE id = ?').get(id) as RoleRow;
+    const [existingRole] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.id, id));
+      
     if (!existingRole) {
       return NextResponse.json(
         { success: false, error: 'Role not found' },
@@ -131,8 +124,13 @@ export async function PUT(request: NextRequest) {
 
     // Check if name is taken by another role
     if (name && name !== existingRole.name) {
-      const nameTaken = db.prepare('SELECT id FROM Role WHERE name = ? AND id != ?').get(name, id);
-      if (nameTaken) {
+      const nameTaken = await db
+        .select({ id: roles.id })
+        .from(roles)
+        .where(eq(roles.name, name))
+        .limit(1);
+        
+      if (nameTaken.length > 0 && nameTaken[0].id !== id) {
         return NextResponse.json(
           { success: false, error: 'Role name already exists' },
           { status: 400 }
@@ -140,28 +138,38 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const stmt = db.prepare(`
-      UPDATE Role 
-      SET name = ?, description = ?, color = ?, permissions = ?, updatedAt = datetime('now')
-      WHERE id = ?
-    `);
+    const existingPermissions = typeof existingRole.permissions === 'string' 
+      ? existingRole.permissions 
+      : JSON.stringify(existingRole.permissions || {});
     
-    stmt.run(
-      name || existingRole.name,
-      description !== undefined ? description : existingRole.description,
-      color || existingRole.color,
-      permissions ? JSON.stringify(permissions) : existingRole.permissions,
-      id
-    );
+    await db
+      .update(roles)
+      .set({
+        name: name || existingRole.name,
+        description: description !== undefined ? description : existingRole.description,
+        color: color || existingRole.color,
+        permissions: permissions ? JSON.stringify(permissions) : existingPermissions,
+        updatedAt: new Date(),
+      })
+      .where(eq(roles.id, id));
 
-    const role = db.prepare('SELECT * FROM Role WHERE id = ?').get(id) as RoleRow;
-    const userCount = db.prepare('SELECT COUNT(*) as count FROM User WHERE roleId = ?').get(id) as { count: number };
+    const [role] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.id, id));
+      
+    const [userCount] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.roleId, id));
 
     return NextResponse.json({
       success: true,
       data: {
         ...role,
-        permissions: JSON.parse(role.permissions || '{}'),
+        permissions: typeof role.permissions === 'string' 
+          ? JSON.parse(role.permissions || '{}') 
+          : role.permissions || {},
         usersCount: userCount?.count || 0
       },
       message: 'Role updated successfully',
@@ -189,7 +197,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if role exists
-    const existingRole = db.prepare('SELECT * FROM Role WHERE id = ?').get(id);
+    const [existingRole] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.id, id));
+      
     if (!existingRole) {
       return NextResponse.json(
         { success: false, error: 'Role not found' },
@@ -198,7 +210,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if any users are using this role
-    const userCount = db.prepare('SELECT COUNT(*) as count FROM User WHERE roleId = ?').get(id) as { count: number };
+    const [userCount] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.roleId, id));
+      
     if (userCount.count > 0) {
       return NextResponse.json(
         { success: false, error: `Cannot delete role with ${userCount.count} users assigned` },
@@ -206,7 +222,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    db.prepare('DELETE FROM Role WHERE id = ?').run(id);
+    await db.delete(roles).where(eq(roles.id, id));
 
     return NextResponse.json({
       success: true,
@@ -219,10 +235,4 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// GET users by role
-export async function getUsersByRole(roleId: string) {
-  const users = db.prepare('SELECT id, name, roleId FROM User WHERE roleId = ?').all(roleId) as UserRow[];
-  return users;
 }

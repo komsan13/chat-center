@@ -1,57 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  const db = new Database(dbPath);
-  return db;
-}
-
-interface DailySummaryRow {
-  id: string;
-  date: string;
-  websiteId: string | null;
-  websiteName: string | null;
-  totalDeposit: number;
-  totalWithdrawal: number;
-  totalProfit: number;
-  transactionCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import { db, dailySummaries, generateId } from '@/lib/db';
+import { eq, and, desc, asc, or } from 'drizzle-orm';
 
 // GET all daily summaries
 export async function GET(request: NextRequest) {
   try {
-    const db = getDb();
     const { searchParams } = new URL(request.url);
     const dateFilter = searchParams.get('date');
     const websiteFilter = searchParams.get('website');
     
-    let query = 'SELECT * FROM DailySummary';
-    const conditions: string[] = [];
-    const params: string[] = [];
+    let query = db.select().from(dailySummaries);
+    
+    const conditions = [];
     
     if (dateFilter) {
-      conditions.push('date = ?');
-      params.push(dateFilter);
+      conditions.push(eq(dailySummaries.date, dateFilter));
     }
     
     if (websiteFilter && websiteFilter !== 'all') {
-      conditions.push('(websiteId = ? OR websiteName = ?)');
-      params.push(websiteFilter, websiteFilter);
+      conditions.push(
+        or(
+          eq(dailySummaries.websiteId, websiteFilter),
+          eq(dailySummaries.websiteName, websiteFilter)
+        )
+      );
     }
     
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
-    
-    query += ' ORDER BY date DESC, websiteName ASC';
-    
-    const summaries = db.prepare(query).all(...params) as DailySummaryRow[];
-    db.close();
+    const summaries = conditions.length > 0
+      ? await query.where(and(...conditions)).orderBy(desc(dailySummaries.date), asc(dailySummaries.websiteName))
+      : await query.orderBy(desc(dailySummaries.date), asc(dailySummaries.websiteName));
     
     // Transform data for frontend compatibility
     const transformedData = summaries.map(s => ({
@@ -79,15 +56,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Date is required' }, { status: 400 });
     }
     
-    const db = getDb();
     const finalWebsiteName = websiteName || website || null;
     const finalWebsiteId = websiteId || null;
     
     // Check for duplicate date + website
     if (finalWebsiteName) {
-      const duplicate = db.prepare('SELECT * FROM DailySummary WHERE date = ? AND websiteName = ?').get(date, finalWebsiteName);
-      if (duplicate) {
-        db.close();
+      const duplicate = await db
+        .select()
+        .from(dailySummaries)
+        .where(and(
+          eq(dailySummaries.date, date),
+          eq(dailySummaries.websiteName, finalWebsiteName)
+        ))
+        .limit(1);
+      
+      if (duplicate.length > 0) {
         return NextResponse.json({ 
           success: false, 
           error: 'มีข้อมูลของวันที่และเว็บไซต์นี้อยู่แล้ว' 
@@ -100,16 +83,19 @@ export async function POST(request: NextRequest) {
     const withdrawal = parseFloat(totalWithdrawal || withdrawalAmount) || 0;
     const profit = deposit - withdrawal;
     
-    const id = `ds_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
+    const id = `ds_${generateId()}`;
     
-    db.prepare(`
-      INSERT INTO DailySummary (id, date, websiteId, websiteName, totalDeposit, totalWithdrawal, totalProfit, transactionCount, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, date, finalWebsiteId, finalWebsiteName, deposit, withdrawal, profit, 0, now, now);
-    
-    const newSummary = db.prepare('SELECT * FROM DailySummary WHERE id = ?').get(id) as DailySummaryRow;
-    db.close();
+    const [newSummary] = await db.insert(dailySummaries).values({
+      id,
+      date,
+      websiteId: finalWebsiteId,
+      websiteName: finalWebsiteName,
+      totalDeposit: deposit,
+      totalWithdrawal: withdrawal,
+      totalProfit: profit,
+      memberCount: 0,
+      newMemberCount: 0,
+    }).returning();
     
     return NextResponse.json({ 
       success: true, 

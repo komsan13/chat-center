@@ -1,54 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
-
-function getDb() {
-  const prismaPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  const dataPath = path.join(process.cwd(), 'data', 'dev.db');
-  
-  // Prefer prisma/dev.db as it has the LINE chat data
-  if (fs.existsSync(prismaPath)) {
-    return new Database(prismaPath);
-  }
-  if (fs.existsSync(dataPath)) {
-    return new Database(dataPath);
-  }
-  return new Database(prismaPath);
-}
+import { db, lineChatRooms, lineChatMessages, chatNotes, generateId } from '@/lib/db';
+import { eq, asc, desc } from 'drizzle-orm';
 
 // GET - Get single room with messages
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> }
 ) {
-  const db = getDb();
   const { roomId } = await params;
   
   try {
-    const room = db.prepare(`
-      SELECT r.*, 
-        (SELECT json_object(
-          'id', m.id,
-          'content', m.content,
-          'messageType', m.messageType,
-          'sender', m.sender,
-          'createdAt', m.createdAt
-        ) FROM LineChatMessage m WHERE m.roomId = r.id ORDER BY m.createdAt DESC LIMIT 1) as lastMessage
-      FROM LineChatRoom r
-      WHERE r.id = ?
-    `).get(roomId) as any;
+    const [room] = await db
+      .select()
+      .from(lineChatRooms)
+      .where(eq(lineChatRooms.id, roomId))
+      .limit(1);
 
     if (!room) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
 
     // Get messages
-    const rawMessages = db.prepare(`
-      SELECT * FROM LineChatMessage 
-      WHERE roomId = ? AND isDeleted = 0 
-      ORDER BY createdAt ASC
-    `).all(roomId) as any[];
+    const rawMessages = await db
+      .select()
+      .from(lineChatMessages)
+      .where(eq(lineChatMessages.roomId, roomId))
+      .orderBy(asc(lineChatMessages.createdAt));
 
     // Parse emojis JSON for each message
     const messages = rawMessages.map(msg => ({
@@ -56,44 +33,37 @@ export async function GET(
       emojis: msg.emojis ? JSON.parse(msg.emojis) : null,
     }));
 
-    // Get notes (handle if ChatNote table doesn't exist)
-    let notes: unknown[] = [];
-    try {
-      notes = db.prepare(`
-        SELECT * FROM ChatNote 
-        WHERE roomId = ? 
-        ORDER BY createdAt DESC
-      `).all(roomId);
-    } catch {
-      // ChatNote table might not exist, create it
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS ChatNote (
-          id TEXT PRIMARY KEY,
-          roomId TEXT NOT NULL,
-          content TEXT NOT NULL,
-          createdBy TEXT,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (roomId) REFERENCES LineChatRoom(id)
-        )
-      `);
-      notes = [];
-    }
+    // Get notes
+    const notes = await db
+      .select()
+      .from(chatNotes)
+      .where(eq(chatNotes.roomId, roomId))
+      .orderBy(desc(chatNotes.createdAt));
+
+    // Get last message
+    const [lastMessage] = await db
+      .select()
+      .from(lineChatMessages)
+      .where(eq(lineChatMessages.roomId, roomId))
+      .orderBy(desc(lineChatMessages.createdAt))
+      .limit(1);
 
     return NextResponse.json({
       ...room,
       tags: JSON.parse(room.tags || '[]'),
-      isPinned: !!room.isPinned,
-      isMuted: !!room.isMuted,
-      lastMessage: room.lastMessage ? JSON.parse(room.lastMessage) : null,
+      lastMessage: lastMessage ? {
+        id: lastMessage.id,
+        content: lastMessage.content,
+        messageType: lastMessage.messageType,
+        sender: lastMessage.sender,
+        createdAt: lastMessage.createdAt,
+      } : null,
       messages,
       notes,
     });
   } catch (error) {
     console.error('[Room API] Error:', error);
     return NextResponse.json({ error: 'Failed to fetch room' }, { status: 500 });
-  } finally {
-    db.close();
   }
 }
 
@@ -102,82 +72,72 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> }
 ) {
-  const db = getDb();
   const { roomId } = await params;
   
   try {
     const body = await request.json();
     const { isPinned, isMuted, tags, status, assignedTo, notes } = body;
 
-    const updates: string[] = [];
-    const updateParams: (string | number)[] = [];
+    const updateData: Partial<typeof lineChatRooms.$inferInsert> = {
+      updatedAt: new Date(),
+    };
 
     if (typeof isPinned !== 'undefined') {
-      updates.push('isPinned = ?');
-      updateParams.push(isPinned ? 1 : 0);
+      updateData.isPinned = isPinned;
     }
 
     if (typeof isMuted !== 'undefined') {
-      updates.push('isMuted = ?');
-      updateParams.push(isMuted ? 1 : 0);
+      updateData.isMuted = isMuted;
     }
 
     if (tags !== undefined) {
-      updates.push('tags = ?');
-      updateParams.push(JSON.stringify(tags));
+      updateData.tags = JSON.stringify(tags);
     }
 
     if (status) {
-      updates.push('status = ?');
-      updateParams.push(status);
+      updateData.status = status;
     }
 
     if (assignedTo !== undefined) {
-      updates.push('assignedTo = ?');
-      updateParams.push(assignedTo);
+      updateData.assignedTo = assignedTo;
     }
 
-    if (updates.length > 0) {
-      updates.push('updatedAt = ?');
-      updateParams.push(new Date().toISOString());
-      updateParams.push(roomId);
-
-      db.prepare(`UPDATE LineChatRoom SET ${updates.join(', ')} WHERE id = ?`).run(...updateParams);
+    if (Object.keys(updateData).length > 1) {
+      await db
+        .update(lineChatRooms)
+        .set(updateData)
+        .where(eq(lineChatRooms.id, roomId));
     }
 
     // Handle notes separately (add/update/delete)
     if (notes && notes.action) {
       const { action, noteId, content, createdBy } = notes;
-      
-      // Ensure ChatNote table exists
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS ChatNote (
-          id TEXT PRIMARY KEY,
-          roomId TEXT NOT NULL,
-          content TEXT NOT NULL,
-          createdBy TEXT,
-          createdAt TEXT NOT NULL,
-          updatedAt TEXT NOT NULL,
-          FOREIGN KEY (roomId) REFERENCES LineChatRoom(id)
-        )
-      `);
 
       if (action === 'add') {
-        const noteInsertId = `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        db.prepare(`
-          INSERT INTO ChatNote (id, roomId, content, createdBy, createdAt, updatedAt)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(noteInsertId, roomId, content, createdBy, new Date().toISOString(), new Date().toISOString());
+        const noteInsertId = `note_${generateId()}`;
+        await db.insert(chatNotes).values({
+          id: noteInsertId,
+          roomId,
+          content,
+          createdBy,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
       } else if (action === 'update' && noteId) {
-        db.prepare(`
-          UPDATE ChatNote SET content = ?, updatedAt = ? WHERE id = ? AND roomId = ?
-        `).run(content, new Date().toISOString(), noteId, roomId);
+        await db
+          .update(chatNotes)
+          .set({ content, updatedAt: new Date() })
+          .where(eq(chatNotes.id, noteId));
       } else if (action === 'delete' && noteId) {
-        db.prepare(`DELETE FROM ChatNote WHERE id = ? AND roomId = ?`).run(noteId, roomId);
+        await db.delete(chatNotes).where(eq(chatNotes.id, noteId));
       }
     }
 
-    const updatedRoom = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(roomId) as any;
+    const [updatedRoom] = await db
+      .select()
+      .from(lineChatRooms)
+      .where(eq(lineChatRooms.id, roomId))
+      .limit(1);
     
     if (!updatedRoom) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });
@@ -188,15 +148,11 @@ export async function PATCH(
       room: {
         ...updatedRoom,
         tags: JSON.parse(updatedRoom.tags || '[]'),
-        isPinned: !!updatedRoom.isPinned,
-        isMuted: !!updatedRoom.isMuted,
       }
     });
   } catch (error) {
     console.error('[Room API] Error:', error);
     return NextResponse.json({ error: 'Failed to update room' }, { status: 500 });
-  } finally {
-    db.close();
   }
 }
 
@@ -205,7 +161,6 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ roomId: string }> }
 ) {
-  const db = getDb();
   const { roomId } = await params;
   
   try {
@@ -214,39 +169,41 @@ export async function DELETE(
 
     if (mode === 'permanent') {
       // Permanently delete messages and room (dangerous!)
-      db.prepare('DELETE FROM LineChatMessage WHERE roomId = ?').run(roomId);
-      db.prepare('DELETE FROM ChatNote WHERE roomId = ?').run(roomId);
-      db.prepare('DELETE FROM LineChatRoom WHERE id = ?').run(roomId);
+      await db.delete(lineChatMessages).where(eq(lineChatMessages.roomId, roomId));
+      await db.delete(chatNotes).where(eq(chatNotes.roomId, roomId));
+      await db.delete(lineChatRooms).where(eq(lineChatRooms.id, roomId));
       
       return NextResponse.json({ success: true, message: 'Room permanently deleted' });
     } else if (mode === 'clear') {
       // Clear messages only, keep room, tags, and notes for future messages
-      db.prepare('DELETE FROM LineChatMessage WHERE roomId = ?').run(roomId);
-      // Keep notes - don't delete them
-      // db.prepare('DELETE FROM ChatNote WHERE roomId = ?').run(roomId);
+      await db.delete(lineChatMessages).where(eq(lineChatMessages.roomId, roomId));
       
       // Reset room state and set status to 'cleared' (hidden until new message)
-      db.prepare(`
-        UPDATE LineChatRoom 
-        SET lastMessageAt = NULL, unreadCount = 0, status = 'cleared', updatedAt = ? 
-        WHERE id = ?
-      `).run(new Date().toISOString(), roomId);
+      await db
+        .update(lineChatRooms)
+        .set({
+          lastMessageAt: null,
+          unreadCount: 0,
+          status: 'cleared',
+          updatedAt: new Date(),
+        })
+        .where(eq(lineChatRooms.id, roomId));
       
       return NextResponse.json({ success: true, message: 'Messages cleared, room hidden until new message' });
     } else {
       // Soft delete - archive the room
-      db.prepare(`
-        UPDATE LineChatRoom 
-        SET status = 'archived', updatedAt = ? 
-        WHERE id = ?
-      `).run(new Date().toISOString(), roomId);
+      await db
+        .update(lineChatRooms)
+        .set({
+          status: 'archived',
+          updatedAt: new Date(),
+        })
+        .where(eq(lineChatRooms.id, roomId));
       
       return NextResponse.json({ success: true, message: 'Room archived' });
     }
   } catch (error) {
     console.error('[Room API] Error:', error);
     return NextResponse.json({ error: 'Failed to delete room' }, { status: 500 });
-  } finally {
-    db.close();
   }
 }

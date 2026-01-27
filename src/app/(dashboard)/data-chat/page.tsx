@@ -2446,6 +2446,21 @@ export default function DataChatPage() {
                       </span>
                       {room.isPinned && <Pin size={11} style={{ color: colors.accent, transform: 'rotate(-45deg)', flexShrink: 0 }} />}
                       {room.isMuted && <VolumeX size={11} style={{ color: colors.warning, flexShrink: 0 }} />}
+                      {/* Viewing Eye Indicator - shows when someone else is viewing this room */}
+                      {viewingUsers[room.id]?.length > 0 && (
+                        <div 
+                          className="viewing-eye"
+                          title={`${viewingUsers[room.id].map(v => v.userName).join(', ')} กำลังดูอยู่`}
+                          style={{ 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 18, height: 18, borderRadius: '50%',
+                            background: colors.accent + '20',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Eye size={11} style={{ color: colors.accent }} />
+                        </div>
+                      )}
                     </div>
                     <span style={{ 
                       fontSize: 11, 
@@ -3003,11 +3018,27 @@ export default function DataChatPage() {
                   <h3 style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600, color: colors.textPrimary, margin: 0 }}>
                     {selectedRoomData.displayName}
                   </h3>
-                  <p style={{ fontSize: isMobile ? 11 : 12, color: colors.online, margin: 0, fontWeight: 500 }}>
+                  <p style={{ fontSize: isMobile ? 11 : 12, color: colors.online, margin: 0, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
                     ● Online
                     {selectedRoom && viewingUsers[selectedRoom]?.length > 0 && (
-                      <span style={{ marginLeft: 8, color: colors.accent, fontStyle: 'italic' }}>
-                        • 👁️ {viewingUsers[selectedRoom].map(v => v.userName).join(', ')} กำลังดูอยู่
+                      <span style={{ 
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        color: colors.accent, fontStyle: 'italic',
+                        background: colors.accent + '15',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                      }}>
+                        <span 
+                          className="viewing-eye" 
+                          style={{ 
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 16, height: 16, borderRadius: '50%',
+                            background: colors.accent + '30',
+                          }}
+                        >
+                          <Eye size={10} style={{ color: colors.accent }} />
+                        </span>
+                        {viewingUsers[selectedRoom].map(v => v.userName).join(', ')} กำลังดูอยู่
                       </span>
                     )}
                   </p>
@@ -5282,6 +5313,17 @@ export default function DataChatPage() {
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes typingDot { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes eyeBlink { 
+          0%, 90%, 100% { transform: scaleY(1); } 
+          95% { transform: scaleY(0.1); } 
+        }
+        @keyframes eyeGlow {
+          0%, 100% { box-shadow: 0 0 4px ${colors.accent}40; }
+          50% { box-shadow: 0 0 8px ${colors.accent}80, 0 0 12px ${colors.accent}40; }
+        }
+        .viewing-eye {
+          animation: eyeBlink 3s ease-in-out infinite, eyeGlow 2s ease-in-out infinite;
+        }
         * { scrollbar-width: thin; scrollbar-color: ${colors.border} transparent; }
         *::-webkit-scrollbar { width: 6px; }
         *::-webkit-scrollbar-track { background: transparent; }

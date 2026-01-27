@@ -40,7 +40,8 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  // Initialize Socket.IO with AGGRESSIVE keep-alive settings for background tabs
+  // Initialize Socket.IO with OPTIMAL settings
+  // Socket.IO has built-in ping/pong - no need for custom heartbeat
   const io = new Server(server, {
     cors: {
       origin: '*',
@@ -49,16 +50,15 @@ app.prepare().then(() => {
     },
     path: '/socket.io',
     transports: ['websocket', 'polling'],
-    // CRITICAL: Very aggressive ping settings to survive Chrome tab throttling
-    pingTimeout: 60000,        // 60 seconds - very lenient timeout
-    pingInterval: 3000,        // Ping every 3 seconds 
-    upgradeTimeout: 30000,
-    maxHttpBufferSize: 1e7,
-    connectTimeout: 20000,
-    allowEIO3: true,
-    // Performance settings
+    // OPTIMAL: Socket.IO default ping is sufficient
+    pingTimeout: 20000,        // 20 seconds to respond (default)
+    pingInterval: 25000,       // Ping every 25 seconds (default)
+    upgradeTimeout: 10000,
+    maxHttpBufferSize: 1e6,    // 1MB max message size
+    connectTimeout: 45000,
+    // Compression for large messages
     perMessageDeflate: {
-      threshold: 1024,
+      threshold: 2048,         // Only compress > 2KB
     },
   });
 

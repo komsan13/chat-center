@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-// Database connection
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  return new Database(dbPath);
-}
+import { db, dailyBalances } from '@/lib/db';
+import { eq, and, ne } from 'drizzle-orm';
 
 // GET - Get single daily balance by ID
 export async function GET(
@@ -16,12 +9,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
     
-    const stmt = db.prepare('SELECT * FROM DailyBalance WHERE id = ?');
-    const data = stmt.get(id);
-    
-    db.close();
+    const [data] = await db.select().from(dailyBalances).where(eq(dailyBalances.id, id));
     
     if (!data) {
       return NextResponse.json(
@@ -50,17 +39,14 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
     const body = await request.json();
     
-    const { date, websiteId, websiteName, bankId, bankName, accountNumber, openingBalance, closingBalance } = body;
+    const { date, bankId, bankName, openingBalance, closingBalance, deposits, withdrawals, note } = body;
     
     // Check if record exists
-    const existsStmt = db.prepare('SELECT id FROM DailyBalance WHERE id = ?');
-    const existing = existsStmt.get(id);
+    const [existing] = await db.select().from(dailyBalances).where(eq(dailyBalances.id, id));
     
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { success: false, error: 'Daily balance not found' },
         { status: 404 }
@@ -69,10 +55,15 @@ export async function PUT(
     
     // Check for duplicate (same date + bankId, but different id)
     if (date && bankId) {
-      const dupStmt = db.prepare('SELECT id FROM DailyBalance WHERE date = ? AND bankId = ? AND id != ?');
-      const duplicate = dupStmt.get(date, bankId, id);
+      const [duplicate] = await db.select()
+        .from(dailyBalances)
+        .where(and(
+          eq(dailyBalances.date, date),
+          eq(dailyBalances.bankId, bankId),
+          ne(dailyBalances.id, id)
+        ));
+      
       if (duplicate) {
-        db.close();
         return NextResponse.json(
           { success: false, error: `Record already exists for date ${date} and bank ${bankName}` },
           { status: 400 }
@@ -80,37 +71,20 @@ export async function PUT(
       }
     }
     
-    const stmt = db.prepare(`
-      UPDATE DailyBalance 
-      SET date = COALESCE(?, date),
-          websiteId = COALESCE(?, websiteId),
-          websiteName = COALESCE(?, websiteName),
-          bankId = COALESCE(?, bankId),
-          bankName = COALESCE(?, bankName),
-          accountNumber = COALESCE(?, accountNumber),
-          openingBalance = COALESCE(?, openingBalance),
-          closingBalance = COALESCE(?, closingBalance),
-          updatedAt = datetime('now')
-      WHERE id = ?
-    `);
-    
-    stmt.run(
-      date || null,
-      websiteId || null,
-      websiteName || null,
-      bankId || null,
-      bankName || null,
-      accountNumber || null,
-      openingBalance !== undefined ? openingBalance : null,
-      closingBalance !== undefined ? closingBalance : null,
-      id
-    );
-    
-    // Get updated record
-    const getStmt = db.prepare('SELECT * FROM DailyBalance WHERE id = ?');
-    const updated = getStmt.get(id);
-    
-    db.close();
+    const [updated] = await db.update(dailyBalances)
+      .set({
+        date: date ?? existing.date,
+        bankId: bankId ?? existing.bankId,
+        bankName: bankName ?? existing.bankName,
+        openingBalance: openingBalance !== undefined ? openingBalance : existing.openingBalance,
+        closingBalance: closingBalance !== undefined ? closingBalance : existing.closingBalance,
+        deposits: deposits !== undefined ? deposits : existing.deposits,
+        withdrawals: withdrawals !== undefined ? withdrawals : existing.withdrawals,
+        note: note !== undefined ? note : existing.note,
+        updatedAt: new Date(),
+      })
+      .where(eq(dailyBalances.id, id))
+      .returning();
     
     return NextResponse.json({
       success: true,
@@ -133,24 +107,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
     
     // Check if record exists
-    const existsStmt = db.prepare('SELECT id, date, bankName FROM DailyBalance WHERE id = ?');
-    const existing = existsStmt.get(id) as { id: string; date: string; bankName: string } | undefined;
+    const [existing] = await db.select().from(dailyBalances).where(eq(dailyBalances.id, id));
     
     if (!existing) {
-      db.close();
       return NextResponse.json(
         { success: false, error: 'Daily balance not found' },
         { status: 404 }
       );
     }
     
-    const stmt = db.prepare('DELETE FROM DailyBalance WHERE id = ?');
-    stmt.run(id);
-    
-    db.close();
+    await db.delete(dailyBalances).where(eq(dailyBalances.id, id));
     
     return NextResponse.json({
       success: true,

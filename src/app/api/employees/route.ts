@@ -1,30 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-// Initialize SQLite database
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-const db = new Database(dbPath);
-
-interface EmployeeRow {
-  id: string;
-  fullName: string;
-  position: string;
-  websites: string;
-  bankName: string;
-  accountNumber: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { db, employees } from '@/lib/db';
+import { eq, desc, and, ne } from 'drizzle-orm';
 
 // GET - ดึงรายการพนักงานทั้งหมด
 export async function GET() {
   try {
-    const employees = db.prepare('SELECT * FROM Employee ORDER BY createdAt DESC').all() as EmployeeRow[];
+    const result = await db
+      .select()
+      .from(employees)
+      .orderBy(desc(employees.createdAt));
     
     // Parse websites JSON
-    const parsed = employees.map(emp => ({
+    const parsed = result.map(emp => ({
       ...emp,
       websites: JSON.parse(emp.websites || '[]')
     }));
@@ -70,17 +57,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate ID
-    const id = 'emp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    
-    const stmt = db.prepare(`
-      INSERT INTO Employee (id, fullName, position, websites, bankName, accountNumber, status, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `);
-    
-    stmt.run(id, fullName, position, JSON.stringify(websites), bankName, accountNumber, status || 'active');
+    // Check for duplicate account number
+    const [existing] = await db
+      .select()
+      .from(employees)
+      .where(eq(employees.accountNumber, accountNumber))
+      .limit(1);
 
-    const employee = db.prepare('SELECT * FROM Employee WHERE id = ?').get(id) as EmployeeRow;
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: 'Account number already exists' },
+        { status: 400 }
+      );
+    }
+
+    // Insert - let schema handle id and timestamps via $defaultFn and defaultNow()
+    const [employee] = await db.insert(employees).values({
+      fullName,
+      position,
+      websites: JSON.stringify(websites),
+      bankName,
+      accountNumber,
+      status: status || 'active',
+    }).returning();
 
     return NextResponse.json({
       success: true,

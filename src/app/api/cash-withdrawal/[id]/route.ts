@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  return new Database(dbPath);
-}
+import { db, cashWithdrawals } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 
 // GET single cash withdrawal
 export async function GET(
@@ -15,9 +9,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
-    const withdrawal = db.prepare('SELECT * FROM CashWithdrawal WHERE id = ?').get(id);
-    db.close();
+    
+    const [withdrawal] = await db
+      .select()
+      .from(cashWithdrawals)
+      .where(eq(cashWithdrawals.id, id))
+      .limit(1);
     
     if (!withdrawal) {
       return NextResponse.json({ success: false, error: 'Cash withdrawal not found' }, { status: 404 });
@@ -38,34 +35,42 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { date, websiteId, websiteName, bankId, bankName, accountNumber, accountName, amount, fee, status } = body;
+    const { date, websiteId, websiteName, bankId, bankName, accountNumber, accountName, amount, fee, note, createdBy } = body;
     
     if (!date || !bankId) {
       return NextResponse.json({ success: false, error: 'Date and bank are required' }, { status: 400 });
     }
     
-    const db = getDb();
-    
     // Check if record exists
-    const existing = db.prepare('SELECT * FROM CashWithdrawal WHERE id = ?').get(id);
+    const [existing] = await db
+      .select()
+      .from(cashWithdrawals)
+      .where(eq(cashWithdrawals.id, id))
+      .limit(1);
+    
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Cash withdrawal not found' }, { status: 404 });
     }
     
     const amountValue = parseFloat(amount) || 0;
     const feeValue = parseFloat(fee) || 0;
-    const statusValue = status || 'pending';
-    const now = new Date().toISOString();
     
-    db.prepare(`
-      UPDATE CashWithdrawal 
-      SET date = ?, websiteId = ?, websiteName = ?, bankId = ?, bankName = ?, accountNumber = ?, accountName = ?, amount = ?, fee = ?, status = ?, updatedAt = ?
-      WHERE id = ?
-    `).run(date, websiteId || null, websiteName || null, bankId, bankName, accountNumber, accountName, amountValue, feeValue, statusValue, now, id);
-    
-    const updated = db.prepare('SELECT * FROM CashWithdrawal WHERE id = ?').get(id);
-    db.close();
+    const [updated] = await db
+      .update(cashWithdrawals)
+      .set({
+        date,
+        websiteId: websiteId || null,
+        websiteName: websiteName || null,
+        bankId: bankId || null,
+        bankName: bankName || null,
+        amount: amountValue,
+        fee: feeValue,
+        note: note || null,
+        createdBy: createdBy || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(cashWithdrawals.id, id))
+      .returning();
     
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
@@ -81,17 +86,19 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
     
     // Check if record exists
-    const existing = db.prepare('SELECT * FROM CashWithdrawal WHERE id = ?').get(id);
+    const [existing] = await db
+      .select()
+      .from(cashWithdrawals)
+      .where(eq(cashWithdrawals.id, id))
+      .limit(1);
+    
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Cash withdrawal not found' }, { status: 404 });
     }
     
-    db.prepare('DELETE FROM CashWithdrawal WHERE id = ?').run(id);
-    db.close();
+    await db.delete(cashWithdrawals).where(eq(cashWithdrawals.id, id));
     
     return NextResponse.json({ success: true, message: 'Cash withdrawal deleted successfully' });
   } catch (error) {

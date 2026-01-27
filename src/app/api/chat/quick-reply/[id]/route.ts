@@ -1,24 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  return new Database(dbPath);
-}
-
-interface QuickReplyRow {
-  id: string;
-  lineTokenId: string;
-  title: string;
-  label: string;
-  icon: string;
-  emojis: string | null;
-  isFavorite: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import { db, quickReplies } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 
 // GET single quick reply
 export async function GET(
@@ -27,9 +9,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
-    const quickReply = db.prepare('SELECT * FROM QuickReply WHERE id = ?').get(id) as QuickReplyRow | undefined;
-    db.close();
+    
+    const [quickReply] = await db
+      .select()
+      .from(quickReplies)
+      .where(eq(quickReplies.id, id))
+      .limit(1);
     
     if (!quickReply) {
       return NextResponse.json({ success: false, error: 'Quick reply not found' }, { status: 404 });
@@ -40,7 +25,6 @@ export async function GET(
       data: {
         ...quickReply,
         emojis: quickReply.emojis ? JSON.parse(quickReply.emojis) : undefined,
-        isFavorite: quickReply.isFavorite === 1
       }
     });
   } catch (error) {
@@ -59,41 +43,36 @@ export async function PUT(
     const body = await request.json();
     const { lineTokenId, title, label, icon, emojis, isFavorite } = body;
     
-    const db = getDb();
-    
     // Check if exists
-    const existing = db.prepare('SELECT * FROM QuickReply WHERE id = ?').get(id) as QuickReplyRow | undefined;
+    const [existing] = await db
+      .select()
+      .from(quickReplies)
+      .where(eq(quickReplies.id, id))
+      .limit(1);
+    
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Quick reply not found' }, { status: 404 });
     }
     
-    const now = new Date().toISOString();
-    
-    db.prepare(`
-      UPDATE QuickReply 
-      SET lineTokenId = ?, title = ?, label = ?, icon = ?, emojis = ?, isFavorite = ?, updatedAt = ?
-      WHERE id = ?
-    `).run(
-      lineTokenId || existing.lineTokenId,
-      title || existing.title,
-      label || existing.label,
-      icon || existing.icon,
-      emojis !== undefined ? (emojis ? JSON.stringify(emojis) : null) : existing.emojis,
-      isFavorite !== undefined ? (isFavorite ? 1 : 0) : existing.isFavorite,
-      now,
-      id
-    );
-    
-    const updated = db.prepare('SELECT * FROM QuickReply WHERE id = ?').get(id) as QuickReplyRow;
-    db.close();
+    const [updated] = await db
+      .update(quickReplies)
+      .set({
+        lineTokenId: lineTokenId || existing.lineTokenId,
+        title: title || existing.title,
+        label: label || existing.label,
+        icon: icon || existing.icon,
+        emojis: emojis !== undefined ? (emojis ? JSON.stringify(emojis) : null) : existing.emojis,
+        isFavorite: isFavorite !== undefined ? isFavorite : existing.isFavorite,
+        updatedAt: new Date(),
+      })
+      .where(eq(quickReplies.id, id))
+      .returning();
     
     return NextResponse.json({ 
       success: true, 
       data: {
         ...updated,
         emojis: updated.emojis ? JSON.parse(updated.emojis) : undefined,
-        isFavorite: updated.isFavorite === 1
       }
     });
   } catch (error) {
@@ -109,17 +88,19 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
     
     // Check if exists
-    const existing = db.prepare('SELECT * FROM QuickReply WHERE id = ?').get(id);
+    const [existing] = await db
+      .select()
+      .from(quickReplies)
+      .where(eq(quickReplies.id, id))
+      .limit(1);
+    
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Quick reply not found' }, { status: 404 });
     }
     
-    db.prepare('DELETE FROM QuickReply WHERE id = ?').run(id);
-    db.close();
+    await db.delete(quickReplies).where(eq(quickReplies.id, id));
     
     return NextResponse.json({ success: true, message: 'Quick reply deleted successfully' });
   } catch (error) {

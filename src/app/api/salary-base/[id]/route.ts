@@ -1,12 +1,6 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  return new Database(dbPath);
-}
+import { db, salaryBase } from '@/lib/db';
+import { eq, and, ne } from 'drizzle-orm';
 
 // GET single salary base
 export async function GET(
@@ -15,15 +9,15 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
-    const salaryBase = db.prepare('SELECT * FROM SalaryBase WHERE id = ?').get(id);
-    db.close();
+    const [salaryBaseRecord] = await db.select()
+      .from(salaryBase)
+      .where(eq(salaryBase.id, id));
     
-    if (!salaryBase) {
+    if (!salaryBaseRecord) {
       return NextResponse.json({ success: false, error: 'Salary base not found' }, { status: 404 });
     }
     
-    return NextResponse.json({ success: true, data: salaryBase });
+    return NextResponse.json({ success: true, data: salaryBaseRecord });
   } catch (error) {
     console.error('Error fetching salary base:', error);
     return NextResponse.json({ success: false, error: 'Failed to fetch salary base' }, { status: 500 });
@@ -44,32 +38,38 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Position is required' }, { status: 400 });
     }
     
-    const db = getDb();
-    
     // Check if record exists
-    const existing = db.prepare('SELECT * FROM SalaryBase WHERE id = ?').get(id);
+    const [existing] = await db.select()
+      .from(salaryBase)
+      .where(eq(salaryBase.id, id));
+    
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Salary base not found' }, { status: 404 });
     }
     
     // Check if position already exists for another record
-    const duplicate = db.prepare('SELECT id FROM SalaryBase WHERE position = ? AND id != ?').get(position, id);
+    const [duplicate] = await db.select()
+      .from(salaryBase)
+      .where(and(eq(salaryBase.position, position), ne(salaryBase.id, id)));
+    
     if (duplicate) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Position already exists' }, { status: 400 });
     }
     
-    const now = new Date().toISOString();
+    const now = new Date();
     
-    db.prepare(`
-      UPDATE SalaryBase 
-      SET position = ?, baseSalary = ?, positionAllowance = ?, updatedAt = ?
-      WHERE id = ?
-    `).run(position, baseSalary || 0, positionAllowance || 0, now, id);
+    await db.update(salaryBase)
+      .set({
+        position,
+        baseSalary: baseSalary || 0,
+        positionAllowance: positionAllowance || 0,
+        updatedAt: now
+      })
+      .where(eq(salaryBase.id, id));
     
-    const updated = db.prepare('SELECT * FROM SalaryBase WHERE id = ?').get(id);
-    db.close();
+    const [updated] = await db.select()
+      .from(salaryBase)
+      .where(eq(salaryBase.id, id));
     
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
@@ -85,17 +85,17 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
     
     // Check if record exists
-    const existing = db.prepare('SELECT * FROM SalaryBase WHERE id = ?').get(id);
+    const [existing] = await db.select()
+      .from(salaryBase)
+      .where(eq(salaryBase.id, id));
+    
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Salary base not found' }, { status: 404 });
     }
     
-    db.prepare('DELETE FROM SalaryBase WHERE id = ?').run(id);
-    db.close();
+    await db.delete(salaryBase).where(eq(salaryBase.id, id));
     
     return NextResponse.json({ success: true, message: 'Salary base deleted successfully' });
   } catch (error) {

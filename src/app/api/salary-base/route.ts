@@ -1,32 +1,13 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  return new Database(dbPath);
-}
+import { db, salaryBase, generateId } from '@/lib/db';
+import { eq, desc } from 'drizzle-orm';
 
 // GET all salary bases
 export async function GET() {
   try {
-    const db = getDb();
-    
-    // Create table if not exists
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS SalaryBase (
-        id TEXT PRIMARY KEY,
-        position TEXT NOT NULL UNIQUE,
-        baseSalary REAL NOT NULL DEFAULT 0,
-        positionAllowance REAL NOT NULL DEFAULT 0,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    const salaryBases = db.prepare('SELECT * FROM SalaryBase ORDER BY baseSalary DESC').all();
-    db.close();
+    const salaryBases = await db.select()
+      .from(salaryBase)
+      .orderBy(desc(salaryBase.baseSalary));
     
     return NextResponse.json({ success: true, data: salaryBases });
   } catch (error) {
@@ -45,37 +26,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Position is required' }, { status: 400 });
     }
     
-    const db = getDb();
-    
-    // Create table if not exists
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS SalaryBase (
-        id TEXT PRIMARY KEY,
-        position TEXT NOT NULL UNIQUE,
-        baseSalary REAL NOT NULL DEFAULT 0,
-        positionAllowance REAL NOT NULL DEFAULT 0,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
     // Check if position already exists
-    const existing = db.prepare('SELECT id FROM SalaryBase WHERE position = ?').get(position);
+    const [existing] = await db.select()
+      .from(salaryBase)
+      .where(eq(salaryBase.position, position));
+    
     if (existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Position already exists' }, { status: 400 });
     }
     
-    const id = `sb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
+    const id = generateId('sb');
+    const now = new Date();
     
-    db.prepare(`
-      INSERT INTO SalaryBase (id, position, baseSalary, positionAllowance, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, position, baseSalary || 0, positionAllowance || 0, now, now);
+    await db.insert(salaryBase).values({
+      id,
+      position,
+      baseSalary: baseSalary || 0,
+      positionAllowance: positionAllowance || 0,
+      createdAt: now,
+      updatedAt: now
+    });
     
-    const newSalaryBase = db.prepare('SELECT * FROM SalaryBase WHERE id = ?').get(id);
-    db.close();
+    const [newSalaryBase] = await db.select()
+      .from(salaryBase)
+      .where(eq(salaryBase.id, id));
     
     return NextResponse.json({ success: true, data: newSalaryBase });
   } catch (error) {

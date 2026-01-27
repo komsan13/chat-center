@@ -1,24 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-interface LineTokenRecord {
-  id: string;
-  accessToken: string;
-}
-
-function getDb() {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  return new Database(dbPath);
-}
+import { db, lineTokens } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 
 // GET - Fetch media content from LINE and proxy it
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ messageId: string }> }
 ) {
-  const db = getDb();
-  
   try {
     const { messageId } = await params;
     const { searchParams } = new URL(request.url);
@@ -29,7 +17,7 @@ export async function GET(
     }
 
     // Get LINE token
-    const lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ?').get(tokenId) as LineTokenRecord | undefined;
+    const [lineToken] = await db.select().from(lineTokens).where(eq(lineTokens.id, tokenId));
     
     if (!lineToken) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 404 });
@@ -62,7 +50,5 @@ export async function GET(
   } catch (error) {
     console.error('[LINE Media API] Error:', error);
     return NextResponse.json({ error: 'Failed to fetch media' }, { status: 500 });
-  } finally {
-    db.close();
   }
 }

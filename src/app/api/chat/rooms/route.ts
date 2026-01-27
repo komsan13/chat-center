@@ -1,231 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
-
-// Database connection - use prisma/dev.db as primary (where LINE webhook saves data)
-function getDb() {
-  const prismaPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  const dataPath = path.join(process.cwd(), 'data', 'dev.db');
-  
-  // Prefer prisma/dev.db as it has the LINE chat data
-  if (fs.existsSync(prismaPath)) {
-    return new Database(prismaPath);
-  }
-  if (fs.existsSync(dataPath)) {
-    return new Database(dataPath);
-  }
-  // Create in prisma folder if neither exists
-  return new Database(prismaPath);
-}
-
-// Auto-migrate function to ensure all columns exist
-function ensureSchema(db: Database.Database) {
-  try {
-    // Check if table exists
-    const tableExists = db.prepare(`
-      SELECT name FROM sqlite_master 
-      WHERE type='table' AND name='LineChatRoom'
-    `).get();
-    
-    if (!tableExists) {
-      // Create table if not exists
-      db.exec(`
-        CREATE TABLE LineChatRoom (
-          id TEXT PRIMARY KEY,
-          lineUserId TEXT NOT NULL,
-          lineTokenId TEXT,
-          displayName TEXT NOT NULL,
-          pictureUrl TEXT,
-          statusMessage TEXT,
-          lastMessageAt TEXT,
-          unreadCount INTEGER DEFAULT 0,
-          isPinned INTEGER DEFAULT 0,
-          isMuted INTEGER DEFAULT 0,
-          tags TEXT DEFAULT '[]',
-          status TEXT DEFAULT 'active',
-          assignedTo TEXT,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      return;
-    }
-    
-    // Add missing columns
-    const columns = db.prepare(`PRAGMA table_info(LineChatRoom)`).all() as { name: string }[];
-    const columnNames = columns.map(c => c.name);
-    
-    const migrations = [
-      { column: 'isPinned', sql: 'ALTER TABLE LineChatRoom ADD COLUMN isPinned INTEGER DEFAULT 0' },
-      { column: 'isMuted', sql: 'ALTER TABLE LineChatRoom ADD COLUMN isMuted INTEGER DEFAULT 0' },
-      { column: 'tags', sql: "ALTER TABLE LineChatRoom ADD COLUMN tags TEXT DEFAULT '[]'" },
-      { column: 'status', sql: "ALTER TABLE LineChatRoom ADD COLUMN status TEXT DEFAULT 'active'" },
-      { column: 'assignedTo', sql: 'ALTER TABLE LineChatRoom ADD COLUMN assignedTo TEXT' },
-    ];
-    
-    for (const m of migrations) {
-      if (!columnNames.includes(m.column)) {
-        try { db.exec(m.sql); } catch {}
-      }
-    }
-    
-    // Create ChatNote table
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS ChatNote (
-        id TEXT PRIMARY KEY,
-        roomId TEXT NOT NULL,
-        content TEXT NOT NULL,
-        createdBy TEXT,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // Create LineChatMessage table if not exists - use correct column names
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS LineChatMessage (
-        id TEXT PRIMARY KEY,
-        roomId TEXT NOT NULL,
-        lineMessageId TEXT,
-        messageType TEXT NOT NULL DEFAULT 'text',
-        content TEXT,
-        mediaUrl TEXT,
-        stickerId TEXT,
-        packageId TEXT,
-        stickerPackageId TEXT,
-        emojis TEXT,
-        sender TEXT NOT NULL DEFAULT 'user',
-        senderName TEXT,
-        status TEXT DEFAULT 'sent',
-        replyToId TEXT,
-        isDeleted INTEGER DEFAULT 0,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (roomId) REFERENCES LineChatRoom(id)
-      )
-    `);
-    
-    // Add emojis column if not exists
-    try {
-      const msgColumns = db.prepare(`PRAGMA table_info(LineChatMessage)`).all() as { name: string }[];
-      if (!msgColumns.some(c => c.name === 'emojis')) {
-        db.exec('ALTER TABLE LineChatMessage ADD COLUMN emojis TEXT');
-      }
-    } catch {}
-    
-    // Create indexes
-    try {
-      db.exec(`CREATE INDEX IF NOT EXISTS idx_linechatmessage_roomid ON LineChatMessage(roomId)`);
-      db.exec(`CREATE INDEX IF NOT EXISTS idx_linechatroom_status ON LineChatRoom(status)`);
-    } catch {}
-  } catch (err) {
-    console.error('[Schema Migration]', err);
-  }
-}
+import { db, lineChatRooms, lineChatMessages, chatNotes } from '@/lib/db';
+import { eq, desc, asc, and, ne, like, gt, notInArray, isNull, or, sql } from 'drizzle-orm';
 
 // GET - Get all chat rooms with recent messages (Telegram-style preload)
 export async function GET(request: NextRequest) {
-  const db = getDb();
-  
-  // Auto-migrate schema on first request
-  ensureSchema(db);
-  
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const filter = searchParams.get('filter') || 'all'; // all, unread, pinned, spam
 
-    let query = `
-      SELECT r.*, 
-        (SELECT json_object(
-          'id', m.id,
-          'content', m.content,
-          'messageType', m.messageType,
-          'sender', m.sender,
-          'senderName', m.senderName,
-          'createdAt', m.createdAt,
-          'emojis', m.emojis
-        ) FROM LineChatMessage m WHERE m.roomId = r.id ORDER BY m.createdAt DESC LIMIT 1) as lastMessage
-      FROM LineChatRoom r
-      WHERE 1=1
-    `;
-    const params: (string | number)[] = [];
+    // Build conditions
+    const conditions = [];
 
     // Handle spam filter - show spam rooms, otherwise show non-spam/non-cleared rooms
     if (filter === 'spam') {
-      query += ` AND r.status = 'spam'`;
+      conditions.push(eq(lineChatRooms.status, 'spam'));
     } else if (filter === 'archived') {
-      query += ` AND r.status = 'archived'`;
+      conditions.push(eq(lineChatRooms.status, 'archived'));
     } else if (filter === 'cleared') {
-      query += ` AND r.status = 'cleared'`;
+      conditions.push(eq(lineChatRooms.status, 'cleared'));
     } else {
       // For other filters, show all non-spam and non-cleared rooms
-      query += ` AND (r.status NOT IN ('spam', 'cleared') OR r.status IS NULL)`;
+      conditions.push(
+        or(
+          notInArray(lineChatRooms.status, ['spam', 'cleared']),
+          isNull(lineChatRooms.status)
+        )
+      );
     }
 
     if (search) {
-      query += ` AND r.displayName LIKE ?`;
-      params.push(`%${search}%`);
+      conditions.push(like(lineChatRooms.displayName, `%${search}%`));
     }
 
     if (filter === 'unread') {
-      query += ` AND r.unreadCount > 0`;
+      conditions.push(gt(lineChatRooms.unreadCount, 0));
     } else if (filter === 'pinned') {
-      query += ` AND r.isPinned = 1`;
+      conditions.push(eq(lineChatRooms.isPinned, true));
     }
 
-    query += ` ORDER BY r.isPinned DESC, r.lastMessageAt DESC`;
+    const rooms = conditions.length > 0
+      ? await db
+          .select()
+          .from(lineChatRooms)
+          .where(and(...conditions))
+          .orderBy(desc(lineChatRooms.isPinned), desc(lineChatRooms.lastMessageAt))
+      : await db
+          .select()
+          .from(lineChatRooms)
+          .orderBy(desc(lineChatRooms.isPinned), desc(lineChatRooms.lastMessageAt));
 
-    const rooms = db.prepare(query).all(...params) as ChatRoomRecord[];
-
-    // Preload recent messages for all rooms (Telegram-style instant loading)
+    // Get room IDs for fetching messages
     const roomIds = rooms.map(r => r.id);
-    const recentMessagesMap: { [roomId: string]: MessageRecord[] } = {};
+    const recentMessagesMap: { [roomId: string]: typeof lineChatMessages.$inferSelect[] } = {};
     
     if (roomIds.length > 0) {
-      // Get 15 recent messages per room in a single query using UNION ALL
-      const messagesQuery = roomIds.map(roomId => `
-        SELECT * FROM (
-          SELECT * FROM LineChatMessage 
-          WHERE roomId = '${roomId}' AND isDeleted = 0
-          ORDER BY createdAt DESC LIMIT 15
-        )
-      `).join(' UNION ALL ') + ' ORDER BY createdAt ASC';
-      
-      const allMessages = db.prepare(messagesQuery).all() as MessageRecord[];
-      
-      // Group messages by roomId
-      allMessages.forEach(msg => {
-        if (!recentMessagesMap[msg.roomId]) {
-          recentMessagesMap[msg.roomId] = [];
-        }
-        recentMessagesMap[msg.roomId].push(msg);
-      });
+      // Get recent messages for each room (last 15)
+      for (const roomId of roomIds) {
+        const messages = await db
+          .select()
+          .from(lineChatMessages)
+          .where(eq(lineChatMessages.roomId, roomId))
+          .orderBy(desc(lineChatMessages.createdAt))
+          .limit(15);
+        
+        // Reverse to get chronological order
+        recentMessagesMap[roomId] = messages.reverse();
+      }
+    }
+
+    // Get last message for each room
+    const lastMessagesMap: { [roomId: string]: typeof lineChatMessages.$inferSelect | null } = {};
+    for (const roomId of roomIds) {
+      const [lastMsg] = await db
+        .select()
+        .from(lineChatMessages)
+        .where(eq(lineChatMessages.roomId, roomId))
+        .orderBy(desc(lineChatMessages.createdAt))
+        .limit(1);
+      lastMessagesMap[roomId] = lastMsg || null;
     }
 
     // Parse JSON fields and attach recent messages
     const parsedRooms = rooms.map(room => {
-      const lastMessage = room.lastMessage ? JSON.parse(room.lastMessage) : null;
-      // Parse emojis in lastMessage if it's a string
-      if (lastMessage && typeof lastMessage.emojis === 'string') {
-        lastMessage.emojis = JSON.parse(lastMessage.emojis);
-      }
-      // Parse emojis in recentMessages and map column names for frontend
+      const lastMessage = lastMessagesMap[room.id];
+      const parsedLastMessage = lastMessage ? {
+        id: lastMessage.id,
+        content: lastMessage.content,
+        messageType: lastMessage.messageType,
+        sender: lastMessage.sender,
+        senderName: lastMessage.senderName,
+        createdAt: lastMessage.createdAt,
+        emojis: lastMessage.emojis ? JSON.parse(lastMessage.emojis) : null,
+      } : null;
+      
+      // Parse emojis in recentMessages
       const recentMessages = (recentMessagesMap[room.id] || []).map(msg => ({
         ...msg,
-        messageType: msg.messageType || msg.type || 'text',
-        sender: msg.sender || msg.senderType || 'user',
-        packageId: msg.packageId || msg.stickerPackageId,
-        emojis: msg.emojis ? JSON.parse(msg.emojis as string) : null,
+        emojis: msg.emojis ? JSON.parse(msg.emojis) : null,
       }));
       
       return {
         ...room,
         tags: JSON.parse(room.tags || '[]'),
-        isPinned: !!room.isPinned,
-        isMuted: !!room.isMuted,
-        lastMessage,
+        lastMessage: parsedLastMessage,
         recentMessages,
       };
     });
@@ -234,15 +112,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[Chat Rooms API] Error:', error);
     return NextResponse.json({ error: 'Failed to fetch chat rooms' }, { status: 500 });
-  } finally {
-    db.close();
   }
 }
 
 // PATCH - Update chat room (pin, mute, tags, etc.)
 export async function PATCH(request: NextRequest) {
-  const db = getDb();
-  
   try {
     const body = await request.json();
     const { id, isPinned, isMuted, tags, status } = body;
@@ -251,86 +125,39 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
     }
 
-    const updates: string[] = [];
-    const params: (string | number)[] = [];
+    const updateData: Partial<typeof lineChatRooms.$inferInsert> = {
+      updatedAt: new Date(),
+    };
 
     if (typeof isPinned !== 'undefined') {
-      updates.push('isPinned = ?');
-      params.push(isPinned ? 1 : 0);
+      updateData.isPinned = isPinned;
     }
 
     if (typeof isMuted !== 'undefined') {
-      updates.push('isMuted = ?');
-      params.push(isMuted ? 1 : 0);
+      updateData.isMuted = isMuted;
     }
 
     if (tags !== undefined) {
-      updates.push('tags = ?');
-      params.push(JSON.stringify(tags));
+      updateData.tags = JSON.stringify(tags);
     }
 
     if (status) {
-      updates.push('status = ?');
-      params.push(status);
+      updateData.status = status;
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 1) {
       return NextResponse.json({ error: 'No updates provided' }, { status: 400 });
     }
 
-    updates.push('updatedAt = ?');
-    params.push(new Date().toISOString());
-    params.push(id);
-
-    db.prepare(`UPDATE LineChatRoom SET ${updates.join(', ')} WHERE id = ?`).run(...params);
-
-    const updatedRoom = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(id);
+    const [updatedRoom] = await db
+      .update(lineChatRooms)
+      .set(updateData)
+      .where(eq(lineChatRooms.id, id))
+      .returning();
 
     return NextResponse.json(updatedRoom);
   } catch (error) {
     console.error('[Chat Rooms API] Error:', error);
     return NextResponse.json({ error: 'Failed to update chat room' }, { status: 500 });
-  } finally {
-    db.close();
   }
-}
-
-interface ChatRoomRecord {
-  id: string;
-  lineUserId: string;
-  lineTokenId?: string;
-  displayName: string;
-  pictureUrl?: string;
-  statusMessage?: string;
-  lastMessageAt?: string;
-  unreadCount: number;
-  isPinned: number;
-  isMuted: number;
-  tags: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-  lastMessage?: string;
-}
-
-interface MessageRecord {
-  id: string;
-  roomId: string;
-  lineMessageId?: string;
-  messageType?: string;
-  type?: string;  // Database column name (alias)
-  content: string;
-  mediaUrl?: string;
-  stickerId?: string;
-  packageId?: string;
-  stickerPackageId?: string;  // Database column name
-  sender?: string;
-  senderType?: string;  // Database column name (alias)
-  senderName?: string;
-  status: string;
-  replyToId?: string;
-  isDeleted: number;
-  readAt?: string;
-  createdAt: string;
-  emojis?: string;
 }

@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-// Initialize SQLite database
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-const db = new Database(dbPath);
-
-interface WebsiteRow {
-  id: string;
-  name: string;
-  url: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { db, websites } from '@/lib/db';
+import { eq, and, ne } from 'drizzle-orm';
 
 // GET - ดึงข้อมูลเว็บไซต์ตาม ID
 export async function GET(
@@ -23,7 +10,11 @@ export async function GET(
   try {
     const { id } = await params;
     
-    const website = db.prepare('SELECT * FROM Website WHERE id = ?').get(id) as WebsiteRow | undefined;
+    const [website] = await db
+      .select()
+      .from(websites)
+      .where(eq(websites.id, id))
+      .limit(1);
 
     if (!website) {
       return NextResponse.json(
@@ -56,7 +47,11 @@ export async function PUT(
     const { name, url, status } = body;
 
     // ตรวจสอบว่ามี website นี้อยู่หรือไม่
-    const existingWebsite = db.prepare('SELECT * FROM Website WHERE id = ?').get(id) as WebsiteRow | undefined;
+    const [existingWebsite] = await db
+      .select()
+      .from(websites)
+      .where(eq(websites.id, id))
+      .limit(1);
 
     if (!existingWebsite) {
       return NextResponse.json(
@@ -67,7 +62,11 @@ export async function PUT(
 
     // ตรวจสอบ URL ซ้ำ (ยกเว้นตัวเอง)
     if (url && url !== existingWebsite.url) {
-      const duplicateUrl = db.prepare('SELECT * FROM Website WHERE url = ? AND id != ?').get(url, id) as WebsiteRow | undefined;
+      const [duplicateUrl] = await db
+        .select()
+        .from(websites)
+        .where(and(eq(websites.url, url), ne(websites.id, id)))
+        .limit(1);
 
       if (duplicateUrl) {
         return NextResponse.json(
@@ -77,20 +76,21 @@ export async function PUT(
       }
     }
 
-    const stmt = db.prepare(`
-      UPDATE Website 
-      SET name = ?, url = ?, status = ?, updatedAt = datetime('now')
-      WHERE id = ?
-    `);
-    
-    stmt.run(
-      name || existingWebsite.name,
-      url || existingWebsite.url,
-      status || existingWebsite.status,
-      id
-    );
+    await db
+      .update(websites)
+      .set({
+        name: name || existingWebsite.name,
+        url: url || existingWebsite.url,
+        status: status || existingWebsite.status,
+        updatedAt: new Date(),
+      })
+      .where(eq(websites.id, id));
 
-    const website = db.prepare('SELECT * FROM Website WHERE id = ?').get(id) as WebsiteRow;
+    const [website] = await db
+      .select()
+      .from(websites)
+      .where(eq(websites.id, id))
+      .limit(1);
 
     return NextResponse.json({
       success: true,
@@ -115,7 +115,11 @@ export async function DELETE(
     const { id } = await params;
 
     // ตรวจสอบว่ามี website นี้อยู่หรือไม่
-    const existingWebsite = db.prepare('SELECT * FROM Website WHERE id = ?').get(id) as WebsiteRow | undefined;
+    const [existingWebsite] = await db
+      .select()
+      .from(websites)
+      .where(eq(websites.id, id))
+      .limit(1);
 
     if (!existingWebsite) {
       return NextResponse.json(
@@ -124,7 +128,7 @@ export async function DELETE(
       );
     }
 
-    db.prepare('DELETE FROM Website WHERE id = ?').run(id);
+    await db.delete(websites).where(eq(websites.id, id));
 
     return NextResponse.json({
       success: true,

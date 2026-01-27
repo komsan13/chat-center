@@ -1,19 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import Database from 'better-sqlite3';
-import path from 'path';
+import { db, lineTokens, lineChatRooms, lineChatMessages, generateId } from '@/lib/db';
+import { eq, and, sql } from 'drizzle-orm';
 import { LineBotService } from '@/lib/line-bot';
-
-// Database connection
-function getDb() {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  return new Database(dbPath);
-}
-
-// Generate unique ID
-function generateId(prefix: string = '') {
-  return `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
 
 // Global event store for real-time updates
 declare global {
@@ -40,7 +29,7 @@ interface ChatEvent {
 
 function emitChatEvent(type: string, data: unknown, roomId?: string) {
   const event: ChatEvent = {
-    id: generateId('evt_'),
+    id: 'evt_' + generateId(),
     type,
     data,
     timestamp: Date.now(),
@@ -112,29 +101,27 @@ interface LineTokenRecord {
   channelId: string;
   channelSecret: string;
   accessToken: string;
-  websiteId?: string;
-  websiteName?: string;
+  websiteId: string | null;
+  websiteName: string | null;
   status: string;
 }
 
 interface ChatRoomRecord {
   id: string;
   lineUserId: string;
-  lineTokenId?: string;
+  lineTokenId: string | null;
   displayName: string;
-  pictureUrl?: string;
-  statusMessage?: string;
+  pictureUrl: string | null;
+  statusMessage: string | null;
   unreadCount: number;
-  isPinned: number;
-  isMuted: number;
+  isPinned: boolean;
+  isMuted: boolean;
   tags: string;
   status: string;
 }
 
 // POST - รับ webhook events จาก LINE
 export async function POST(request: NextRequest) {
-  const db = getDb();
-  
   try {
     const body = await request.text();
     const signature = request.headers.get('x-line-signature') || '';
@@ -143,7 +130,7 @@ export async function POST(request: NextRequest) {
     console.log('[LINE Webhook] Received:', JSON.stringify(events, null, 2));
 
     // Get ALL LINE tokens (including inactive) for signature verification
-    const allTokens = db.prepare('SELECT * FROM LineToken').all() as LineTokenRecord[];
+    const allTokens = await db.select().from(lineTokens);
 
     if (allTokens.length === 0) {
       console.warn('[LINE Webhook] No LINE token found in database');
@@ -192,7 +179,7 @@ export async function POST(request: NextRequest) {
     // Process events with the matched token
     if (events.events && Array.isArray(events.events)) {
       for (const event of events.events) {
-        await handleEvent(db, event, matchedToken);
+        await handleEvent(event, matchedToken);
       }
     }
 
@@ -200,8 +187,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[LINE Webhook] Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  } finally {
-    db.close();
   }
 }
 
@@ -215,7 +200,7 @@ export async function GET() {
 }
 
 // Handle different event types
-async function handleEvent(db: Database.Database, event: LineEvent, lineToken: LineTokenRecord) {
+async function handleEvent(event: LineEvent, lineToken: LineTokenRecord) {
   const lineUserId = event.source.userId;
   if (!lineUserId) {
     console.warn('[LINE Webhook] No userId in event');
@@ -226,13 +211,13 @@ async function handleEvent(db: Database.Database, event: LineEvent, lineToken: L
 
   switch (event.type) {
     case 'message':
-      await handleMessage(db, event, lineToken);
+      await handleMessage(event, lineToken);
       break;
     case 'follow':
-      await handleFollow(db, event, lineToken);
+      await handleFollow(event, lineToken);
       break;
     case 'unfollow':
-      await handleUnfollow(db, lineUserId);
+      await handleUnfollow(lineUserId);
       break;
     case 'postback':
       console.log('[LINE Webhook] Postback:', event.postback?.data);
@@ -241,56 +226,61 @@ async function handleEvent(db: Database.Database, event: LineEvent, lineToken: L
 }
 
 // Handle message event
-async function handleMessage(db: Database.Database, event: LineEvent, lineToken: LineTokenRecord) {
+async function handleMessage(event: LineEvent, lineToken: LineTokenRecord) {
   const lineUserId = event.source.userId!;
   const message = event.message;
   
   if (!message) return;
 
   // Get or create chat room - must match BOTH lineUserId AND lineTokenId
-  let room = db.prepare('SELECT * FROM LineChatRoom WHERE lineUserId = ? AND lineTokenId = ?').get(lineUserId, lineToken.id) as ChatRoomRecord | undefined;
+  let [room] = await db.select().from(lineChatRooms)
+    .where(and(
+      eq(lineChatRooms.lineUserId, lineUserId),
+      eq(lineChatRooms.lineTokenId, lineToken.id)
+    ));
   
   if (!room) {
     // Get user profile from LINE
     const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
     const profile = await botService.getProfile(lineUserId);
     
-    const roomId = generateId('room_');
-    const now = new Date().toISOString();
+    const roomId = 'room_' + generateId();
+    const now = new Date();
     
-    db.prepare(`
-      INSERT INTO LineChatRoom (id, lineUserId, lineTokenId, displayName, pictureUrl, statusMessage, language, lastMessageAt, unreadCount, isPinned, isMuted, tags, status, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      roomId,
+    await db.insert(lineChatRooms).values({
+      id: roomId,
       lineUserId,
-      lineToken.id,
-      profile?.displayName || lineUserId,
-      profile?.pictureUrl || null,
-      profile?.statusMessage || null,
-      profile?.language || 'th',
-      now,
-      1,
-      0,
-      0,
-      '[]',
-      'active',
-      now,
-      now
-    );
-    
-    room = { 
-      id: roomId, 
-      lineUserId, 
       lineTokenId: lineToken.id,
-      displayName: profile?.displayName || lineUserId, 
-      pictureUrl: profile?.pictureUrl,
-      statusMessage: profile?.statusMessage,
+      displayName: profile?.displayName || lineUserId,
+      pictureUrl: profile?.pictureUrl || null,
+      statusMessage: profile?.statusMessage || null,
+      lastMessageAt: now,
       unreadCount: 1,
-      isPinned: 0,
-      isMuted: 0,
+      isPinned: false,
+      isMuted: false,
       tags: '[]',
-      status: 'active'
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+    
+    room = {
+      id: roomId,
+      lineUserId,
+      lineTokenId: lineToken.id,
+      displayName: profile?.displayName || lineUserId,
+      pictureUrl: profile?.pictureUrl || null,
+      statusMessage: profile?.statusMessage || null,
+      lastMessage: null,
+      lastMessageAt: now,
+      unreadCount: 1,
+      isPinned: false,
+      isMuted: false,
+      tags: '[]',
+      status: 'active',
+      assignedTo: null,
+      createdAt: now,
+      updatedAt: now,
     };
     
     // Emit new room event
@@ -306,18 +296,18 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
       isMuted: false,
       tags: [],
       status: 'active',
-      createdAt: now,
+      createdAt: now.toISOString(),
     });
   }
 
   // Create message record
-  const messageId = generateId('msg_');
-  const now = new Date().toISOString();
+  const messageId = 'msg_' + generateId();
+  const now = new Date();
   
   let content = '';
-  let mediaUrl = null;
-  let stickerId = null;
-  let packageId = null;
+  let mediaUrl: string | null = null;
+  let stickerId: string | null = null;
+  let packageId: string | null = null;
   
   // Store emoji data as JSON if present
   let emojisData: string | null = null;
@@ -344,8 +334,8 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
       content = `[${message.type}]`;
       break;
     case 'sticker':
-      stickerId = message.stickerId;
-      packageId = message.packageId;
+      stickerId = message.stickerId || null;
+      packageId = message.packageId || null;
       content = `[sticker:${packageId}/${stickerId}]`;
       break;
     case 'location':
@@ -353,34 +343,36 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
       break;
   }
 
-  db.prepare(`
-    INSERT INTO LineChatMessage (id, roomId, lineMessageId, messageType, content, mediaUrl, stickerId, packageId, emojis, sender, senderName, status, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    messageId,
-    room.id,
-    message.id,
-    message.type,
+  await db.insert(lineChatMessages).values({
+    id: messageId,
+    roomId: room.id,
+    lineMessageId: message.id,
+    messageType: message.type,
     content,
     mediaUrl,
     stickerId,
     packageId,
-    emojisData,
-    'user',
-    room.displayName,
-    'sent',
-    now
-  );
+    emojis: emojisData,
+    sender: 'user',
+    senderName: room.displayName,
+    status: 'sent',
+    createdAt: now,
+  });
 
   // Update room's last message, unread count, and reset status to 'active' (in case it was 'cleared')
-  db.prepare(`
-    UPDATE LineChatRoom 
-    SET lastMessageAt = ?, unreadCount = unreadCount + 1, status = 'active', updatedAt = ?
-    WHERE id = ?
-  `).run(now, now, room.id);
+  await db.update(lineChatRooms)
+    .set({
+      lastMessageAt: now,
+      unreadCount: sql`${lineChatRooms.unreadCount} + 1`,
+      status: 'active',
+      updatedAt: now,
+    })
+    .where(eq(lineChatRooms.id, room.id));
 
   // Get updated unread count from database
-  const updatedRoom = db.prepare('SELECT unreadCount FROM LineChatRoom WHERE id = ?').get(room.id) as { unreadCount: number } | undefined;
+  const [updatedRoom] = await db.select({ unreadCount: lineChatRooms.unreadCount })
+    .from(lineChatRooms)
+    .where(eq(lineChatRooms.id, room.id));
   const newUnreadCount = updatedRoom?.unreadCount || 1;
   console.log(`[LINE Webhook] Room ${room.id} unreadCount updated to: ${newUnreadCount}`);
 
@@ -398,7 +390,7 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
     sender: 'user',
     senderName: room.displayName,
     status: 'sent',
-    createdAt: now,
+    createdAt: now.toISOString(),
   };
   
   // Broadcast new message to all clients
@@ -413,7 +405,7 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
     pictureUrl: room.pictureUrl,
     status: 'active', // Always set to active when new message comes
     lastMessage: messageData,
-    lastMessageAt: now,
+    lastMessageAt: now.toISOString(),
     unreadCount: newUnreadCount,
   }, room.id);
 
@@ -421,15 +413,18 @@ async function handleMessage(db: Database.Database, event: LineEvent, lineToken:
 }
 
 // Handle follow event (new friend)
-async function handleFollow(db: Database.Database, event: LineEvent, lineToken: LineTokenRecord) {
+async function handleFollow(event: LineEvent, lineToken: LineTokenRecord) {
   const lineUserId = event.source.userId!;
   
   // Check if room exists
-  const existingRoom = db.prepare('SELECT id FROM LineChatRoom WHERE lineUserId = ?').get(lineUserId) as { id: string } | undefined;
+  const [existingRoom] = await db.select({ id: lineChatRooms.id })
+    .from(lineChatRooms)
+    .where(eq(lineChatRooms.lineUserId, lineUserId));
   
   if (existingRoom) {
-    db.prepare(`UPDATE LineChatRoom SET status = 'active', updatedAt = ? WHERE lineUserId = ?`)
-      .run(new Date().toISOString(), lineUserId);
+    await db.update(lineChatRooms)
+      .set({ status: 'active', updatedAt: new Date() })
+      .where(eq(lineChatRooms.lineUserId, lineUserId));
     return;
   }
 
@@ -437,36 +432,38 @@ async function handleFollow(db: Database.Database, event: LineEvent, lineToken: 
   const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
   const profile = await botService.getProfile(lineUserId);
   
-  const roomId = generateId('room_');
-  const now = new Date().toISOString();
+  const roomId = 'room_' + generateId();
+  const now = new Date();
   
-  db.prepare(`
-    INSERT INTO LineChatRoom (id, lineUserId, lineTokenId, displayName, pictureUrl, statusMessage, language, lastMessageAt, unreadCount, isPinned, isMuted, tags, status, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    roomId,
+  await db.insert(lineChatRooms).values({
+    id: roomId,
     lineUserId,
-    lineToken.id,
-    profile?.displayName || lineUserId,
-    profile?.pictureUrl || null,
-    profile?.statusMessage || null,
-    profile?.language || 'th',
-    now,
-    0,
-    0,
-    0,
-    '["New"]',
-    'active',
-    now,
-    now
-  );
+    lineTokenId: lineToken.id,
+    displayName: profile?.displayName || lineUserId,
+    pictureUrl: profile?.pictureUrl || null,
+    statusMessage: profile?.statusMessage || null,
+    lastMessageAt: now,
+    unreadCount: 0,
+    isPinned: false,
+    isMuted: false,
+    tags: '["New"]',
+    status: 'active',
+    createdAt: now,
+    updatedAt: now,
+  });
 
   // Create system message
-  const messageId = generateId('msg_');
-  db.prepare(`
-    INSERT INTO LineChatMessage (id, roomId, messageType, content, sender, senderName, status, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(messageId, roomId, 'text', '🎉 ผู้ใช้ใหม่เพิ่มเพื่อน', 'system', 'System', 'sent', now);
+  const messageId = 'msg_' + generateId();
+  await db.insert(lineChatMessages).values({
+    id: messageId,
+    roomId,
+    messageType: 'text',
+    content: '🎉 ผู้ใช้ใหม่เพิ่มเพื่อน',
+    sender: 'system',
+    senderName: 'System',
+    status: 'sent',
+    createdAt: now,
+  });
 
   // Emit new room event
   emitChatEvent('new-room', {
@@ -481,16 +478,17 @@ async function handleFollow(db: Database.Database, event: LineEvent, lineToken: 
     isMuted: false,
     tags: ['New'],
     status: 'active',
-    createdAt: now,
+    createdAt: now.toISOString(),
   });
 
   console.log(`[LINE Webhook] New follower: ${profile?.displayName || lineUserId}`);
 }
 
 // Handle unfollow event
-async function handleUnfollow(db: Database.Database, lineUserId: string) {
-  db.prepare(`UPDATE LineChatRoom SET status = 'archived', updatedAt = ? WHERE lineUserId = ?`)
-    .run(new Date().toISOString(), lineUserId);
+async function handleUnfollow(lineUserId: string) {
+  await db.update(lineChatRooms)
+    .set({ status: 'archived', updatedAt: new Date() })
+    .where(eq(lineChatRooms.lineUserId, lineUserId));
   
   console.log(`[LINE Webhook] User unfollowed: ${lineUserId}`);
 }

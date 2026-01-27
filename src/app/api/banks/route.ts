@@ -1,30 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-// Initialize SQLite database
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-const db = new Database(dbPath);
-
-interface BankRow {
-  id: string;
-  type: string;
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { db, banks, generateId } from '@/lib/db';
+import { eq, desc } from 'drizzle-orm';
 
 // GET - ดึงรายการธนาคารทั้งหมด
 export async function GET() {
   try {
-    const banks = db.prepare('SELECT * FROM Bank ORDER BY createdAt DESC').all() as BankRow[];
+    const allBanks = await db.select().from(banks).orderBy(desc(banks.createdAt));
     
     return NextResponse.json({
       success: true,
-      data: banks,
+      data: allBanks,
     });
   } catch (error) {
     console.error('Error fetching banks:', error);
@@ -50,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ตรวจสอบเลขบัญชีซ้ำ
-    const existingBank = db.prepare('SELECT * FROM Bank WHERE accountNumber = ?').get(accountNumber) as BankRow | undefined;
+    const [existingBank] = await db.select().from(banks).where(eq(banks.accountNumber, accountNumber));
 
     if (existingBank) {
       return NextResponse.json(
@@ -60,16 +45,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate ID
-    const id = 'bank_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const id = generateId('bank');
+    const now = new Date();
     
-    const stmt = db.prepare(`
-      INSERT INTO Bank (id, type, bankName, accountName, accountNumber, status, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `);
-    
-    stmt.run(id, type || 'deposit', bankName, accountName, accountNumber, status || 'active');
+    await db.insert(banks).values({
+      id,
+      type: type || 'deposit',
+      bankName,
+      accountName,
+      accountNumber,
+      status: status || 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
 
-    const bank = db.prepare('SELECT * FROM Bank WHERE id = ?').get(id) as BankRow;
+    const [bank] = await db.select().from(banks).where(eq(banks.id, id));
 
     return NextResponse.json({
       success: true,

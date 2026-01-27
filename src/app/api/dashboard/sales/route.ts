@@ -1,25 +1,19 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-interface SalesRow {
-  dayName: string;
-  sales: number;
-  orders: number;
-}
+import { db } from '@/lib/db';
+import { dailySales } from '@/lib/db/schema';
+import { asc } from 'drizzle-orm';
 
 export async function GET() {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  const db = new Database(dbPath);
-
   try {
     // Get daily sales data
-    const salesData = db.prepare(`
-      SELECT dayName, sales, orders
-      FROM DailySales
-      ORDER BY date ASC
-      LIMIT 7
-    `).all() as SalesRow[];
+    const salesData = await db.select({
+      dayName: dailySales.dayName,
+      sales: dailySales.sales,
+      orders: dailySales.orders,
+    })
+      .from(dailySales)
+      .orderBy(asc(dailySales.date))
+      .limit(7);
 
     // Calculate summary
     const totalSales = salesData.reduce((sum, item) => sum + item.sales, 0);
@@ -28,8 +22,6 @@ export async function GET() {
 
     // Find best day
     const bestDay = salesData.reduce((max, item) => item.sales > max.sales ? item : max, salesData[0] || { dayName: 'N/A', sales: 0, orders: 0 });
-
-    db.close();
 
     return NextResponse.json({
       success: true,
@@ -48,7 +40,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Sales chart error:', error);
-    db.close();
     return NextResponse.json(
       { success: false, error: 'Failed to fetch sales data' },
       { status: 500 }

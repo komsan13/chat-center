@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import Database from 'better-sqlite3';
-import path from 'path';
 import { createSession } from '@/lib/auth';
-
-// Direct SQLite connection - use same path as other APIs
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+import { db, users } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 
 export async function POST(request: Request) {
   try {
@@ -20,19 +17,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Connect to database
-    const db = new Database(dbPath);
-    
     // Find user
-    const user = db.prepare('SELECT * FROM User WHERE email = ?').get(email) as {
-      id: string;
-      email: string;
-      password: string;
-      name: string;
-      role: string;
-    } | undefined;
-    
-    db.close();
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
 
     if (!user) {
       return NextResponse.json(

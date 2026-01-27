@@ -1,92 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  const db = new Database(dbPath);
-  
-  // Create table if not exists
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS Transfer (
-      id TEXT PRIMARY KEY,
-      date TEXT NOT NULL,
-      websiteId TEXT,
-      websiteName TEXT,
-      fromBankId TEXT NOT NULL,
-      fromBankName TEXT NOT NULL,
-      fromAccountNumber TEXT,
-      toBankId TEXT NOT NULL,
-      toBankName TEXT NOT NULL,
-      toAccountNumber TEXT,
-      amount REAL NOT NULL DEFAULT 0,
-      note TEXT,
-      status TEXT NOT NULL DEFAULT 'pending',
-      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  
-  return db;
-}
-
-interface TransferRow {
-  id: string;
-  date: string;
-  websiteId: string;
-  websiteName: string;
-  fromBankId: string;
-  fromBankName: string;
-  fromAccountNumber: string;
-  toBankId: string;
-  toBankName: string;
-  toAccountNumber: string;
-  amount: number;
-  note: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { db, transfers, generateId } from '@/lib/db';
+import { eq, desc, and } from 'drizzle-orm';
 
 // GET all transfers
 export async function GET(request: NextRequest) {
   try {
-    const db = getDb();
     const { searchParams } = new URL(request.url);
     const dateFilter = searchParams.get('date');
     const statusFilter = searchParams.get('status');
     const websiteFilter = searchParams.get('websiteId');
     
-    let query = 'SELECT * FROM Transfer';
-    const conditions: string[] = [];
-    const params: string[] = [];
+    const conditions = [];
     
     if (dateFilter) {
-      conditions.push('date = ?');
-      params.push(dateFilter);
+      conditions.push(eq(transfers.date, dateFilter));
     }
     
     if (statusFilter && statusFilter !== 'all') {
-      conditions.push('status = ?');
-      params.push(statusFilter);
+      conditions.push(eq(transfers.status, statusFilter));
     }
     
     if (websiteFilter && websiteFilter !== 'all') {
-      conditions.push('websiteId = ?');
-      params.push(websiteFilter);
+      conditions.push(eq(transfers.websiteId, websiteFilter));
     }
     
+    let query;
     if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
+      query = await db.select()
+        .from(transfers)
+        .where(and(...conditions))
+        .orderBy(desc(transfers.date), desc(transfers.createdAt));
+    } else {
+      query = await db.select()
+        .from(transfers)
+        .orderBy(desc(transfers.date), desc(transfers.createdAt));
     }
     
-    query += ' ORDER BY date DESC, createdAt DESC';
-    
-    const transfers = db.prepare(query).all(...params) as TransferRow[];
-    db.close();
-    
-    return NextResponse.json({ success: true, data: transfers });
+    return NextResponse.json({ success: true, data: query });
   } catch (error) {
     console.error('Error fetching transfers:', error);
     return NextResponse.json({ success: false, error: 'Failed to fetch transfers' }, { status: 500 });
@@ -112,21 +62,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'จากบัญชีและไปยังบัญชีต้องไม่ซ้ำกัน' }, { status: 400 });
     }
     
-    const db = getDb();
-    
-    const id = `tf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
+    const id = generateId('tf');
+    const now = new Date();
     
     const amountValue = parseFloat(amount) || 0;
     const statusValue = status || 'pending';
     
-    db.prepare(`
-      INSERT INTO Transfer (id, date, websiteId, websiteName, fromBankId, fromBankName, fromAccountNumber, toBankId, toBankName, toAccountNumber, amount, note, status, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, date, websiteId || null, websiteName || null, fromBankId, fromBankName, fromAccountNumber || null, toBankId, toBankName, toAccountNumber || null, amountValue, note || null, statusValue, now, now);
+    await db.insert(transfers).values({
+      id,
+      date,
+      websiteId: websiteId || null,
+      websiteName: websiteName || null,
+      fromBankId,
+      fromBankName,
+      fromAccountNumber: fromAccountNumber || null,
+      toBankId,
+      toBankName,
+      toAccountNumber: toAccountNumber || null,
+      amount: amountValue,
+      note: note || null,
+      status: statusValue,
+      createdAt: now,
+      updatedAt: now
+    });
     
-    const newTransfer = db.prepare('SELECT * FROM Transfer WHERE id = ?').get(id);
-    db.close();
+    const [newTransfer] = await db.select().from(transfers).where(eq(transfers.id, id));
     
     return NextResponse.json({ success: true, data: newTransfer });
   } catch (error) {

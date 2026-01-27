@@ -1,50 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  return new Database(dbPath);
-}
-
-interface QuickReplyRow {
-  id: string;
-  lineTokenId: string;
-  title: string;
-  label: string;
-  icon: string;
-  emojis: string | null;
-  isFavorite: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import { db, quickReplies, generateId } from '@/lib/db';
+import { eq, desc } from 'drizzle-orm';
 
 // GET all quick replies
 export async function GET(request: NextRequest) {
   try {
-    const db = getDb();
     const { searchParams } = new URL(request.url);
     const lineTokenId = searchParams.get('lineTokenId');
     
-    let query = 'SELECT * FROM QuickReply';
-    const params: string[] = [];
+    let quickRepliesList;
     
     if (lineTokenId && lineTokenId !== 'all') {
-      query += ' WHERE lineTokenId = ?';
-      params.push(lineTokenId);
+      quickRepliesList = await db
+        .select()
+        .from(quickReplies)
+        .where(eq(quickReplies.lineTokenId, lineTokenId))
+        .orderBy(desc(quickReplies.createdAt));
+    } else {
+      quickRepliesList = await db
+        .select()
+        .from(quickReplies)
+        .orderBy(desc(quickReplies.createdAt));
     }
     
-    query += ' ORDER BY createdAt DESC';
-    
-    const quickReplies = db.prepare(query).all(...params) as QuickReplyRow[];
-    db.close();
-    
     // Transform data
-    const transformed = quickReplies.map(qr => ({
+    const transformed = quickRepliesList.map(qr => ({
       ...qr,
       emojis: qr.emojis ? JSON.parse(qr.emojis) : undefined,
-      isFavorite: qr.isFavorite === 1
     }));
 
     return NextResponse.json({ success: true, data: transformed });
@@ -67,34 +49,23 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    const db = getDb();
-    const id = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
+    const id = `qr_${generateId()}`;
     
-    db.prepare(`
-      INSERT INTO QuickReply (id, lineTokenId, title, label, icon, emojis, isFavorite, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      id, 
-      lineTokenId, 
-      title, 
-      label, 
-      icon || '💬', 
-      emojis ? JSON.stringify(emojis) : null, 
-      isFavorite ? 1 : 0, 
-      now, 
-      now
-    );
-    
-    const newQuickReply = db.prepare('SELECT * FROM QuickReply WHERE id = ?').get(id) as QuickReplyRow;
-    db.close();
+    const [newQuickReply] = await db.insert(quickReplies).values({
+      id,
+      lineTokenId,
+      title,
+      label,
+      icon: icon || '💬',
+      emojis: emojis ? JSON.stringify(emojis) : null,
+      isFavorite: isFavorite || false,
+    }).returning();
     
     return NextResponse.json({ 
       success: true, 
       data: {
         ...newQuickReply,
         emojis: newQuickReply.emojis ? JSON.parse(newQuickReply.emojis) : undefined,
-        isFavorite: newQuickReply.isFavorite === 1
       }
     });
   } catch (error) {

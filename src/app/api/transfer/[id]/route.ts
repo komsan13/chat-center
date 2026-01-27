@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  return new Database(dbPath);
-}
+import { db, transfers } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 
 // GET single transfer
 export async function GET(
@@ -15,9 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
-    const transfer = db.prepare('SELECT * FROM Transfer WHERE id = ?').get(id);
-    db.close();
+    const [transfer] = await db.select().from(transfers).where(eq(transfers.id, id));
     
     if (!transfer) {
       return NextResponse.json({ success: false, error: 'Transfer not found' }, { status: 404 });
@@ -53,27 +45,35 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'จากบัญชีและไปยังบัญชีต้องไม่ซ้ำกัน' }, { status: 400 });
     }
     
-    const db = getDb();
-    
     // Check if record exists
-    const existing = db.prepare('SELECT * FROM Transfer WHERE id = ?').get(id);
+    const [existing] = await db.select().from(transfers).where(eq(transfers.id, id));
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Transfer not found' }, { status: 404 });
     }
     
     const amountValue = parseFloat(amount) || 0;
     const statusValue = status || 'pending';
-    const now = new Date().toISOString();
+    const now = new Date();
     
-    db.prepare(`
-      UPDATE Transfer 
-      SET date = ?, websiteId = ?, websiteName = ?, fromBankId = ?, fromBankName = ?, fromAccountNumber = ?, toBankId = ?, toBankName = ?, toAccountNumber = ?, amount = ?, note = ?, status = ?, updatedAt = ?
-      WHERE id = ?
-    `).run(date, websiteId || null, websiteName || null, fromBankId, fromBankName, fromAccountNumber || null, toBankId, toBankName, toAccountNumber || null, amountValue, note || null, statusValue, now, id);
+    await db.update(transfers)
+      .set({
+        date,
+        websiteId: websiteId || null,
+        websiteName: websiteName || null,
+        fromBankId,
+        fromBankName,
+        fromAccountNumber: fromAccountNumber || null,
+        toBankId,
+        toBankName,
+        toAccountNumber: toAccountNumber || null,
+        amount: amountValue,
+        note: note || null,
+        status: statusValue,
+        updatedAt: now
+      })
+      .where(eq(transfers.id, id));
     
-    const updated = db.prepare('SELECT * FROM Transfer WHERE id = ?').get(id);
-    db.close();
+    const [updated] = await db.select().from(transfers).where(eq(transfers.id, id));
     
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
@@ -89,16 +89,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const db = getDb();
     
-    const existing = db.prepare('SELECT * FROM Transfer WHERE id = ?').get(id);
+    const [existing] = await db.select().from(transfers).where(eq(transfers.id, id));
     if (!existing) {
-      db.close();
       return NextResponse.json({ success: false, error: 'Transfer not found' }, { status: 404 });
     }
     
-    db.prepare('DELETE FROM Transfer WHERE id = ?').run(id);
-    db.close();
+    await db.delete(transfers).where(eq(transfers.id, id));
     
     return NextResponse.json({ success: true, message: 'Transfer deleted successfully' });
   } catch (error) {

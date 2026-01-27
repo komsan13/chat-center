@@ -1,21 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-// Initialize SQLite database
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-const db = new Database(dbPath);
-
-interface BankRow {
-  id: string;
-  type: string;
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { db, banks } from '@/lib/db';
+import { eq, and, ne } from 'drizzle-orm';
 
 // GET - ดึงข้อมูลธนาคารตาม ID
 export async function GET(
@@ -25,7 +10,11 @@ export async function GET(
   try {
     const { id } = await params;
     
-    const bank = db.prepare('SELECT * FROM Bank WHERE id = ?').get(id) as BankRow | undefined;
+    const [bank] = await db
+      .select()
+      .from(banks)
+      .where(eq(banks.id, id))
+      .limit(1);
 
     if (!bank) {
       return NextResponse.json(
@@ -58,7 +47,11 @@ export async function PUT(
     const { type, bankName, accountName, accountNumber, status } = body;
 
     // ตรวจสอบว่ามี bank นี้อยู่หรือไม่
-    const existingBank = db.prepare('SELECT * FROM Bank WHERE id = ?').get(id) as BankRow | undefined;
+    const [existingBank] = await db
+      .select()
+      .from(banks)
+      .where(eq(banks.id, id))
+      .limit(1);
 
     if (!existingBank) {
       return NextResponse.json(
@@ -69,7 +62,14 @@ export async function PUT(
 
     // ตรวจสอบเลขบัญชีซ้ำ (ยกเว้นตัวเอง)
     if (accountNumber && accountNumber !== existingBank.accountNumber) {
-      const duplicateAccount = db.prepare('SELECT * FROM Bank WHERE accountNumber = ? AND id != ?').get(accountNumber, id) as BankRow | undefined;
+      const [duplicateAccount] = await db
+        .select()
+        .from(banks)
+        .where(and(
+          eq(banks.accountNumber, accountNumber),
+          ne(banks.id, id)
+        ))
+        .limit(1);
 
       if (duplicateAccount) {
         return NextResponse.json(
@@ -79,26 +79,22 @@ export async function PUT(
       }
     }
 
-    const stmt = db.prepare(`
-      UPDATE Bank 
-      SET type = ?, bankName = ?, accountName = ?, accountNumber = ?, status = ?, updatedAt = datetime('now')
-      WHERE id = ?
-    `);
-    
-    stmt.run(
-      type || existingBank.type,
-      bankName || existingBank.bankName,
-      accountName || existingBank.accountName,
-      accountNumber || existingBank.accountNumber,
-      status || existingBank.status,
-      id
-    );
-
-    const bank = db.prepare('SELECT * FROM Bank WHERE id = ?').get(id) as BankRow;
+    const [updatedBank] = await db
+      .update(banks)
+      .set({
+        type: type || existingBank.type,
+        bankName: bankName || existingBank.bankName,
+        accountName: accountName || existingBank.accountName,
+        accountNumber: accountNumber || existingBank.accountNumber,
+        status: status || existingBank.status,
+        updatedAt: new Date(),
+      })
+      .where(eq(banks.id, id))
+      .returning();
 
     return NextResponse.json({
       success: true,
-      data: bank,
+      data: updatedBank,
       message: 'Bank updated successfully',
     });
   } catch (error) {
@@ -119,7 +115,11 @@ export async function DELETE(
     const { id } = await params;
 
     // ตรวจสอบว่ามี bank นี้อยู่หรือไม่
-    const existingBank = db.prepare('SELECT * FROM Bank WHERE id = ?').get(id) as BankRow | undefined;
+    const [existingBank] = await db
+      .select()
+      .from(banks)
+      .where(eq(banks.id, id))
+      .limit(1);
 
     if (!existingBank) {
       return NextResponse.json(
@@ -128,7 +128,7 @@ export async function DELETE(
       );
     }
 
-    db.prepare('DELETE FROM Bank WHERE id = ?').run(id);
+    await db.delete(banks).where(eq(banks.id, id));
 
     return NextResponse.json({
       success: true,

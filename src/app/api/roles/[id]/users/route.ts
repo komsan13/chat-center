@@ -1,18 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-const db = new Database(dbPath);
-
-interface UserRow {
-  id: string;
-  email: string;
-  name: string;
-  avatar: string | null;
-  role: string;
-  roleId: string;
-}
+import { db, users } from '@/lib/db';
+import { eq, asc } from 'drizzle-orm';
 
 export async function GET(
   request: NextRequest,
@@ -21,16 +9,21 @@ export async function GET(
   try {
     const { id } = await params;
     
-    const users = db.prepare(`
-      SELECT id, email, name, avatar, role, roleId 
-      FROM User 
-      WHERE roleId = ?
-      ORDER BY name ASC
-    `).all(id) as UserRow[];
+    const usersList = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        avatar: users.avatar,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.role, id))
+      .orderBy(asc(users.name));
 
     return NextResponse.json({
       success: true,
-      data: users,
+      data: usersList,
     });
   } catch (error) {
     console.error('Error fetching users by role:', error);

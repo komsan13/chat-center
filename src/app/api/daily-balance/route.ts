@@ -1,69 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-import { randomUUID } from 'crypto';
-
-// Database connection
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  const db = new Database(dbPath);
-  
-  // Create DailyBalance table if not exists
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS DailyBalance (
-      id TEXT PRIMARY KEY,
-      date TEXT NOT NULL,
-      websiteId TEXT,
-      websiteName TEXT,
-      bankId TEXT NOT NULL,
-      bankName TEXT NOT NULL,
-      accountNumber TEXT,
-      openingBalance REAL DEFAULT 0,
-      closingBalance REAL DEFAULT 0,
-      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(date, bankId)
-    )
-  `);
-  
-  return db;
-}
+import { db, dailyBalances, generateId } from '@/lib/db';
+import { eq, and, desc, asc } from 'drizzle-orm';
 
 // GET - List all daily balances with optional filters
 export async function GET(request: NextRequest) {
   try {
-    const db = getDb();
     const { searchParams } = new URL(request.url);
     
     const date = searchParams.get('date');
     const bankId = searchParams.get('bankId');
-    const websiteId = searchParams.get('websiteId');
     
-    let query = 'SELECT * FROM DailyBalance WHERE 1=1';
-    const params: string[] = [];
+    // Build query conditions
+    const conditions = [];
     
     if (date) {
-      query += ' AND date = ?';
-      params.push(date);
+      conditions.push(eq(dailyBalances.date, date));
     }
     
     if (bankId) {
-      query += ' AND bankId = ?';
-      params.push(bankId);
+      conditions.push(eq(dailyBalances.bankId, bankId));
     }
     
-    if (websiteId) {
-      query += ' AND websiteId = ?';
-      params.push(websiteId);
+    let data;
+    if (conditions.length > 0) {
+      data = await db.select()
+        .from(dailyBalances)
+        .where(and(...conditions))
+        .orderBy(desc(dailyBalances.date), asc(dailyBalances.bankName));
+    } else {
+      data = await db.select()
+        .from(dailyBalances)
+        .orderBy(desc(dailyBalances.date), asc(dailyBalances.bankName));
     }
-    
-    query += ' ORDER BY date DESC, bankName ASC';
-    
-    const stmt = db.prepare(query);
-    const data = stmt.all(...params);
-    
-    db.close();
     
     return NextResponse.json({
       success: true,
@@ -81,7 +49,6 @@ export async function GET(request: NextRequest) {
 // POST - Create new daily balance(s) - support multiple items
 export async function POST(request: NextRequest) {
   try {
-    const db = getDb();
     const body = await request.json();
     
     // Support both single item and array of items
@@ -89,15 +56,8 @@ export async function POST(request: NextRequest) {
     const results: { id: string; date: string; bankName: string }[] = [];
     const errors: { date: string; bankName: string; error: string }[] = [];
     
-    const insertStmt = db.prepare(`
-      INSERT INTO DailyBalance (id, date, websiteId, websiteName, bankId, bankName, accountNumber, openingBalance, closingBalance, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `);
-    
-    const checkExistsStmt = db.prepare('SELECT id FROM DailyBalance WHERE date = ? AND bankId = ?');
-    
     for (const item of items) {
-      const { date, websiteId, websiteName, bankId, bankName, accountNumber, openingBalance, closingBalance } = item;
+      const { date, bankId, bankName, openingBalance, closingBalance, deposits, withdrawals, note } = item;
       
       // Validate required fields
       if (!date || !bankId || !bankName) {
@@ -110,7 +70,13 @@ export async function POST(request: NextRequest) {
       }
       
       // Check for duplicate (same date + bankId)
-      const existing = checkExistsStmt.get(date, bankId) as { id: string } | undefined;
+      const [existing] = await db.select()
+        .from(dailyBalances)
+        .where(and(
+          eq(dailyBalances.date, date),
+          eq(dailyBalances.bankId, bankId)
+        ));
+      
       if (existing) {
         errors.push({
           date,
@@ -121,18 +87,22 @@ export async function POST(request: NextRequest) {
       }
       
       try {
-        const id = randomUUID();
-        insertStmt.run(
+        const id = generateId();
+        const now = new Date();
+        
+        await db.insert(dailyBalances).values({
           id,
           date,
-          websiteId || null,
-          websiteName || '',
           bankId,
           bankName,
-          accountNumber || '',
-          openingBalance || 0,
-          closingBalance || 0
-        );
+          openingBalance: openingBalance || 0,
+          closingBalance: closingBalance || 0,
+          deposits: deposits || 0,
+          withdrawals: withdrawals || 0,
+          note: note || null,
+          createdAt: now,
+          updatedAt: now,
+        });
         
         results.push({ id, date, bankName });
       } catch (err) {
@@ -143,8 +113,6 @@ export async function POST(request: NextRequest) {
         });
       }
     }
-    
-    db.close();
     
     if (errors.length > 0 && results.length === 0) {
       return NextResponse.json(

@@ -1,22 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-// Initialize SQLite database
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-const db = new Database(dbPath);
-
-interface EmployeeRow {
-  id: string;
-  fullName: string;
-  position: string;
-  websites: string;
-  bankName: string;
-  accountNumber: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { db, employees } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 
 // GET - ดึงข้อมูลพนักงานตาม ID
 export async function GET(
@@ -26,7 +10,7 @@ export async function GET(
   try {
     const { id } = await params;
     
-    const employee = db.prepare('SELECT * FROM Employee WHERE id = ?').get(id) as EmployeeRow | undefined;
+    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
 
     if (!employee) {
       return NextResponse.json(
@@ -39,7 +23,9 @@ export async function GET(
       success: true,
       data: {
         ...employee,
-        websites: JSON.parse(employee.websites || '[]')
+        websites: typeof employee.websites === 'string' 
+          ? JSON.parse(employee.websites || '[]') 
+          : employee.websites || []
       },
     });
   } catch (error) {
@@ -62,7 +48,7 @@ export async function PUT(
     const { fullName, position, websites, bankName, accountNumber, status } = body;
 
     // ตรวจสอบว่ามี employee นี้อยู่หรือไม่
-    const existingEmployee = db.prepare('SELECT * FROM Employee WHERE id = ?').get(id) as EmployeeRow | undefined;
+    const [existingEmployee] = await db.select().from(employees).where(eq(employees.id, id));
 
     if (!existingEmployee) {
       return NextResponse.json(
@@ -79,31 +65,31 @@ export async function PUT(
       );
     }
 
-    const stmt = db.prepare(`
-      UPDATE Employee 
-      SET fullName = ?, position = ?, websites = ?, bankName = ?, accountNumber = ?, status = ?, updatedAt = datetime('now')
-      WHERE id = ?
-    `);
-    
-    const existingWebsites = JSON.parse(existingEmployee.websites || '[]');
-    
-    stmt.run(
-      fullName || existingEmployee.fullName,
-      position || existingEmployee.position,
-      JSON.stringify(websites || existingWebsites),
-      bankName || existingEmployee.bankName,
-      accountNumber || existingEmployee.accountNumber,
-      status || existingEmployee.status,
-      id
-    );
+    const existingWebsites = typeof existingEmployee.websites === 'string' 
+      ? JSON.parse(existingEmployee.websites || '[]') 
+      : existingEmployee.websites || [];
 
-    const employee = db.prepare('SELECT * FROM Employee WHERE id = ?').get(id) as EmployeeRow;
+    await db.update(employees)
+      .set({
+        fullName: fullName || existingEmployee.fullName,
+        position: position || existingEmployee.position,
+        websites: JSON.stringify(websites || existingWebsites),
+        bankName: bankName || existingEmployee.bankName,
+        accountNumber: accountNumber || existingEmployee.accountNumber,
+        status: status || existingEmployee.status,
+        updatedAt: new Date()
+      })
+      .where(eq(employees.id, id));
+
+    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
 
     return NextResponse.json({
       success: true,
       data: {
         ...employee,
-        websites: JSON.parse(employee.websites || '[]')
+        websites: typeof employee.websites === 'string' 
+          ? JSON.parse(employee.websites || '[]') 
+          : employee.websites || []
       },
       message: 'Employee updated successfully',
     });
@@ -125,7 +111,7 @@ export async function DELETE(
     const { id } = await params;
 
     // ตรวจสอบว่ามี employee นี้อยู่หรือไม่
-    const existingEmployee = db.prepare('SELECT * FROM Employee WHERE id = ?').get(id) as EmployeeRow | undefined;
+    const [existingEmployee] = await db.select().from(employees).where(eq(employees.id, id));
 
     if (!existingEmployee) {
       return NextResponse.json(
@@ -134,7 +120,7 @@ export async function DELETE(
       );
     }
 
-    db.prepare('DELETE FROM Employee WHERE id = ?').run(id);
+    await db.delete(employees).where(eq(employees.id, id));
 
     return NextResponse.json({
       success: true,

@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
 import { LineBotService } from '@/lib/line-bot';
-
-// Database connection
-function getDb() {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  return new Database(dbPath);
-}
-
-// Generate unique ID
-function generateId(prefix: string = '') {
-  return `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+import { db, lineChatRooms, lineChatMessages, lineTokens, generateId } from '@/lib/db';
+import { eq, desc } from 'drizzle-orm';
 
 // Global event store and Socket.IO broadcast
 declare global {
@@ -37,7 +26,7 @@ function emitChatEvent(type: string, data: unknown, roomId?: string) {
   }
   
   const event: ChatEvent = {
-    id: generateId('evt_'),
+    id: `evt_${generateId()}`,
     type,
     data,
     timestamp: Date.now(),
@@ -59,10 +48,31 @@ function emitChatEvent(type: string, data: unknown, roomId?: string) {
   }
 }
 
+interface RoomRecord {
+  id: string;
+  lineUserId: string;
+  lineTokenId: string | null;
+  displayName: string;
+}
+
+interface LineTokenRecord {
+  id: string;
+  name: string;
+  channelId: string;
+  channelSecret: string;
+  accessToken: string;
+  websiteId: string | null;
+  status: string;
+}
+
+interface SendMessageResponse {
+  success: boolean;
+  message?: unknown;
+  error?: string;
+}
+
 // POST - Send message to LINE user
 export async function POST(request: NextRequest) {
-  const db = getDb();
-  
   try {
     const body = await request.json();
     const { roomId, content, messageType = 'text', stickerId, packageId, mediaUrl, senderName = 'Agent', emojis } = body;
@@ -76,56 +86,59 @@ export async function POST(request: NextRequest) {
     }
 
     // Get room info
-    const room = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(roomId) as RoomRecord | undefined;
+    const [room] = await db
+      .select()
+      .from(lineChatRooms)
+      .where(eq(lineChatRooms.id, roomId))
+      .limit(1);
     
     if (!room) {
       return NextResponse.json({ error: 'Chat room not found' }, { status: 404 });
     }
 
     // Get LINE token
-    const lineToken = db.prepare('SELECT * FROM LineToken WHERE id = ? AND status = ?').get(room.lineTokenId, 'active') as LineTokenRecord | undefined;
+    let [lineToken] = room.lineTokenId 
+      ? await db
+          .select()
+          .from(lineTokens)
+          .where(eq(lineTokens.id, room.lineTokenId))
+          .limit(1)
+      : [];
     
     if (!lineToken) {
       // Try to get any active token
-      const anyToken = db.prepare('SELECT * FROM LineToken WHERE status = ? ORDER BY createdAt DESC LIMIT 1').get('active') as LineTokenRecord | undefined;
-      if (!anyToken) {
+      [lineToken] = await db
+        .select()
+        .from(lineTokens)
+        .where(eq(lineTokens.status, 'active'))
+        .orderBy(desc(lineTokens.createdAt))
+        .limit(1);
+      
+      if (!lineToken) {
         return NextResponse.json({ error: 'No active LINE token found' }, { status: 400 });
       }
-      Object.assign(lineToken || {}, anyToken);
     }
-
-    const activeToken = lineToken!;
 
     // Create message in database first
-    const messageId = generateId('msg_');
-    const now = new Date().toISOString();
+    const messageId = `msg_${generateId()}`;
+    const now = new Date();
     const emojisJson = emojis && Array.isArray(emojis) && emojis.length > 0 ? JSON.stringify(emojis) : null;
     
-    // Try to add emojis column if it doesn't exist
-    try {
-      db.prepare(`ALTER TABLE LineChatMessage ADD COLUMN emojis TEXT`).run();
-    } catch {
-      // Column already exists
-    }
-    
-    // Insert using correct column names: messageType, sender, packageId
-    db.prepare(`
-      INSERT INTO LineChatMessage (id, roomId, messageType, content, mediaUrl, stickerId, packageId, emojis, sender, senderName, status, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      messageId,
+    await db.insert(lineChatMessages).values({
+      id: messageId,
       roomId,
       messageType,
-      content || '',
-      mediaUrl || null,
-      stickerId || null,
-      packageId || null,
-      emojisJson,
-      'agent',
+      content: content || '',
+      mediaUrl: mediaUrl || null,
+      stickerId: stickerId || null,
+      packageId: packageId || null,
+      emojis: emojisJson,
+      sender: 'agent',
       senderName,
-      'sending',
-      now
-    );
+      status: 'sending',
+      createdAt: now,
+      updatedAt: now,
+    });
 
     // Emit sending event
     const messageData = {
@@ -139,20 +152,19 @@ export async function POST(request: NextRequest) {
       sender: 'agent',
       senderName: senderName,
       status: 'sending',
-      createdAt: now,
-      emojis: emojis || undefined, // Include emojis data
+      createdAt: now.toISOString(),
+      emojis: emojis || undefined,
     };
     
     emitChatEvent('new-message', messageData);
 
     // Send to LINE
-    const botService = new LineBotService(activeToken.accessToken, activeToken.channelSecret);
+    const botService = new LineBotService(lineToken.accessToken, lineToken.channelSecret);
     let sendResult;
 
     try {
       switch (messageType) {
         case 'text':
-          // Parse LINE emojis from content if present
           if (emojis && Array.isArray(emojis) && emojis.length > 0) {
             sendResult = await botService.sendTextMessage(room.lineUserId, content, emojis);
           } else {
@@ -180,13 +192,22 @@ export async function POST(request: NextRequest) {
     // Update message status
     const finalStatus = sendResult?.success ? 'sent' : 'failed';
     
-    db.prepare(`UPDATE LineChatMessage SET status = ? WHERE id = ?`).run(finalStatus, messageId);
+    await db
+      .update(lineChatMessages)
+      .set({ status: finalStatus, updatedAt: new Date() })
+      .where(eq(lineChatMessages.id, messageId));
 
     // Update room's last message time
-    db.prepare(`UPDATE LineChatRoom SET lastMessageAt = ?, updatedAt = ? WHERE id = ?`).run(now, now, roomId);
+    await db
+      .update(lineChatRooms)
+      .set({ lastMessageAt: now, updatedAt: now })
+      .where(eq(lineChatRooms.id, roomId));
 
     // Update LINE token's lastUsed
-    db.prepare(`UPDATE LineToken SET lastUsed = ?, updatedAt = ? WHERE id = ?`).run(now, now, activeToken.id);
+    await db
+      .update(lineTokens)
+      .set({ lastUsed: now, updatedAt: now })
+      .where(eq(lineTokens.id, lineToken.id));
 
     const finalMessage = { ...messageData, status: finalStatus };
 
@@ -197,7 +218,7 @@ export async function POST(request: NextRequest) {
     emitChatEvent('room-update', {
       id: roomId,
       lastMessage: finalMessage,
-      lastMessageAt: now,
+      lastMessageAt: now.toISOString(),
     }, roomId);
 
     const response: SendMessageResponse = {
@@ -219,30 +240,5 @@ export async function POST(request: NextRequest) {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to send message' 
     }, { status: 500 });
-  } finally {
-    db.close();
   }
-}
-
-interface RoomRecord {
-  id: string;
-  lineUserId: string;
-  lineTokenId?: string;
-  displayName: string;
-}
-
-interface LineTokenRecord {
-  id: string;
-  name: string;
-  channelId: string;
-  channelSecret: string;
-  accessToken: string;
-  websiteId?: string;
-  status: string;
-}
-
-interface SendMessageResponse {
-  success: boolean;
-  message?: unknown;
-  error?: string;
 }

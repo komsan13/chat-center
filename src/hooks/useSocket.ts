@@ -242,7 +242,8 @@ export function useSocket(options: UseSocketOptions = {}) {
   }, []);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // WEB WORKER FOR BACKGROUND HEARTBEAT
+  // WEB WORKER FOR BACKGROUND TAB RECONNECT (NOT FOR PING)
+  // Socket.IO has built-in ping/pong - Worker only checks connection on wake
   // ═══════════════════════════════════════════════════════════════════════════
 
   const initWorker = useCallback(() => {
@@ -252,9 +253,13 @@ export function useSocket(options: UseSocketOptions = {}) {
       workerRef.current = new Worker('/socket-worker.js');
       
       workerRef.current.onmessage = (e) => {
-        if (e.data.type === 'ping' && socketRef.current?.connected) {
-          pingStartTimeRef.current = Date.now();
-          socketRef.current.emit('ping-server');
+        // Only check connection status, don't send custom ping
+        // Socket.IO built-in ping handles keep-alive
+        if (e.data.type === 'ping' && socketRef.current) {
+          if (!socketRef.current.connected) {
+            console.log('[Socket] 🔄 Worker detected disconnection, reconnecting...');
+            socketRef.current.connect();
+          }
         }
       };
       
@@ -262,7 +267,7 @@ export function useSocket(options: UseSocketOptions = {}) {
         console.error('[Socket] Worker error:', err);
       };
       
-      console.log('[Socket] 🔧 Web Worker initialized');
+      console.log('[Socket] 🔧 Web Worker initialized (reconnect only)');
     } catch (err) {
       console.warn('[Socket] Web Worker not available:', err);
     }
@@ -270,7 +275,8 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   const startWorkerHeartbeat = useCallback(() => {
     if (workerRef.current) {
-      workerRef.current.postMessage({ type: 'start', data: { interval: 3000 } });
+      // Check connection every 60 seconds (not for ping, just reconnect check)
+      workerRef.current.postMessage({ type: 'start', data: { interval: 60000 } });
     }
   }, []);
 

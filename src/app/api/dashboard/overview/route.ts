@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  const db = new Database(dbPath);
-  return db;
-}
+import { db } from '@/lib/db';
+import { dailySummaries, dailyBalances, transfers, cashWithdrawals, expenses, websites, banks } from '@/lib/db/schema';
+import { eq, sql, and, gte, lte, desc, or, like } from 'drizzle-orm';
 
 // Helper: format currency
 function formatCurrency(amount: number): string {
@@ -52,135 +46,171 @@ function getDateRange(monthParam: string | null) {
 
 export async function GET(request: NextRequest) {
   try {
-    const db = getDb();
     const { searchParams } = new URL(request.url);
     const monthParam = searchParams.get('month');
     const websiteId = searchParams.get('websiteId') || 'all';
     
     const { startDate, endDate } = getDateRange(monthParam);
     
-    // Build website filter
-    const websiteFilter = websiteId !== 'all' ? `AND websiteId = '${websiteId}'` : '';
-    
     // 1. Get total deposits from DailySummary
     let totalDeposits = 0;
     let totalWithdrawals = 0;
     let netProfit = 0;
     try {
-      const summaryQuery = `
-        SELECT 
-          COALESCE(SUM(totalDeposit), 0) as totalDeposits,
-          COALESCE(SUM(totalWithdrawal), 0) as totalWithdrawals,
-          COALESCE(SUM(totalProfit), 0) as netProfit
-        FROM DailySummary 
-        WHERE date >= ? AND date <= ? ${websiteFilter.replace('websiteId', 'websiteName')}
-      `;
-      const summary = db.prepare(summaryQuery).get(startDate, endDate) as any;
-      if (summary) {
-        totalDeposits = summary.totalDeposits || 0;
-        totalWithdrawals = summary.totalWithdrawals || 0;
-        netProfit = summary.netProfit || 0;
+      const summaryConditions = [
+        gte(dailySummaries.date, startDate),
+        lte(dailySummaries.date, endDate)
+      ];
+      if (websiteId !== 'all') {
+        summaryConditions.push(eq(dailySummaries.websiteName, websiteId));
+      }
+      
+      const summary = await db.select({
+        totalDeposits: sql<number>`COALESCE(SUM(${dailySummaries.totalDeposit}), 0)`,
+        totalWithdrawals: sql<number>`COALESCE(SUM(${dailySummaries.totalWithdrawal}), 0)`,
+        netProfit: sql<number>`COALESCE(SUM(${dailySummaries.totalProfit}), 0)`,
+      })
+        .from(dailySummaries)
+        .where(and(...summaryConditions));
+      
+      if (summary[0]) {
+        totalDeposits = summary[0].totalDeposits || 0;
+        totalWithdrawals = summary[0].totalWithdrawals || 0;
+        netProfit = summary[0].netProfit || 0;
       }
     } catch (e) {
-      console.log('DailySummary table not found, using defaults');
+      console.log('DailySummary table error:', e);
     }
     
     // 2. Get total transfers
     let totalTransfers = 0;
     let transferCount = 0;
     try {
-      const transferQuery = `
-        SELECT 
-          COALESCE(SUM(amount), 0) as total,
-          COUNT(*) as count
-        FROM Transfer 
-        WHERE date >= ? AND date <= ? ${websiteFilter}
-      `;
-      const transfers = db.prepare(transferQuery).get(startDate, endDate) as any;
-      if (transfers) {
-        totalTransfers = transfers.total || 0;
-        transferCount = transfers.count || 0;
+      const transferConditions = [
+        gte(transfers.date, startDate),
+        lte(transfers.date, endDate)
+      ];
+      if (websiteId !== 'all') {
+        transferConditions.push(eq(transfers.websiteId, websiteId));
+      }
+      
+      const transferResult = await db.select({
+        total: sql<number>`COALESCE(SUM(${transfers.amount}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+        .from(transfers)
+        .where(and(...transferConditions));
+      
+      if (transferResult[0]) {
+        totalTransfers = transferResult[0].total || 0;
+        transferCount = transferResult[0].count || 0;
       }
     } catch (e) {
-      console.log('Transfer table not found');
+      console.log('Transfer table error:', e);
     }
     
     // 3. Get total cash withdrawals
     let totalCashWithdrawals = 0;
     let cashWithdrawalCount = 0;
     try {
-      const cashQuery = `
-        SELECT 
-          COALESCE(SUM(amount), 0) as total,
-          COUNT(*) as count
-        FROM CashWithdrawal 
-        WHERE date >= ? AND date <= ? ${websiteFilter}
-      `;
-      const cash = db.prepare(cashQuery).get(startDate, endDate) as any;
-      if (cash) {
-        totalCashWithdrawals = cash.total || 0;
-        cashWithdrawalCount = cash.count || 0;
+      const cashConditions = [
+        gte(cashWithdrawals.date, startDate),
+        lte(cashWithdrawals.date, endDate)
+      ];
+      if (websiteId !== 'all') {
+        cashConditions.push(eq(cashWithdrawals.websiteId, websiteId));
+      }
+      
+      const cashResult = await db.select({
+        total: sql<number>`COALESCE(SUM(${cashWithdrawals.amount}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+        .from(cashWithdrawals)
+        .where(and(...cashConditions));
+      
+      if (cashResult[0]) {
+        totalCashWithdrawals = cashResult[0].total || 0;
+        cashWithdrawalCount = cashResult[0].count || 0;
       }
     } catch (e) {
-      console.log('CashWithdrawal table not found');
+      console.log('CashWithdrawal table error:', e);
     }
     
     // 4. Get total expenses
     let totalExpenses = 0;
     let expenseCount = 0;
     try {
-      const expenseQuery = `
-        SELECT 
-          COALESCE(SUM(amount), 0) as total,
-          COUNT(*) as count
-        FROM Expenses 
-        WHERE date >= ? AND date <= ? ${websiteFilter}
-      `;
-      const expenses = db.prepare(expenseQuery).get(startDate, endDate) as any;
-      if (expenses) {
-        totalExpenses = expenses.total || 0;
-        expenseCount = expenses.count || 0;
+      const expenseConditions = [
+        gte(expenses.date, startDate),
+        lte(expenses.date, endDate)
+      ];
+      if (websiteId !== 'all') {
+        expenseConditions.push(eq(expenses.websiteId, websiteId));
+      }
+      
+      const expenseResult = await db.select({
+        total: sql<number>`COALESCE(SUM(${expenses.amount}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+        .from(expenses)
+        .where(and(...expenseConditions));
+      
+      if (expenseResult[0]) {
+        totalExpenses = expenseResult[0].total || 0;
+        expenseCount = expenseResult[0].count || 0;
       }
     } catch (e) {
-      console.log('Expenses table not found');
+      console.log('Expenses table error:', e);
     }
     
     // 5. Get current total balance from DailyBalance
     let totalBalance = 0;
     try {
-      const balanceQuery = `
-        SELECT COALESCE(SUM(closingBalance), 0) as total
-        FROM DailyBalance 
-        WHERE date = (SELECT MAX(date) FROM DailyBalance)
-      `;
-      const balance = db.prepare(balanceQuery).get() as any;
-      if (balance) {
-        totalBalance = balance.total || 0;
+      const maxDateResult = await db.select({
+        maxDate: sql<string>`MAX(${dailyBalances.date})`,
+      }).from(dailyBalances);
+      
+      if (maxDateResult[0]?.maxDate) {
+        const balanceResult = await db.select({
+          total: sql<number>`COALESCE(SUM(${dailyBalances.closingBalance}), 0)`,
+        })
+          .from(dailyBalances)
+          .where(eq(dailyBalances.date, maxDateResult[0].maxDate));
+        
+        totalBalance = balanceResult[0]?.total || 0;
       }
     } catch (e) {
-      console.log('DailyBalance table not found');
+      console.log('DailyBalance table error:', e);
     }
     
     // 6. Get website count
     let websiteCount = 0;
     try {
-      const websites = db.prepare("SELECT COUNT(*) as count FROM Website WHERE status = 'active'").get() as any;
-      websiteCount = websites?.count || 0;
+      const websiteResult = await db.select({
+        count: sql<number>`COUNT(*)`,
+      })
+        .from(websites)
+        .where(eq(websites.status, 'active'));
+      websiteCount = websiteResult[0]?.count || 0;
     } catch (e) {
-      console.log('Website table not found');
+      console.log('Website table error:', e);
     }
     
     // 7. Get bank count
     let bankCount = 0;
     try {
-      const banks = db.prepare("SELECT COUNT(*) as count FROM Bank WHERE status = 'active'").get() as any;
-      bankCount = banks?.count || 0;
+      const bankResult = await db.select({
+        count: sql<number>`COUNT(*)`,
+      })
+        .from(banks)
+        .where(eq(banks.status, 'active'));
+      bankCount = bankResult[0]?.count || 0;
     } catch (e) {
-      console.log('Bank table not found');
+      console.log('Bank table error:', e);
     }
     
     // 8. Get daily balance summary for chart (within selected month)
-    const dailyData: any[] = [];
+    const dailyData: { date: string; dailyBalance: number; cashWithdrawal: number; fee: number; transfer: number; cashExpenses: number; netBalance: number }[] = [];
     try {
       // Generate all dates in the selected month (1 to last day)
       const [startYear, startMonth] = startDate.split('-').map(Number);
@@ -196,44 +226,48 @@ export async function GET(request: NextRequest) {
         // Get total daily balance (sum of all accounts' closing balance for that day)
         let totalDailyBalance = 0;
         try {
-          const balanceResult = db.prepare(`
-            SELECT COALESCE(SUM(closingBalance), 0) as total
-            FROM DailyBalance WHERE date = ?
-          `).get(date) as any;
-          totalDailyBalance = balanceResult?.total || 0;
+          const balanceResult = await db.select({
+            total: sql<number>`COALESCE(SUM(${dailyBalances.closingBalance}), 0)`,
+          })
+            .from(dailyBalances)
+            .where(eq(dailyBalances.date, date));
+          totalDailyBalance = balanceResult[0]?.total || 0;
         } catch (e) {}
         
         // Get total cash withdrawals for that day
         let totalCashWithdrawal = 0;
         let totalFee = 0;
         try {
-          const cashResult = db.prepare(`
-            SELECT COALESCE(SUM(amount), 0) as total, COALESCE(SUM(fee), 0) as totalFee
-            FROM CashWithdrawal WHERE date = ?
-          `).get(date) as any;
-          totalCashWithdrawal = cashResult?.total || 0;
-          totalFee = cashResult?.totalFee || 0;
+          const cashResult = await db.select({
+            total: sql<number>`COALESCE(SUM(${cashWithdrawals.amount}), 0)`,
+            totalFee: sql<number>`COALESCE(SUM(${cashWithdrawals.fee}), 0)`,
+          })
+            .from(cashWithdrawals)
+            .where(eq(cashWithdrawals.date, date));
+          totalCashWithdrawal = cashResult[0]?.total || 0;
+          totalFee = cashResult[0]?.totalFee || 0;
         } catch (e) {}
         
         // Get total transfers FROM CASH only (fromBankName = 'เงินสด')
         let totalTransfer = 0;
         try {
-          const transferResult = db.prepare(`
-            SELECT COALESCE(SUM(amount), 0) as total
-            FROM Transfer WHERE date = ? AND (fromBankName = 'เงินสด' OR fromBankName LIKE '%เงินสด%')
-          `).get(date) as any;
-          totalTransfer = transferResult?.total || 0;
+          const transferResult = await db.select({
+            total: sql<number>`COALESCE(SUM(${transfers.amount}), 0)`,
+          })
+            .from(transfers)
+            .where(and(
+              eq(transfers.date, date),
+              or(
+                eq(transfers.fromBankName, 'เงินสด'),
+                like(transfers.fromBankName, '%เงินสด%')
+              )
+            ));
+          totalTransfer = transferResult[0]?.total || 0;
         } catch (e) {}
         
-        // Get total cash expenses for that day (paymentType = 'เงินสด' or 'cash')
+        // Get total cash expenses for that day (paymentType would need to be added if exists)
         let totalCashExpenses = 0;
-        try {
-          const expenseResult = db.prepare(`
-            SELECT COALESCE(SUM(amount), 0) as total
-            FROM Expenses WHERE date = ? AND (paymentType = 'เงินสด' OR paymentType = 'cash' OR paymentType LIKE '%เงินสด%')
-          `).get(date) as any;
-          totalCashExpenses = expenseResult?.total || 0;
-        } catch (e) {}
+        // Note: expenses table doesn't have paymentType in schema, defaulting to 0
         
         // Calculate: ถอนเงิน - ค่าธรรมเนียม - โยกเงิน(จากเงินสด) - ค่าใช้จ่าย(เงินสด) + ยอดเงินคงเหลือรายวัน
         const netBalance = totalCashWithdrawal - totalFee - totalTransfer - totalCashExpenses + totalDailyBalance;
@@ -253,24 +287,29 @@ export async function GET(request: NextRequest) {
     }
     
     // 9. Get recent transactions (combined from multiple tables)
-    const recentTransactions: any[] = [];
+    const recentTransactions: { id: string; date: string; type: string; description: string; amount: number; status?: string; website?: string | null }[] = [];
     
     // Recent transfers
     try {
-      const transfers = db.prepare(`
-        SELECT id, date, 'transfer' as type, amount, fromBankName, toBankName, status, websiteName
-        FROM Transfer 
-        ORDER BY date DESC, createdAt DESC 
-        LIMIT 5
-      `).all() as any[];
-      transfers.forEach(t => {
+      const recentTransfers = await db.select({
+        id: transfers.id,
+        date: transfers.date,
+        amount: transfers.amount,
+        fromBankName: transfers.fromBankName,
+        toBankName: transfers.toBankName,
+        websiteName: transfers.websiteName,
+      })
+        .from(transfers)
+        .orderBy(desc(transfers.date), desc(transfers.createdAt))
+        .limit(5);
+      
+      recentTransfers.forEach(t => {
         recentTransactions.push({
           id: t.id,
           date: t.date,
           type: 'transfer',
           description: `${t.fromBankName} → ${t.toBankName}`,
           amount: t.amount,
-          status: t.status,
           website: t.websiteName
         });
       });
@@ -278,20 +317,24 @@ export async function GET(request: NextRequest) {
     
     // Recent cash withdrawals
     try {
-      const cash = db.prepare(`
-        SELECT id, date, 'withdrawal' as type, amount, bankName, accountName, status, websiteName
-        FROM CashWithdrawal 
-        ORDER BY date DESC, createdAt DESC 
-        LIMIT 5
-      `).all() as any[];
-      cash.forEach(c => {
+      const recentCash = await db.select({
+        id: cashWithdrawals.id,
+        date: cashWithdrawals.date,
+        amount: cashWithdrawals.amount,
+        bankName: cashWithdrawals.bankName,
+        websiteName: cashWithdrawals.websiteName,
+      })
+        .from(cashWithdrawals)
+        .orderBy(desc(cashWithdrawals.date), desc(cashWithdrawals.createdAt))
+        .limit(5);
+      
+      recentCash.forEach(c => {
         recentTransactions.push({
           id: c.id,
           date: c.date,
           type: 'withdrawal',
-          description: `${c.bankName} - ${c.accountName}`,
+          description: `${c.bankName}`,
           amount: c.amount,
-          status: c.status,
           website: c.websiteName
         });
       });
@@ -299,20 +342,25 @@ export async function GET(request: NextRequest) {
     
     // Recent expenses
     try {
-      const expenses = db.prepare(`
-        SELECT id, date, 'expense' as type, amount, category, description, status, websiteName
-        FROM Expenses 
-        ORDER BY date DESC, createdAt DESC 
-        LIMIT 5
-      `).all() as any[];
-      expenses.forEach(e => {
+      const recentExpenses = await db.select({
+        id: expenses.id,
+        date: expenses.date,
+        amount: expenses.amount,
+        category: expenses.category,
+        description: expenses.description,
+        websiteName: expenses.websiteName,
+      })
+        .from(expenses)
+        .orderBy(desc(expenses.date), desc(expenses.createdAt))
+        .limit(5);
+      
+      recentExpenses.forEach(e => {
         recentTransactions.push({
           id: e.id,
           date: e.date,
           type: 'expense',
           description: e.description || e.category,
           amount: e.amount,
-          status: e.status,
           website: e.websiteName
         });
       });
@@ -323,21 +371,23 @@ export async function GET(request: NextRequest) {
     const topTransactions = recentTransactions.slice(0, 10);
     
     // 10. Get website performance
-    const websitePerformance: any[] = [];
+    const websitePerformance: { name: string | null; deposits: number; withdrawals: number; profit: number }[] = [];
     try {
-      const perfQuery = `
-        SELECT 
-          websiteName as name,
-          SUM(totalDeposit) as deposits,
-          SUM(totalWithdrawal) as withdrawals,
-          SUM(totalProfit) as profit
-        FROM DailySummary 
-        WHERE date >= ? AND date <= ?
-        GROUP BY websiteName
-        ORDER BY profit DESC
-        LIMIT 5
-      `;
-      const perf = db.prepare(perfQuery).all(startDate, endDate) as any[];
+      const perf = await db.select({
+        name: dailySummaries.websiteName,
+        deposits: sql<number>`SUM(${dailySummaries.totalDeposit})`,
+        withdrawals: sql<number>`SUM(${dailySummaries.totalWithdrawal})`,
+        profit: sql<number>`SUM(${dailySummaries.totalProfit})`,
+      })
+        .from(dailySummaries)
+        .where(and(
+          gte(dailySummaries.date, startDate),
+          lte(dailySummaries.date, endDate)
+        ))
+        .groupBy(dailySummaries.websiteName)
+        .orderBy(desc(sql`SUM(${dailySummaries.totalProfit})`))
+        .limit(5);
+      
       perf.forEach(p => {
         websitePerformance.push({
           name: p.name,
@@ -347,8 +397,6 @@ export async function GET(request: NextRequest) {
         });
       });
     } catch (e) {}
-    
-    db.close();
     
     // Calculate changes (mock for now, would need historical data)
     const depositChange = 8.5;

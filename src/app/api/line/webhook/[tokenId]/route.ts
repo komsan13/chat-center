@@ -1,18 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-// Database connection
-function getDb() {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  return new Database(dbPath);
-}
-
-// Generate unique ID
-function generateId(prefix: string = '') {
-  return `${prefix}${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+import { db, lineTokens, lineChatRooms, lineChatMessages, generateId } from '@/lib/db';
+import { eq, and, sql } from 'drizzle-orm';
 
 // Global broadcast function declaration - use 'any' to avoid type conflicts
 declare global {
@@ -24,40 +13,29 @@ declare global {
   var __io: any;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// RELIABLE BROADCAST SYSTEM - Multiple fallback mechanisms
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// Method 1: Try global.__broadcast (set by server.js)
-// Method 2: Try global.__io directly
-// Method 3: HTTP request to internal broadcast endpoint (most reliable)
-
 async function reliableBroadcast(event: string, data: unknown, room: string = 'all-rooms'): Promise<boolean> {
   let success = false;
   
-  // Method 1: Use global.__broadcast if available
   if (room === 'all-rooms' && global.__broadcast) {
     try {
       global.__broadcast(event, data);
-      console.log(`[Webhook Broadcast] ✅ Method 1 (global.__broadcast): ${event}`);
+      console.log(`[Webhook Broadcast] Method 1 (global.__broadcast): ${event}`);
       success = true;
     } catch (e) {
       console.warn(`[Webhook Broadcast] Method 1 failed:`, e);
     }
   }
   
-  // Method 2: Use global.__io directly if available
   if (!success && global.__io) {
     try {
       global.__io.to(room).emit(event, data);
-      console.log(`[Webhook Broadcast] ✅ Method 2 (global.__io): ${event} -> ${room}`);
+      console.log(`[Webhook Broadcast] Method 2 (global.__io): ${event} -> ${room}`);
       success = true;
     } catch (e) {
       console.warn(`[Webhook Broadcast] Method 2 failed:`, e);
     }
   }
   
-  // Method 3: HTTP fallback to internal endpoint
   if (!success) {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
@@ -74,18 +52,12 @@ async function reliableBroadcast(event: string, data: unknown, room: string = 'a
       });
       
       if (response.ok) {
-        console.log(`[Webhook Broadcast] ✅ Method 3 (HTTP): ${event} -> ${room}`);
+        console.log(`[Webhook Broadcast] Method 3 (HTTP): ${event} -> ${room}`);
         success = true;
-      } else {
-        console.warn(`[Webhook Broadcast] Method 3 HTTP ${response.status}`);
       }
     } catch (e) {
       console.warn(`[Webhook Broadcast] Method 3 failed:`, e);
     }
-  }
-  
-  if (!success) {
-    console.error(`[Webhook Broadcast] ❌ All methods failed for ${event}`);
   }
   
   return success;
@@ -94,39 +66,34 @@ async function reliableBroadcast(event: string, data: unknown, room: string = 'a
 async function reliableBroadcastToRoom(roomId: string, event: string, data: unknown): Promise<boolean> {
   let success = false;
   
-  // Method 1: Use global.__broadcastToRoom if available
   if (global.__broadcastToRoom) {
     try {
       global.__broadcastToRoom(roomId, event, data);
-      console.log(`[Webhook Broadcast] ✅ Method 1 (global.__broadcastToRoom): ${event} -> room:${roomId}`);
+      console.log(`[Webhook Broadcast] broadcastToRoom: ${event} -> room:${roomId}`);
       success = true;
     } catch (e) {
-      console.warn(`[Webhook Broadcast] Method 1 failed:`, e);
+      console.warn(`[Webhook Broadcast] broadcastToRoom failed:`, e);
     }
   }
   
-  // Method 2: Use global.__io directly - emit to room AND all-rooms
   if (!success && global.__io) {
     try {
       if (roomId) {
         global.__io.to(roomId).emit(event, data);
       }
       global.__io.to('all-rooms').emit(event, data);
-      console.log(`[Webhook Broadcast] ✅ Method 2 (global.__io): ${event} -> room:${roomId} + all-rooms`);
       success = true;
     } catch (e) {
-      console.warn(`[Webhook Broadcast] Method 2 failed:`, e);
+      console.warn(`[Webhook Broadcast] io failed:`, e);
     }
   }
   
-  // Method 3: HTTP fallback - send to both room and all-rooms
   if (!success) {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
                       process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
                       'http://localhost:3001';
       
-      // Emit to specific room
       if (roomId) {
         await fetch(`${baseUrl}/api/internal/broadcast`, {
           method: 'POST',
@@ -138,7 +105,6 @@ async function reliableBroadcastToRoom(roomId: string, event: string, data: unkn
         });
       }
       
-      // Emit to all-rooms
       const response = await fetch(`${baseUrl}/api/internal/broadcast`, {
         method: 'POST',
         headers: {
@@ -148,17 +114,10 @@ async function reliableBroadcastToRoom(roomId: string, event: string, data: unkn
         body: JSON.stringify({ event, data, room: 'all-rooms' }),
       });
       
-      if (response.ok) {
-        console.log(`[Webhook Broadcast] ✅ Method 3 (HTTP): ${event} -> room:${roomId} + all-rooms`);
-        success = true;
-      }
+      if (response.ok) success = true;
     } catch (e) {
-      console.warn(`[Webhook Broadcast] Method 3 failed:`, e);
+      console.warn(`[Webhook Broadcast] HTTP failed:`, e);
     }
-  }
-  
-  if (!success) {
-    console.error(`[Webhook Broadcast] ❌ All methods failed for ${event} to room:${roomId}`);
   }
   
   return success;
@@ -170,22 +129,8 @@ interface LineTokenRecord {
   channelId: string;
   channelSecret: string;
   accessToken: string;
-  websiteId?: string;
-  websiteName?: string;
-  status: string;
-}
-
-interface ChatRoomRecord {
-  id: string;
-  lineUserId: string;
-  lineTokenId?: string;
-  displayName: string;
-  pictureUrl?: string;
-  statusMessage?: string;
-  unreadCount: number;
-  isPinned: number;
-  isMuted: number;
-  tags: string;
+  websiteId: string | null;
+  websiteName: string | null;
   status: string;
 }
 
@@ -212,13 +157,11 @@ interface LineEvent {
   };
 }
 
-// POST - รับ webhook events จาก LINE สำหรับ token เฉพาะ
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tokenId: string }> }
 ) {
   const { tokenId } = await params;
-  const db = getDb();
   
   try {
     const body = await request.text();
@@ -226,22 +169,18 @@ export async function POST(
     
     console.log(`[LINE Webhook/${tokenId}] Received webhook`);
 
-    // Get specific token by ID
-    const token = db.prepare('SELECT * FROM LineToken WHERE id = ?').get(tokenId) as LineTokenRecord | undefined;
+    const [token] = await db.select().from(lineTokens).where(eq(lineTokens.id, tokenId));
 
     if (!token) {
       console.error(`[LINE Webhook/${tokenId}] Token not found`);
-      db.close();
       return NextResponse.json({ error: 'Token not found' }, { status: 404 });
     }
 
     if (token.status !== 'active') {
       console.warn(`[LINE Webhook/${tokenId}] Token is inactive`);
-      db.close();
       return NextResponse.json({ success: true, message: 'Token inactive' });
     }
 
-    // Verify signature with this specific token
     if (process.env.NODE_ENV === 'production') {
       const hash = crypto
         .createHmac('sha256', token.channelSecret)
@@ -250,43 +189,40 @@ export async function POST(
       
       if (hash !== signature) {
         console.error(`[LINE Webhook/${tokenId}] Invalid signature for token: ${token.name}`);
-        db.close();
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
       
-      console.log(`[LINE Webhook/${tokenId}] ✅ Signature verified for: ${token.name}`);
+      console.log(`[LINE Webhook/${tokenId}] Signature verified for: ${token.name}`);
     }
 
     const events = JSON.parse(body);
 
-    // Process events with this specific token
     if (events.events && Array.isArray(events.events)) {
       for (const event of events.events) {
-        await handleEvent(db, event, token);
+        await handleEvent(event, token);
       }
     }
 
-    db.close();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error(`[LINE Webhook/${tokenId}] Error:`, error);
-    db.close();
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-// Handle individual event
-async function handleEvent(db: Database.Database, event: LineEvent, token: LineTokenRecord) {
+async function handleEvent(event: LineEvent, token: LineTokenRecord) {
   const userId = event.source?.userId;
   if (!userId) return;
 
   console.log(`[LINE Webhook/${token.id}] Processing event type: ${event.type} for user: ${userId}`);
 
-  // Get or create chat room
-  let room = db.prepare('SELECT * FROM LineChatRoom WHERE lineUserId = ? AND lineTokenId = ?').get(userId, token.id) as ChatRoomRecord | undefined;
+  let [room] = await db.select().from(lineChatRooms)
+    .where(and(
+      eq(lineChatRooms.lineUserId, userId),
+      eq(lineChatRooms.lineTokenId, token.id)
+    ));
   
   if (!room) {
-    // Fetch user profile from LINE
     let displayName = 'LINE User';
     let pictureUrl = '';
     let statusMessage = '';
@@ -306,20 +242,29 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       console.error('Failed to fetch LINE profile:', e);
     }
     
-    // Create new room WITH lineTokenId
-    const roomId = generateId('room_');
-    const now = new Date().toISOString();
+    const roomId = 'room_' + generateId();
+    const now = new Date();
     
-    db.prepare(`
-      INSERT INTO LineChatRoom (id, lineUserId, lineTokenId, displayName, pictureUrl, statusMessage, unreadCount, isPinned, isMuted, tags, status, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, '[]', 'active', ?, ?)
-    `).run(roomId, userId, token.id, displayName, pictureUrl, statusMessage, now, now);
+    await db.insert(lineChatRooms).values({
+      id: roomId,
+      lineUserId: userId,
+      lineTokenId: token.id,
+      displayName,
+      pictureUrl: pictureUrl || null,
+      statusMessage: statusMessage || null,
+      unreadCount: 0,
+      isPinned: false,
+      isMuted: false,
+      tags: '[]',
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
     
-    room = db.prepare('SELECT * FROM LineChatRoom WHERE id = ?').get(roomId) as ChatRoomRecord;
+    [room] = await db.select().from(lineChatRooms).where(eq(lineChatRooms.id, roomId));
     
     console.log(`[LINE Webhook/${token.id}] Created new room: ${roomId} for user: ${displayName}`);
     
-    // Broadcast new room to all clients
     const newRoomData = {
       id: roomId,
       lineUserId: userId,
@@ -332,27 +277,25 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       isMuted: false,
       tags: [],
       status: 'active',
-      createdAt: now,
-      updatedAt: now,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     };
     
-    // Use reliable broadcast with multiple fallbacks
     await reliableBroadcast('new-room', newRoomData);
-    console.log(`[LINE Webhook/${token.id}] 📡 Broadcast new-room: ${roomId}`);
+    console.log(`[LINE Webhook/${token.id}] Broadcast new-room: ${roomId}`);
   }
 
-  // Handle message events
   if (event.type === 'message' && event.message) {
     const msg = event.message;
-    const msgId = generateId('msg_');
-    const now = new Date().toISOString();
+    const msgId = 'msg_' + generateId();
+    const now = new Date();
     
     let content = '';
     let messageType = msg.type;
-    let stickerId = null;
-    let stickerPackageId = null;
-    let emojisJson = null;
-    let mediaUrl = null;
+    let stickerId: string | null = null;
+    let stickerPackageId: string | null = null;
+    let emojisJson: string | null = null;
+    let mediaUrl: string | null = null;
     
     if (msg.type === 'text') {
       content = msg.text || '';
@@ -361,8 +304,8 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       }
     } else if (msg.type === 'sticker') {
       messageType = 'sticker';
-      stickerId = msg.stickerId;
-      stickerPackageId = msg.packageId;
+      stickerId = msg.stickerId || null;
+      stickerPackageId = msg.packageId || null;
       content = `[Sticker]`;
     } else if (msg.type === 'image') {
       messageType = 'image';
@@ -382,42 +325,49 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       mediaUrl = `https://api-data.line.me/v2/bot/message/${msg.id}/content`;
     }
     
-    // Insert message - use correct column names: messageType, sender (not type, senderType)
-    db.prepare(`
-      INSERT INTO LineChatMessage (id, roomId, lineMessageId, content, messageType, sender, stickerId, stickerPackageId, emojis, mediaUrl, createdAt)
-      VALUES (?, ?, ?, ?, ?, 'user', ?, ?, ?, ?, ?)
-    `).run(msgId, room.id, msg.id, content, messageType, stickerId, stickerPackageId, emojisJson, mediaUrl, now);
+    await db.insert(lineChatMessages).values({
+      id: msgId,
+      roomId: room.id,
+      lineMessageId: msg.id,
+      content,
+      messageType,
+      sender: 'user',
+      stickerId,
+      stickerPackageId,
+      emojis: emojisJson,
+      mediaUrl,
+      createdAt: now,
+    });
     
-    // Update room's last message and unread count
-    db.prepare(`
-      UPDATE LineChatRoom 
-      SET lastMessage = ?, lastMessageAt = ?, unreadCount = unreadCount + 1, updatedAt = ?
-      WHERE id = ?
-    `).run(content, now, now, room.id);
+    await db.update(lineChatRooms)
+      .set({
+        lastMessage: content,
+        lastMessageAt: now,
+        unreadCount: sql`${lineChatRooms.unreadCount} + 1`,
+        updatedAt: now,
+      })
+      .where(eq(lineChatRooms.id, room.id));
     
-    // Broadcast new message - use correct format for frontend ChatMessage interface
     const messageData = {
       id: msgId,
       roomId: room.id,
       lineMessageId: msg.id,
       lineTokenId: token.id,
-      messageType: messageType,  // Use 'messageType' not 'type'
+      messageType: messageType,
       content,
-      sender: 'user',  // Use 'sender' not 'senderType'
+      sender: 'user',
       senderName: room.displayName,
       status: 'sent',
       stickerId,
       packageId: stickerPackageId,
       emojis: msg.emojis,
       mediaUrl,
-      createdAt: now,
+      createdAt: now.toISOString(),
     };
     
-    // Use reliable broadcast with multiple fallbacks
     await reliableBroadcastToRoom(room.id, 'new-message', messageData);
-    console.log(`[LINE Webhook/${token.id}] 📡 Broadcast new-message to room ${room.id}`);
+    console.log(`[LINE Webhook/${token.id}] Broadcast new-message to room ${room.id}`);
     
-    // Broadcast room-update with full data for multi-browser sync
     await reliableBroadcast('room-update', {
       id: room.id,
       lineTokenId: token.id,
@@ -425,16 +375,15 @@ async function handleEvent(db: Database.Database, event: LineEvent, token: LineT
       pictureUrl: room.pictureUrl,
       status: 'active',
       lastMessage: messageData,
-      lastMessageAt: now,
+      lastMessageAt: now.toISOString(),
       unreadCount: (room.unreadCount || 0) + 1,
     });
-    console.log(`[LINE Webhook/${token.id}] 📡 Broadcast room-update`);
+    console.log(`[LINE Webhook/${token.id}] Broadcast room-update`);
     
     console.log(`[LINE Webhook/${token.id}] Saved message: ${msgId} to room: ${room.id}`);
   }
 }
 
-// GET - For LINE webhook verification
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tokenId: string }> }

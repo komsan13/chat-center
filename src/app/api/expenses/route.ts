@@ -1,105 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-import { randomUUID } from 'crypto';
-
-// Database connection
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-
-function getDb() {
-  const db = new Database(dbPath);
-  
-  // Create Expenses table if not exists
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS Expenses (
-      id TEXT PRIMARY KEY,
-      date TEXT NOT NULL,
-      websiteId TEXT,
-      websiteName TEXT,
-      category TEXT NOT NULL,
-      description TEXT,
-      amount REAL NOT NULL DEFAULT 0,
-      requester TEXT,
-      paymentType TEXT DEFAULT 'cash',
-      bankId TEXT,
-      bankName TEXT,
-      accountNumber TEXT,
-      status TEXT DEFAULT 'unpaid',
-      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  
-  return db;
-}
+import { db, expenses, banks, generateId } from '@/lib/db';
+import { eq, and, desc } from 'drizzle-orm';
 
 // GET - List all expenses with optional filters
 export async function GET(request: NextRequest) {
   try {
-    const db = getDb();
     const { searchParams } = new URL(request.url);
     
     const date = searchParams.get('date');
     const category = searchParams.get('category');
-    const status = searchParams.get('status');
     const websiteId = searchParams.get('websiteId');
     
-    let query = 'SELECT * FROM Expenses WHERE 1=1';
-    const params: string[] = [];
+    // Build query conditions
+    const conditions = [];
     
     if (date) {
-      query += ' AND date = ?';
-      params.push(date);
+      conditions.push(eq(expenses.date, date));
     }
     
     if (category) {
-      query += ' AND category = ?';
-      params.push(category);
-    }
-    
-    if (status) {
-      query += ' AND status = ?';
-      params.push(status);
+      conditions.push(eq(expenses.category, category));
     }
     
     if (websiteId) {
-      query += ' AND websiteId = ?';
-      params.push(websiteId);
+      conditions.push(eq(expenses.websiteId, websiteId));
     }
     
-    query += ' ORDER BY date DESC, createdAt DESC';
+    let expensesData;
+    if (conditions.length > 0) {
+      expensesData = await db.select()
+        .from(expenses)
+        .where(and(...conditions))
+        .orderBy(desc(expenses.date), desc(expenses.createdAt));
+    } else {
+      expensesData = await db.select()
+        .from(expenses)
+        .orderBy(desc(expenses.date), desc(expenses.createdAt));
+    }
     
-    const stmt = db.prepare(query);
-    const expensesData = stmt.all(...params) as any[];
-    
-    // Check if Bank table exists and get all banks for lookup
+    // Get all banks for lookup
     let banksMap = new Map<string, { type: string; accountName: string }>();
     try {
-      const banksStmt = db.prepare('SELECT id, type, accountName FROM Bank');
-      const banks = banksStmt.all() as { id: string; type: string; accountName: string }[];
-      banksMap = new Map(banks.map(b => [b.id, b]));
-    } catch (e) {
+      const banksList = await db.select({
+        id: banks.id,
+        type: banks.type,
+        accountName: banks.accountName
+      }).from(banks);
+      banksMap = new Map(banksList.map(b => [b.id, b]));
+    } catch {
       // Bank table might not exist, continue without bank info
     }
     
     // Add bank info to each expense
     const data = expensesData.map(expense => {
-      if (expense.bankId && banksMap.size > 0) {
-        const bank = banksMap.get(expense.bankId);
-        return {
-          ...expense,
-          bankType: bank?.type || null,
-          accountName: bank?.accountName || ''
-        };
-      }
+      // Note: expenses table in Drizzle doesn't have bankId, but keeping compatibility
       return {
         ...expense,
         bankType: null,
         accountName: ''
       };
     });
-    
-    db.close();
     
     return NextResponse.json({
       success: true,
@@ -117,7 +77,6 @@ export async function GET(request: NextRequest) {
 // POST - Create new expense
 export async function POST(request: NextRequest) {
   try {
-    const db = getDb();
     const body = await request.json();
     
     const { 
@@ -127,50 +86,34 @@ export async function POST(request: NextRequest) {
       category, 
       description, 
       amount, 
-      requester, 
-      paymentType, 
-      bankId, 
-      bankName, 
-      accountNumber,
-      status 
+      note,
+      createdBy
     } = body;
     
     // Validate required fields
     if (!date || !category || amount === undefined) {
-      db.close();
       return NextResponse.json(
         { success: false, error: 'Missing required fields: date, category, amount' },
         { status: 400 }
       );
     }
     
-    const id = randomUUID();
+    const id = generateId();
+    const now = new Date();
     
-    const insertStmt = db.prepare(`
-      INSERT INTO Expenses (
-        id, date, websiteId, websiteName, category, description, amount, 
-        requester, paymentType, bankId, bankName, accountNumber, status, createdAt, updatedAt
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `);
-    
-    insertStmt.run(
+    await db.insert(expenses).values({
       id,
       date,
-      websiteId || null,
-      websiteName || '',
+      websiteId: websiteId || null,
+      websiteName: websiteName || null,
       category,
-      description || '',
-      amount || 0,
-      requester || '',
-      paymentType || 'cash',
-      bankId || null,
-      bankName || '',
-      accountNumber || '',
-      status || 'unpaid'
-    );
-    
-    db.close();
+      description: description || null,
+      amount: amount || 0,
+      note: note || null,
+      createdBy: createdBy || null,
+      createdAt: now,
+      updatedAt: now,
+    });
     
     return NextResponse.json({
       success: true,
@@ -189,7 +132,6 @@ export async function POST(request: NextRequest) {
 // PUT - Update expense
 export async function PUT(request: NextRequest) {
   try {
-    const db = getDb();
     const body = await request.json();
     
     const { 
@@ -200,60 +142,36 @@ export async function PUT(request: NextRequest) {
       category, 
       description, 
       amount, 
-      requester, 
-      paymentType, 
-      bankId, 
-      bankName, 
-      accountNumber,
-      status 
+      note,
+      createdBy
     } = body;
     
     // Validate required fields
     if (!id) {
-      db.close();
       return NextResponse.json(
         { success: false, error: 'Missing expense ID' },
         { status: 400 }
       );
     }
     
-    const updateStmt = db.prepare(`
-      UPDATE Expenses SET
-        date = ?,
-        websiteId = ?,
-        websiteName = ?,
-        category = ?,
-        description = ?,
-        amount = ?,
-        requester = ?,
-        paymentType = ?,
-        bankId = ?,
-        bankName = ?,
-        accountNumber = ?,
-        status = ?,
-        updatedAt = datetime('now')
-      WHERE id = ?
-    `);
+    const result = await db.update(expenses)
+      .set({
+        date,
+        websiteId: websiteId || null,
+        websiteName: websiteName || null,
+        category,
+        description: description || null,
+        amount: amount || 0,
+        note: note || null,
+        createdBy: createdBy || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(expenses.id, id));
     
-    const result = updateStmt.run(
-      date,
-      websiteId || null,
-      websiteName || '',
-      category,
-      description || '',
-      amount || 0,
-      requester || '',
-      paymentType || 'cash',
-      bankId || null,
-      bankName || '',
-      accountNumber || '',
-      status || 'unpaid',
-      id
-    );
+    // Check if any row was updated (Drizzle returns the result differently)
+    const [check] = await db.select().from(expenses).where(eq(expenses.id, id));
     
-    db.close();
-    
-    if (result.changes === 0) {
+    if (!check) {
       return NextResponse.json(
         { success: false, error: 'Expense not found' },
         { status: 404 }
@@ -276,29 +194,27 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete expense
 export async function DELETE(request: NextRequest) {
   try {
-    const db = getDb();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     
     if (!id) {
-      db.close();
       return NextResponse.json(
         { success: false, error: 'Missing expense ID' },
         { status: 400 }
       );
     }
     
-    const deleteStmt = db.prepare('DELETE FROM Expenses WHERE id = ?');
-    const result = deleteStmt.run(id);
+    // Check if exists
+    const [existing] = await db.select().from(expenses).where(eq(expenses.id, id));
     
-    db.close();
-    
-    if (result.changes === 0) {
+    if (!existing) {
       return NextResponse.json(
         { success: false, error: 'Expense not found' },
         { status: 404 }
       );
     }
+    
+    await db.delete(expenses).where(eq(expenses.id, id));
     
     return NextResponse.json({
       success: true,

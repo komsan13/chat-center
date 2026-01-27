@@ -1,53 +1,51 @@
 import { NextResponse } from 'next/server';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-interface OrderRow {
-  id: string;
-  orderNo: string;
-  amount: number;
-  status: string;
-  createdAt: string;
-  customerName: string;
-  customerEmail: string;
-}
+import { db } from '@/lib/db';
+import { orders, users } from '@/lib/db/schema';
+import { eq, desc, sql, count } from 'drizzle-orm';
 
 export async function GET(request: Request) {
-  const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
-  const db = new Database(dbPath);
-
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status');
 
-    let query = `
-      SELECT 
-        o.id,
-        o.orderNo,
-        o.amount,
-        o.status,
-        o.createdAt,
-        u.name as customerName,
-        u.email as customerEmail
-      FROM "Order" o
-      LEFT JOIN User u ON o.userId = u.id
-    `;
+    // Build query with optional status filter
+    let ordersQuery = db.select({
+      id: orders.id,
+      orderNo: orders.orderNo,
+      amount: orders.amount,
+      status: orders.status,
+      createdAt: orders.createdAt,
+      customerName: users.name,
+      customerEmail: users.email,
+    })
+      .from(orders)
+      .leftJoin(users, eq(orders.userId, users.id))
+      .orderBy(desc(orders.createdAt))
+      .limit(limit);
 
-    const params: (string | number)[] = [];
-    
+    let ordersData;
     if (status && status !== 'all') {
-      query += ` WHERE o.status = ?`;
-      params.push(status);
+      ordersData = await db.select({
+        id: orders.id,
+        orderNo: orders.orderNo,
+        amount: orders.amount,
+        status: orders.status,
+        createdAt: orders.createdAt,
+        customerName: users.name,
+        customerEmail: users.email,
+      })
+        .from(orders)
+        .leftJoin(users, eq(orders.userId, users.id))
+        .where(eq(orders.status, status))
+        .orderBy(desc(orders.createdAt))
+        .limit(limit);
+    } else {
+      ordersData = await ordersQuery;
     }
 
-    query += ` ORDER BY o.createdAt DESC LIMIT ?`;
-    params.push(limit);
-
-    const orders = db.prepare(query).all(...params) as OrderRow[];
-
     // Format date for display
-    const formattedOrders = orders.map(order => {
+    const formattedOrders = ordersData.map(order => {
       const date = new Date(order.createdAt);
       const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
       return {
@@ -58,24 +56,23 @@ export async function GET(request: Request) {
         status: order.status,
         date: date.toLocaleDateString('en-US', options),
         rawAmount: order.amount,
-        rawDate: order.createdAt,
+        rawDate: order.createdAt.toISOString(),
       };
     });
 
     // Get status summary
-    const statusSummary = db.prepare(`
-      SELECT status, COUNT(*) as count
-      FROM "Order"
-      GROUP BY status
-    `).all() as { status: string; count: number }[];
-
-    db.close();
+    const statusSummary = await db.select({
+      status: orders.status,
+      count: count(),
+    })
+      .from(orders)
+      .groupBy(orders.status);
 
     return NextResponse.json({
       success: true,
       data: formattedOrders,
       summary: {
-        total: orders.length,
+        total: ordersData.length,
         statusCounts: statusSummary.reduce((acc, item) => {
           acc[item.status] = item.count;
           return acc;
@@ -84,7 +81,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Orders API error:', error);
-    db.close();
     return NextResponse.json(
       { success: false, error: 'Failed to fetch orders' },
       { status: 500 }

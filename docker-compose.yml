@@ -1,6 +1,26 @@
 version: "3.9"
 
 services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: aurix-db
+    environment:
+      POSTGRES_USER: aurix
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-aurix_secret_2026}
+      POSTGRES_DB: aurix_dashboard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aurix -d aurix_dashboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Application
   app:
     image: ghcr.io/komsan13/chat-center:latest
     container_name: aurix-dashboard
@@ -10,10 +30,10 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - COOKIE_SECURE=true
-    volumes:
-      # Persist SQLite database
-      - ./data:/app/data
-      - ./prisma/dev.db:/app/prisma/dev.db
+      - DATABASE_URL=postgresql://aurix:${DB_PASSWORD:-aurix_secret_2026}@db:5432/aurix_dashboard
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - web_proxy
@@ -31,6 +51,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  postgres_data:
 
 networks:
   web_proxy:

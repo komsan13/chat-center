@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+import { db, users, roles } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 
 export async function GET() {
   try {
@@ -16,9 +14,12 @@ export async function GET() {
       );
     }
 
-    // Get user's roleId and permissions from database
-    const db = new Database(dbPath);
-    const user = db.prepare('SELECT roleId FROM User WHERE id = ?').get(session.userId) as { roleId: string | null } | undefined;
+    // Get user's roleId from database
+    const [user] = await db
+      .select({ roleId: users.role })
+      .from(users)
+      .where(eq(users.id, session.userId))
+      .limit(1);
     
     const basePermissions = {
       viewDashboard: false,
@@ -49,7 +50,11 @@ export async function GET() {
     let permissions = { ...basePermissions };
 
     if (user?.roleId) {
-      const role = db.prepare('SELECT permissions FROM Role WHERE id = ?').get(user.roleId) as { permissions: string } | undefined;
+      const [role] = await db
+        .select({ permissions: roles.permissions })
+        .from(roles)
+        .where(eq(roles.id, user.roleId))
+        .limit(1);
       if (role?.permissions) {
         try {
           const parsed = JSON.parse(role.permissions) as Record<string, unknown>;
@@ -110,8 +115,6 @@ export async function GET() {
         manageSettings: true,
       };
     }
-
-    db.close();
     
     return NextResponse.json({
       authenticated: true,
