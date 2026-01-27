@@ -25,7 +25,8 @@ import {
   MessagesSquare,
   KeyRound,
   HandCoins,
-  UsersRound
+  UsersRound,
+  Sparkles
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -91,6 +92,7 @@ const menuItems: MenuItem[] = [
     ]
   },
   { nameKey: 'sidebar.dataChat', icon: MessagesSquare, href: '/data-chat', badge: null, permission: 'manageChat' },
+  { nameKey: 'sidebar.stickerGenerator', icon: Sparkles, href: '/sticker-generator', badge: 'NEW', permission: 'manageChat' },
   { nameKey: 'sidebar.permissions', icon: ShieldCheck, href: '/permissions', badge: null, permission: 'managePermissions' },
   { nameKey: 'sidebar.manageUsers', icon: UsersRound, href: '/users', badge: null, permission: 'manageUsers' },
 ];
