@@ -107,11 +107,26 @@ app.prepare().then(() => {
     // Auto join all-rooms for broadcast
     socket.join('all-rooms');
 
+    // Helper function to get userName with fallback - CRITICAL for multi-browser sync
+    const getUserName = () => {
+      return clientInfo.userName || 'Agent';
+    };
+
     // Client identifies with their userName - CRITICAL for tracking who does what
+    // This should be called immediately after socket connects
     socket.on('identify', ({ userName }) => {
-      if (userName) {
-        clientInfo.userName = userName;
-        console.log(`[Socket.IO] 🎫 Client identified: ${socket.id} as "${userName}"`);
+      if (userName && userName !== 'undefined' && userName.trim() !== '') {
+        clientInfo.userName = userName.trim();
+        console.log(`[Socket.IO] 🎫 Client identified: ${socket.id} as "${clientInfo.userName}"`);
+
+        // Notify other clients that this user is online (optional but useful)
+        socket.broadcast.emit('user-online', {
+          userName: clientInfo.userName,
+          socketId: socket.id,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        console.log(`[Socket.IO] ⚠️ Client ${socket.id} tried to identify with invalid userName: "${userName}"`);
       }
     });
 
@@ -151,14 +166,18 @@ app.prepare().then(() => {
     // Room read status - broadcast when someone opens a room
     socket.on('room-read', ({ roomId, userName }) => {
       if (roomId) {
-        // Use stored userName from identify, then event userName, then fallback to 'Agent'
-        const resolvedUserName = userName || clientInfo.userName || 'Agent';
-        console.log(`[Socket.IO] 📖 Room read - roomId: ${roomId}, event.userName: ${userName}, stored: ${clientInfo.userName}, resolved: ${resolvedUserName}`);
+        // Use event userName if valid, otherwise use server-tracked userName via getUserName()
+        const resolvedUserName = (userName && userName !== 'undefined' && userName.trim() !== '')
+          ? userName.trim()
+          : getUserName();
+        console.log(`[Socket.IO] 📖 Room read - roomId: ${roomId}, event: "${userName}", stored: "${clientInfo.userName}", resolved: "${resolvedUserName}"`);
+
         // Broadcast to ALL clients that this room has been read (excluding sender)
         socket.broadcast.emit('room-read-update', {
           roomId,
           readAt: new Date().toISOString(),
-          userName: resolvedUserName
+          userName: resolvedUserName,
+          socketId: socket.id // Include for client-side filtering if needed
         });
       }
     });
@@ -285,11 +304,12 @@ app.prepare().then(() => {
       console.error(`[Socket.IO] Socket error for ${socket.id}:`, error.message);
     });
 
-    // Send initial connection success
+    // Send initial connection success with debug info
     socket.emit('connection-success', {
       socketId: socket.id,
       serverTime: new Date().toISOString(),
-      totalClients: totalConnections
+      totalClients: totalConnections,
+      identifiedAs: clientInfo.userName || null // Will be null until identify is called
     });
   });
 

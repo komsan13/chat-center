@@ -335,10 +335,14 @@ export function useSocket(options: UseSocketOptions = {}) {
 
       socket.emit('join-all-rooms');
 
-      // Identify this client with their userName - critical for tracking
-      if (optionsRef.current.userName) {
-        socket.emit('identify', { userName: optionsRef.current.userName });
-        console.log(`[Socket] 🎫 Identifying as: ${optionsRef.current.userName}`);
+      // Identify this client with their userName - critical for multi-user tracking
+      // If userName is not available yet (loading), it will be sent via Re-identify useEffect
+      const userName = optionsRef.current.userName;
+      if (userName && userName.trim() !== '') {
+        socket.emit('identify', { userName: userName.trim() });
+        console.log(`[Socket] 🎫 Identifying as: "${userName}"`);
+      } else {
+        console.log('[Socket] ⏳ userName not ready yet, will identify when available');
       }
 
       startWorkerHeartbeat();
@@ -531,11 +535,13 @@ export function useSocket(options: UseSocketOptions = {}) {
     };
   }, [initWorker, startWorkerHeartbeat, stopWorkerHeartbeat, updateConnectionHealth, playNotificationSound]);
 
-  // Re-identify when userName changes after connection
+  // Re-identify when userName becomes available or changes after connection
+  // This is CRITICAL for the case where socket connects before currentUser is fetched
   useEffect(() => {
-    if (socketRef.current?.connected && options.userName) {
-      socketRef.current.emit('identify', { userName: options.userName });
-      console.log(`[Socket] 🎫 Re-identifying as: ${options.userName}`);
+    const userName = options.userName;
+    if (socketRef.current?.connected && userName && userName.trim() !== '') {
+      socketRef.current.emit('identify', { userName: userName.trim() });
+      console.log(`[Socket] 🎫 Re-identifying as: "${userName}" (userName now available)`);
     }
   }, [options.userName]);
 
@@ -560,8 +566,9 @@ export function useSocket(options: UseSocketOptions = {}) {
   }, []);
 
   const emitRoomRead = useCallback((roomId: string, userName?: string) => {
-    const resolvedUserName = userName || 'Agent';
-    console.log('[Socket] 📤 Emitting room-read to server:', { roomId, userName: resolvedUserName });
+    // Use passed userName, then options.userName, then fallback to 'Agent'
+    const resolvedUserName = userName || optionsRef.current.userName || 'Agent';
+    console.log('[Socket] 📤 Emitting room-read to server:', { roomId, userName: resolvedUserName, passedUserName: userName, optionsUserName: optionsRef.current.userName });
     socketRef.current?.emit('room-read', { roomId, userName: resolvedUserName });
   }, []);
 

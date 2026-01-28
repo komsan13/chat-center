@@ -759,7 +759,7 @@ export default function DataChatPage() {
   }, []);
 
   const handleRoomReadSync = useCallback((data: { roomId: string; readAt?: string; userName?: string }) => {
-    console.log('[Chat] 📥 Room read sync received:', data.roomId, 'by:', data.userName);
+    console.log('[Chat] 📥 Room read sync received:', data.roomId, 'by:', data.userName || '(no userName)', 'full data:', data);
     // Update message statuses to 'read'
     setMessages(prev => prev.map(m =>
       m.roomId === data.roomId && m.sender === 'agent' ? { ...m, status: 'read' } : m
@@ -1065,11 +1065,12 @@ export default function DataChatPage() {
       if (markAsRead) markAsRead(selectedRoom, []);
 
       // Broadcast room read to all clients (with userName)
-      if (emitRoomRead && currentUser?.name) {
-        console.log('[Chat] 📤 Emitting room-read:', selectedRoom, 'userName:', currentUser.name);
-        emitRoomRead(selectedRoom, currentUser.name);
+      // useSocket will fallback to options.userName or 'Agent' if not provided
+      if (emitRoomRead) {
+        console.log('[Chat] 📤 Emitting room-read:', selectedRoom, 'userName:', currentUser?.name || '(will use fallback)');
+        emitRoomRead(selectedRoom, currentUser?.name);
       } else {
-        console.log('[Chat] ⚠️ Cannot emit room-read - emitRoomRead:', !!emitRoomRead, 'currentUser.name:', currentUser?.name);
+        console.log('[Chat] ⚠️ Cannot emit room-read - emitRoomRead not available');
       }
 
       // Update local unreadCount immediately
