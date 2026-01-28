@@ -929,6 +929,7 @@ export default function DataChatPage() {
     onRoomDeleted: handleRoomDeleted,
     currentRoomId: selectedRoom,
     enableSound: true,
+    userName: currentUser?.name, // Pass userName for server identification
     // Note: Sound filtering is handled in handleNewMessage based on selectedTokenIds
   });
 

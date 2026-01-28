@@ -81,6 +81,7 @@ interface UseSocketOptions {
   onConnectionQualityChange?: (quality: ConnectionQuality) => void;
   enableSound?: boolean;
   currentRoomId?: string | null;
+  userName?: string; // Current user's name for identification
   // Note: selectedTokenIds and roomsRef removed - filtering done at page level
 }
 
@@ -333,6 +334,13 @@ export function useSocket(options: UseSocketOptions = {}) {
       latencyHistoryRef.current = [];
 
       socket.emit('join-all-rooms');
+
+      // Identify this client with their userName - critical for tracking
+      if (optionsRef.current.userName) {
+        socket.emit('identify', { userName: optionsRef.current.userName });
+        console.log(`[Socket] 🎫 Identifying as: ${optionsRef.current.userName}`);
+      }
+
       startWorkerHeartbeat();
 
       optionsRef.current.onConnect?.();
@@ -522,6 +530,14 @@ export function useSocket(options: UseSocketOptions = {}) {
       socketRef.current = null;
     };
   }, [initWorker, startWorkerHeartbeat, stopWorkerHeartbeat, updateConnectionHealth, playNotificationSound]);
+
+  // Re-identify when userName changes after connection
+  useEffect(() => {
+    if (socketRef.current?.connected && options.userName) {
+      socketRef.current.emit('identify', { userName: options.userName });
+      console.log(`[Socket] 🎫 Re-identifying as: ${options.userName}`);
+    }
+  }, [options.userName]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SOCKET ACTIONS

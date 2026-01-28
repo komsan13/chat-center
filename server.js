@@ -98,6 +98,7 @@ app.prepare().then(() => {
       lastPingAt: Date.now(),
       rooms: new Set(['all-rooms']),
       userAgent: socket.handshake.headers['user-agent'] || 'unknown',
+      userName: null, // Will be set when client identifies
     };
     global.__connectedClients.set(socket.id, clientInfo);
 
@@ -105,6 +106,14 @@ app.prepare().then(() => {
 
     // Auto join all-rooms for broadcast
     socket.join('all-rooms');
+
+    // Client identifies with their userName - CRITICAL for tracking who does what
+    socket.on('identify', ({ userName }) => {
+      if (userName) {
+        clientInfo.userName = userName;
+        console.log(`[Socket.IO] 🎫 Client identified: ${socket.id} as "${userName}"`);
+      }
+    });
 
     // Join all rooms channel for receiving all messages
     socket.on('join-all-rooms', () => {
@@ -142,8 +151,9 @@ app.prepare().then(() => {
     // Room read status - broadcast when someone opens a room
     socket.on('room-read', ({ roomId, userName }) => {
       if (roomId) {
-        const resolvedUserName = userName || 'Agent';
-        console.log(`[Socket.IO] 📖 Room read received - roomId: ${roomId}, userName: ${userName}, resolved: ${resolvedUserName}`);
+        // Use stored userName from identify, then event userName, then fallback to 'Agent'
+        const resolvedUserName = userName || clientInfo.userName || 'Agent';
+        console.log(`[Socket.IO] 📖 Room read - roomId: ${roomId}, event.userName: ${userName}, stored: ${clientInfo.userName}, resolved: ${resolvedUserName}`);
         // Broadcast to ALL clients that this room has been read (excluding sender)
         socket.broadcast.emit('room-read-update', {
           roomId,
