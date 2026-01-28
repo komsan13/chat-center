@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { 
+import {
   Search, Send, Smile, Filter,
   Plus, Check, CheckCheck, Pin, X,
   MessageCircle, Settings, Clock,
-  Loader2, Paperclip, Image as ImageIcon, FileText, 
+  Loader2, Paperclip, Image as ImageIcon, FileText,
   Phone, Video, Bookmark, VolumeX, Volume2, Trash2, AlertTriangle,
   ChevronDown, ChevronLeft, ChevronRight, User, Tag, FileEdit, Bell, BellOff, XCircle,
   Eye, MessageSquare, Coins, Headphones, MessageCircleHeart, CheckCircle2, Building2,
@@ -113,7 +113,7 @@ export default function DataChatPage() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [chatSearchTerm, setChatSearchTerm] = useState('');
   const [showChatSearch, setShowChatSearch] = useState(false);
-  
+
   // LINE Token selection state
   const [lineTokens, setLineTokens] = useState<LineToken[]>([]);
   const [selectedTokenIds, setSelectedTokenIds] = useState<Set<string>>(() => {
@@ -126,13 +126,13 @@ export default function DataChatPage() {
   const selectedTokenIdsRef = useRef<Set<string>>(new Set());
   const [expandedWebsites, setExpandedWebsites] = useState<Set<string>>(new Set());
   const [showChannelModal, setShowChannelModal] = useState(false);
-  
+
   // Responsive state
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [isSmallDesktop, setIsSmallDesktop] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(true); // On mobile, show sidebar by default
-  
+
   // Detect screen size
   useEffect(() => {
     const checkScreenSize = () => {
@@ -145,19 +145,19 @@ export default function DataChatPage() {
         setShowMobileSidebar(true);
       }
     };
-    
+
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
-  
+
   // When selecting a room on mobile, hide sidebar and show chat
   useEffect(() => {
     if (isMobile && selectedRoom) {
       setShowMobileSidebar(false);
     }
   }, [selectedRoom, isMobile]);
-  
+
   const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
   const seenMessageIdsRef = useRef<Set<string>>(new Set()); // Track seen message IDs for deduplication
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -185,33 +185,33 @@ export default function DataChatPage() {
     bgHover: isDark ? '#2f353f' : '#f1f5f9',
     bgActive: isDark ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.08)',
     bgInput: isDark ? '#1D1E24' : '#ffffff',
-    
+
     // Border colors
     border: isDark ? '#2A313C' : '#e2e8f0',
     borderLight: isDark ? '#363d4a' : '#f1f5f9',
-    
+
     // Text colors
     textPrimary: isDark ? '#f1f5f9' : '#1e293b',
     textSecondary: isDark ? '#94a3b8' : '#64748b',
     textMuted: isDark ? '#64748b' : '#94a3b8',
-    
+
     // Brand color - Green (matching main theme #22c55e)
     accent: '#22c55e',
     accentHover: '#16a34a',
     accentLight: isDark ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.08)',
-    
+
     // Status colors
     online: '#22c55e',
     warning: '#f59e0b',
     danger: '#ef4444',
     info: '#3b82f6',
-    
+
     // Chat bubble colors
     bubbleOutgoing: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
     bubbleIncoming: isDark ? '#2A313C' : '#ffffff',
-    
+
     // Shadow - very subtle
-    shadow: isDark 
+    shadow: isDark
       ? '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)'
       : '0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
     shadowMd: isDark
@@ -220,7 +220,7 @@ export default function DataChatPage() {
   }), [isDark]);
 
   const selectedRoomData = rooms.find(r => r.id === selectedRoom);
-  
+
   // Get LINE token info for selected room
   const selectedRoomToken = useMemo(() => {
     if (!selectedRoomData?.lineTokenId) return null;
@@ -236,14 +236,14 @@ export default function DataChatPage() {
       } else {
         if (room.status === 'spam') return false;
       }
-      
+
       // Then filter by selected tokens
       // If there are LINE tokens configured but none selected, hide all chats
       if (lineTokens.length > 0) {
         if (selectedTokenIds.size === 0) return false;
         if (room.lineTokenId && !selectedTokenIds.has(room.lineTokenId)) return false;
       }
-      
+
       return true;
     });
   }, [rooms, filterStatus, selectedTokenIds, lineTokens.length]);
@@ -273,7 +273,7 @@ export default function DataChatPage() {
       notificationAudioRef.current = new Audio('/notification.mp3');
       notificationAudioRef.current.volume = 0.7;
       notificationAudioRef.current.load();
-      
+
       const unlockAudio = () => {
         soundUnlockedRef.current = true;
         if (!audioContextRef.current) {
@@ -286,13 +286,13 @@ export default function DataChatPage() {
             audio.pause();
             audio.currentTime = 0;
             audio.volume = 0.7;
-          }).catch(() => {});
+          }).catch(() => { });
         }
       };
-      
+
       document.addEventListener('click', unlockAudio, { once: true });
       document.addEventListener('keydown', unlockAudio, { once: true });
-      
+
       return () => {
         document.removeEventListener('click', unlockAudio);
         document.removeEventListener('keydown', unlockAudio);
@@ -354,11 +354,11 @@ export default function DataChatPage() {
             // Only show active tokens with websiteName
             const activeTokens = data.data.filter((t: LineToken) => t.status === 'active');
             setLineTokens(activeTokens);
-            
+
             // Check if any saved selection is still valid
             const activeIds = new Set(activeTokens.map((t: LineToken) => t.id));
             const savedValid = [...selectedTokenIds].filter(id => activeIds.has(id));
-            
+
             // If no valid tokens selected, select all by default
             if (savedValid.length === 0 && activeTokens.length > 0) {
               const allIds = new Set<string>(activeTokens.map((t: LineToken) => t.id));
@@ -509,8 +509,8 @@ export default function DataChatPage() {
             setMessages(data);
           }
         })
-        .catch(() => {});
-      fetch(`/api/chat/rooms/${roomId}/messages`, { method: 'POST' }).catch(() => {});
+        .catch(() => { });
+      fetch(`/api/chat/rooms/${roomId}/messages`, { method: 'POST' }).catch(() => { });
       return;
     }
 
@@ -538,7 +538,7 @@ export default function DataChatPage() {
       return;
     }
     lastSoundTimeRef.current = now;
-    
+
     if (notificationAudioRef.current && soundUnlockedRef.current) {
       notificationAudioRef.current.currentTime = 0;
       notificationAudioRef.current.play().catch(() => {
@@ -563,17 +563,17 @@ export default function DataChatPage() {
   // SOCKET CONNECTION
   // ═══════════════════════════════════════════════════════════════════
   const isDev = process.env.NODE_ENV === 'development';
-  
+
   const handleNewMessage = useCallback((msg: Message) => {
     // Validate message data
     if (!msg || !msg.id || !msg.roomId) {
       console.warn('[Chat] Invalid message received:', msg);
       return;
     }
-    
+
     // Skip if this is a temp message (we already have it locally)
     if (msg.id?.startsWith('temp-')) return;
-    
+
     // Global deduplication check - if we've seen this message ID, skip
     if (seenMessageIdsRef.current.has(msg.id)) {
       return;
@@ -585,14 +585,14 @@ export default function DataChatPage() {
       const arr = Array.from(seenMessageIdsRef.current);
       seenMessageIdsRef.current = new Set(arr.slice(-500));
     }
-    
+
     try {
       // Update cache
       if (messagesCacheRef.current.has(msg.roomId)) {
         const cached = messagesCacheRef.current.get(msg.roomId)!;
         // Check for duplicates by id or lineMessageId
-        const exists = cached.find(m => 
-          m.id === msg.id || 
+        const exists = cached.find(m =>
+          m.id === msg.id ||
           (m.lineMessageId && m.lineMessageId === msg.lineMessageId) ||
           (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender)
         );
@@ -600,23 +600,23 @@ export default function DataChatPage() {
           messagesCacheRef.current.set(msg.roomId, [...cached, msg]);
         } else if (exists.id?.startsWith('temp-')) {
           // Replace temp message with real one
-          messagesCacheRef.current.set(msg.roomId, cached.map(m => 
+          messagesCacheRef.current.set(msg.roomId, cached.map(m =>
             m.id === exists.id ? msg : m
           ));
         }
       }
-      
+
       // Update messages if viewing this room
       if (selectedRoomRef.current === msg.roomId) {
         setMessages(prev => {
           // Check for duplicates
-          const exists = prev.find(m => 
-            m.id === msg.id || 
+          const exists = prev.find(m =>
+            m.id === msg.id ||
             (m.lineMessageId && m.lineMessageId === msg.lineMessageId) ||
             (m.id?.startsWith('temp-') && m.content === msg.content && m.sender === msg.sender) ||
             // Check sticker duplicate by packageId and stickerId
-            (m.id?.startsWith('temp-') && m.messageType === 'sticker' && msg.messageType === 'sticker' && 
-             m.packageId === msg.packageId && m.stickerId === msg.stickerId && m.sender === msg.sender)
+            (m.id?.startsWith('temp-') && m.messageType === 'sticker' && msg.messageType === 'sticker' &&
+              m.packageId === msg.packageId && m.stickerId === msg.stickerId && m.sender === msg.sender)
           );
           if (!exists) {
             return [...prev, msg];
@@ -627,9 +627,9 @@ export default function DataChatPage() {
           return prev;
         });
         // Mark as read
-        fetch(`/api/chat/rooms/${msg.roomId}/messages`, { method: 'POST' }).catch(() => {});
+        fetch(`/api/chat/rooms/${msg.roomId}/messages`, { method: 'POST' }).catch(() => { });
       }
-      
+
       // Update rooms list and play sound if needed
       setRooms(prev => {
         const roomIndex = prev.findIndex(r => r.id === msg.roomId);
@@ -637,27 +637,27 @@ export default function DataChatPage() {
           // Room not in state yet - it should be added by handleNewRoom or handleRoomUpdate
           return prev;
         }
-        
+
         const updatedRooms = [...prev];
         const room = { ...updatedRooms[roomIndex] };
         room.lastMessage = msg;
         room.lastMessageAt = msg.createdAt;
-        
+
         // Only increment unread and play sound for incoming user messages
         // Skip notification for spam rooms and muted rooms
         if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user' && room.status !== 'spam' && !room.isMuted) {
           // Increment locally for immediate UI feedback
           room.unreadCount = (room.unreadCount || 0) + 1;
-          
+
           // Play sound if token is selected (or no token filter)
-          const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
-                              !room.lineTokenId || 
-                              selectedTokenIdsRef.current.has(room.lineTokenId);
+          const shouldNotify = selectedTokenIdsRef.current.size === 0 ||
+            !room.lineTokenId ||
+            selectedTokenIdsRef.current.has(room.lineTokenId);
           if (shouldNotify) {
             playSound();
           }
         }
-        
+
         // Update room in place - DON'T reorder, keep stable position
         updatedRooms[roomIndex] = room;
         return updatedRooms;
@@ -673,10 +673,10 @@ export default function DataChatPage() {
       console.warn('[Typing Event] Invalid data received:', data);
       return;
     }
-    
+
     // Server broadcasts to everyone EXCEPT sender, so no need to filter here
     console.log('[Typing Event]', data);
-    
+
     try {
       if (data.isTyping) {
         setTypingUsers(prev => {
@@ -712,12 +712,12 @@ export default function DataChatPage() {
   // Handle viewing event - show who is currently viewing a room
   const handleViewingEvent = useCallback((data: { roomId: string; userName: string; isViewing: boolean }) => {
     if (!data || !data.roomId || !data.userName) return;
-    
+
     console.log('[Viewing Event]', data);
-    
+
     setViewingUsers(prev => {
       const roomViewers = prev[data.roomId] || [];
-      
+
       if (data.isViewing) {
         // Check if user already exists
         const existingIndex = roomViewers.findIndex(v => v.userName === data.userName);
@@ -725,7 +725,7 @@ export default function DataChatPage() {
           // Clear old timeout and update
           clearTimeout(roomViewers[existingIndex].timeout);
         }
-        
+
         // Set timeout to auto-remove after 30 seconds (in case leave event is missed)
         const timeout = setTimeout(() => {
           setViewingUsers(p => {
@@ -736,9 +736,9 @@ export default function DataChatPage() {
             };
           });
         }, 30000);
-        
+
         const newViewer = { userName: data.userName, timeout };
-        
+
         if (existingIndex >= 0) {
           const updated = [...roomViewers];
           updated[existingIndex] = newViewer;
@@ -760,18 +760,18 @@ export default function DataChatPage() {
 
   const handleRoomReadSync = useCallback((data: { roomId: string; readAt?: string; userName?: string }) => {
     // Update message statuses to 'read'
-    setMessages(prev => prev.map(m => 
+    setMessages(prev => prev.map(m =>
       m.roomId === data.roomId && m.sender === 'agent' ? { ...m, status: 'read' } : m
     ));
     if (messagesCacheRef.current.has(data.roomId)) {
       const cached = messagesCacheRef.current.get(data.roomId)!;
-      messagesCacheRef.current.set(data.roomId, cached.map(m => 
+      messagesCacheRef.current.set(data.roomId, cached.map(m =>
         m.sender === 'agent' ? { ...m, status: 'read' } : m
       ));
     }
-    
+
     // Update unreadCount to 0 for this room across all browsers
-    setRooms(prev => prev.map(room => 
+    setRooms(prev => prev.map(room =>
       room.id === data.roomId ? { ...room, unreadCount: 0 } : room
     ));
   }, []);
@@ -780,12 +780,12 @@ export default function DataChatPage() {
   const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number; displayName?: string; pictureUrl?: string; status?: 'active' | 'spam' | 'archived' | 'blocked'; lineTokenId?: string }) => {
     setRooms(prev => {
       const roomIndex = prev.findIndex(r => r.id === data.id);
-      
+
       // If room doesn't exist and we have enough info, add it
       if (roomIndex === -1) {
         // Only add if it's not spam and we have display name
         if (data.status === 'spam') return prev;
-        
+
         // Create a minimal room entry for new room
         const newRoom: ChatRoom = {
           id: data.id,
@@ -803,29 +803,29 @@ export default function DataChatPage() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        
+
         // Play sound for new room
-        const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
-                            !data.lineTokenId || 
-                            selectedTokenIdsRef.current.has(data.lineTokenId);
+        const shouldNotify = selectedTokenIdsRef.current.size === 0 ||
+          !data.lineTokenId ||
+          selectedTokenIdsRef.current.has(data.lineTokenId);
         if (shouldNotify && data.lastMessage?.sender === 'user') {
           playSound();
         }
-        
+
         return [newRoom, ...prev];
       }
-      
+
       // Update existing room
       const updatedRooms = [...prev];
       const room = { ...updatedRooms[roomIndex] };
-      
+
       if (data.lastMessage) {
         room.lastMessage = data.lastMessage;
       }
       if (data.lastMessageAt) {
         room.lastMessageAt = data.lastMessageAt;
       }
-      
+
       // Update unread count - use the server's count if we're not viewing this room
       // This ensures cross-browser sync works properly
       if (typeof data.unreadCount === 'number') {
@@ -838,7 +838,7 @@ export default function DataChatPage() {
           room.unreadCount = 0;
         }
       }
-      
+
       updatedRooms[roomIndex] = room;
       return updatedRooms;
     });
@@ -848,23 +848,23 @@ export default function DataChatPage() {
   const handleNewRoom = useCallback((room: ChatRoom) => {
     // Don't add spam rooms to the list immediately
     if (room.status === 'spam') return;
-    
+
     // Check if this room's token is selected for notifications
-    const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
-                        !room.lineTokenId || 
-                        selectedTokenIdsRef.current.has(room.lineTokenId);
-    
+    const shouldNotify = selectedTokenIdsRef.current.size === 0 ||
+      !room.lineTokenId ||
+      selectedTokenIdsRef.current.has(room.lineTokenId);
+
     setRooms(prev => {
       // Check if room already exists
       if (prev.some(r => r.id === room.id)) {
         return prev;
       }
-      
+
       // Play sound for new room (only if token is selected and not muted)
       if (shouldNotify && !room.isMuted) {
         playSound();
       }
-      
+
       // Add new room to the top
       return [room, ...prev];
     });
@@ -873,24 +873,26 @@ export default function DataChatPage() {
   // Handle room property changes from other browsers (pin, mute, tags, status)
   // With timestamp-based optimistic locking - only apply if newer than local
   const roomUpdateTimestampsRef = useRef<Map<string, number>>(new Map());
-  
-  const handleRoomPropertyChanged = useCallback((data: { roomId: string; updates: {
-    isPinned?: boolean;
-    isMuted?: boolean;
-    tags?: string[];
-    status?: 'active' | 'archived' | 'blocked' | 'spam';
-  }; updatedAt: string }) => {
+
+  const handleRoomPropertyChanged = useCallback((data: {
+    roomId: string; updates: {
+      isPinned?: boolean;
+      isMuted?: boolean;
+      tags?: string[];
+      status?: 'active' | 'archived' | 'blocked' | 'spam';
+    }; updatedAt: string
+  }) => {
     // Check timestamp - only apply if this update is newer than our last local update
     const updateTime = new Date(data.updatedAt).getTime();
     const lastLocalUpdate = roomUpdateTimestampsRef.current.get(data.roomId) || 0;
-    
+
     if (updateTime < lastLocalUpdate) {
       return;
     }
-    
+
     // Update timestamp
     roomUpdateTimestampsRef.current.set(data.roomId, updateTime);
-    
+
     setRooms(prev => {
       const updatedRooms = prev.map(r => r.id === data.roomId ? { ...r, ...data.updates } : r);
       // Re-sort if isPinned changed
@@ -938,11 +940,11 @@ export default function DataChatPage() {
   const emitViewingRef = useRef(emitViewing);
   const currentUserRef = useRef(currentUser);
   const previousRoomRef = useRef<string | null>(null);
-  
+
   useEffect(() => {
     emitViewingRef.current = emitViewing;
   }, [emitViewing]);
-  
+
   useEffect(() => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
@@ -952,15 +954,15 @@ export default function DataChatPage() {
   useEffect(() => {
     const prevRoom = previousRoomRef.current;
     const newRoom = selectedRoom;
-    
+
     // Skip if no change
     if (prevRoom === newRoom) return;
-    
+
     // Emit stop viewing for previous room
     if (prevRoom && emitViewingRef.current && currentUserRef.current?.name) {
       emitViewingRef.current(prevRoom, currentUserRef.current.name, false);
     }
-    
+
     // Join and emit start viewing for new room
     if (newRoom) {
       if (joinRoom) {
@@ -970,7 +972,7 @@ export default function DataChatPage() {
         emitViewingRef.current(newRoom, currentUserRef.current.name, true);
       }
     }
-    
+
     // Update previous room ref
     previousRoomRef.current = newRoom;
   }, [selectedRoom, joinRoom]);
@@ -1016,7 +1018,7 @@ export default function DataChatPage() {
           fetchMessages(selectedRoomRef.current);
         }
       }, 5000);
-      
+
       return () => clearInterval(pollInterval);
     }
   }, [isConnected, fetchRooms, fetchMessages]);
@@ -1027,17 +1029,17 @@ export default function DataChatPage() {
       localStorage.setItem('selectedChatRoom', selectedRoom);
       selectedRoomRef.current = selectedRoom;
       fetchMessages(selectedRoom);
-      
+
       // Clear message input when changing rooms
       setMessage('');
-      
+
       // Clear notes and tags UI state
       setRoomNotes([]);
       setShowNoteInput(false);
       setNewNoteContent('');
       setShowTagInput(false);
       setNewTag('');
-      
+
       // Fetch room details including notes and tags
       fetch(`/api/chat/rooms/${selectedRoom}`)
         .then(res => res.ok ? res.json() : null)
@@ -1049,24 +1051,24 @@ export default function DataChatPage() {
             }
             // Update tags in rooms state
             if (data.tags) {
-              setRooms(prev => prev.map(r => 
+              setRooms(prev => prev.map(r =>
                 r.id === selectedRoom ? { ...r, tags: data.tags } : r
               ));
             }
           }
         })
         .catch(err => console.error('Failed to fetch room details:', err));
-      
+
       // Mark as read locally
       if (markAsRead) markAsRead(selectedRoom, []);
-      
+
       // Broadcast room read to all clients (with userName)
       if (emitRoomRead && currentUser?.name) {
         emitRoomRead(selectedRoom, currentUser.name);
       }
-      
+
       // Update local unreadCount immediately
-      setRooms(prev => prev.map(room => 
+      setRooms(prev => prev.map(room =>
         room.id === selectedRoom ? { ...room, unreadCount: 0 } : room
       ));
     }
@@ -1082,7 +1084,7 @@ export default function DataChatPage() {
   // ═══════════════════════════════════════════════════════════════════
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setMessage(e.target.value);
-    
+
     if (selectedRoom && currentUser && sendTypingRef.current) {
       if (!isTypingRef.current) {
         isTypingRef.current = true;
@@ -1104,10 +1106,10 @@ export default function DataChatPage() {
   const sendMessage = async (content: string) => {
     if (!content.trim() || !selectedRoom || isSending) return;
     setIsSending(true);
-    
+
     // Parse LINE emojis from pending array
     const emojisToSend = pendingEmojis.length > 0 ? [...pendingEmojis] : undefined;
-    
+
     const tempId = `temp-${Date.now()}`;
     const tempMessage: Message = {
       id: tempId,
@@ -1120,50 +1122,50 @@ export default function DataChatPage() {
       createdAt: new Date().toISOString(),
       emojis: emojisToSend, // Include emojis data for preview
     };
-    
+
     setMessages(prev => [...prev, tempMessage]);
     setMessage('');
     setPendingEmojis([]); // Clear pending emojis after sending
     setShowQuickReplies(false);
     setShowEmojiPicker(false);
-    
+
     if (isTypingRef.current && sendTypingRef.current && currentUser) {
       isTypingRef.current = false;
       sendTypingRef.current(selectedRoom, currentUser.name, false);
     }
-    
+
     try {
       const response = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          roomId: selectedRoom, 
-          content: content.trim(), 
+        body: JSON.stringify({
+          roomId: selectedRoom,
+          content: content.trim(),
           senderName: currentUser?.name || 'Agent',
           emojis: emojisToSend,
         }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         const sentMessage = { ...data.message, status: 'sent' };
-        
+
         // Update messages list
         setMessages(prev => prev.map(m => m.id === tempId ? sentMessage : m));
-        
+
         // Update cache
         if (messagesCacheRef.current.has(selectedRoom)) {
           const cached = messagesCacheRef.current.get(selectedRoom)!;
           messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempId ? sentMessage : m));
         }
-        
+
         // Update room's lastMessage in rooms list
-        setRooms(prev => prev.map(room => 
-          room.id === selectedRoom 
+        setRooms(prev => prev.map(room =>
+          room.id === selectedRoom
             ? { ...room, lastMessage: sentMessage, lastMessageAt: sentMessage.createdAt }
             : room
         ));
-        
+
         // Scroll to bottom after successful send
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1183,7 +1185,7 @@ export default function DataChatPage() {
   const sendSticker = async (packageId: string, stickerId: string) => {
     if (!selectedRoom || isSending) return;
     setIsSending(true);
-    
+
     const tempId = `temp-${Date.now()}`;
     const tempMessage: Message = {
       id: tempId,
@@ -1197,39 +1199,39 @@ export default function DataChatPage() {
       status: 'sending',
       createdAt: new Date().toISOString(),
     };
-    
+
     setMessages(prev => [...prev, tempMessage]);
     setShowEmojiPicker(false);
-    
+
     try {
       const response = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          roomId: selectedRoom, 
+        body: JSON.stringify({
+          roomId: selectedRoom,
           messageType: 'sticker',
           packageId,
           stickerId,
-          senderName: currentUser?.name || 'Agent' 
+          senderName: currentUser?.name || 'Agent'
         }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         const sentMessage = { ...data.message, status: 'sent' };
         setMessages(prev => prev.map(m => m.id === tempId ? sentMessage : m));
-        
+
         if (messagesCacheRef.current.has(selectedRoom)) {
           const cached = messagesCacheRef.current.get(selectedRoom)!;
           messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempId ? sentMessage : m));
         }
-        
-        setRooms(prev => prev.map(room => 
-          room.id === selectedRoom 
+
+        setRooms(prev => prev.map(room =>
+          room.id === selectedRoom
             ? { ...room, lastMessage: sentMessage, lastMessageAt: sentMessage.createdAt }
             : room
         ));
-        
+
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
@@ -1284,7 +1286,7 @@ export default function DataChatPage() {
     } catch (error) {
       console.error('Failed to save quick reply:', error);
     }
-    
+
     setShowQuickReplyModal(false);
     setEditingQuickReply(null);
   };
@@ -1330,7 +1332,7 @@ export default function DataChatPage() {
     } else {
       setPendingEmojis([]);
     }
-    
+
     // Update contentEditable editor with HTML using ref
     const editor = messageEditorRef.current;
     if (editor) {
@@ -1356,7 +1358,7 @@ export default function DataChatPage() {
       // Focus the editor
       editor.focus();
     }
-    
+
     setPreviewQuickReply(null);
     setShowQuickReplies(false);
   };
@@ -1364,28 +1366,28 @@ export default function DataChatPage() {
   // Get quick replies for current LINE token with search and sort
   const filteredQuickReplies = useMemo(() => {
     let filtered = quickReplies;
-    
+
     // Filter by LINE token
     if (quickReplyTokenId) {
       filtered = filtered.filter(q => q.lineTokenId === quickReplyTokenId || q.lineTokenId === 'all');
     }
-    
+
     // Search filter
     if (quickReplySearch.trim()) {
       const search = quickReplySearch.toLowerCase();
-      filtered = filtered.filter(q => 
-        q.title.toLowerCase().includes(search) || 
+      filtered = filtered.filter(q =>
+        q.title.toLowerCase().includes(search) ||
         q.label.toLowerCase().includes(search)
       );
     }
-    
+
     // Sort
     if (quickReplySortBy === 'recent') {
       filtered = [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else {
       filtered = [...filtered].sort((a, b) => a.title.localeCompare(b.title));
     }
-    
+
     return filtered;
   }, [quickReplies, quickReplyTokenId, quickReplySearch, quickReplySortBy]);
 
@@ -1404,7 +1406,7 @@ export default function DataChatPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
-      
+
       if (response.ok) {
         console.log('[Chat] updateRoom success, broadcasting:', roomId, updates);
         // Update local state and re-sort if isPinned changed
@@ -1474,7 +1476,7 @@ export default function DataChatPage() {
       const response = await fetch(`/api/chat/rooms/${roomId}?mode=${mode}`, {
         method: 'DELETE',
       });
-      
+
       if (response.ok) {
         if (mode === 'permanent') {
           // Remove from UI completely
@@ -1490,7 +1492,7 @@ export default function DataChatPage() {
           // Archive - remove from active list
           setRooms(prev => prev.filter(r => r.id !== roomId));
         }
-        
+
         if (selectedRoom === roomId) {
           setSelectedRoom(null);
         }
@@ -1518,7 +1520,7 @@ export default function DataChatPage() {
     // Check file size before upload
     const isVideo = file.type.startsWith('video/');
     const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
-    
+
     if (file.size > maxSize) {
       alert(`ไฟล์มีขนาดใหญ่เกินไป! ขนาดสูงสุด: ${isVideo ? '50MB' : '10MB'}`);
       if (fileInputRef.current) {
@@ -1528,7 +1530,7 @@ export default function DataChatPage() {
     }
 
     setIsUploading(true);
-    
+
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -1545,20 +1547,20 @@ export default function DataChatPage() {
       if (response.ok) {
         const { message: uploadedMessage, lineResult } = data;
         setMessages(prev => [...prev, uploadedMessage]);
-        
+
         // Update room's lastMessage
-        setRooms(prev => prev.map(room => 
-          room.id === selectedRoom 
+        setRooms(prev => prev.map(room =>
+          room.id === selectedRoom
             ? { ...room, lastMessage: uploadedMessage, lastMessageAt: uploadedMessage.createdAt }
             : room
         ));
-        
+
         // Show warning if LINE send failed
         if (lineResult && !lineResult.success) {
           console.warn('LINE send failed:', lineResult.error);
           alert(`บันทึกไฟล์สำเร็จ แต่ส่งไปยัง LINE ไม่สำเร็จ: ${lineResult.error || 'Unknown error'}`);
         }
-        
+
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
@@ -1588,7 +1590,7 @@ export default function DataChatPage() {
   const addNote = async () => {
     if (!newNoteContent.trim() || !selectedRoom) return;
     setIsAddingNote(true);
-    
+
     try {
       const response = await fetch(`/api/chat/rooms/${selectedRoom}`, {
         method: 'PATCH',
@@ -1622,7 +1624,7 @@ export default function DataChatPage() {
 
   const deleteNote = async (noteId: string) => {
     if (!selectedRoom) return;
-    
+
     try {
       const response = await fetch(`/api/chat/rooms/${selectedRoom}`, {
         method: 'PATCH',
@@ -1654,10 +1656,10 @@ export default function DataChatPage() {
     if (!selectedRoom || !tag.trim()) return;
     const room = rooms.find(r => r.id === selectedRoom);
     if (!room) return;
-    
+
     const currentTags = room.tags || [];
     if (currentTags.includes(tag)) return;
-    
+
     const newTags = [...currentTags, tag.trim()];
     await updateRoom(selectedRoom, { tags: newTags });
   };
@@ -1666,7 +1668,7 @@ export default function DataChatPage() {
     if (!selectedRoom) return;
     const room = rooms.find(r => r.id === selectedRoom);
     if (!room) return;
-    
+
     const newTags = (room.tags || []).filter(t => t !== tag);
     await updateRoom(selectedRoom, { tags: newTags });
   };
@@ -1681,7 +1683,7 @@ export default function DataChatPage() {
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
-    
+
     if (diffMins < 1) return 'now';
     if (diffMins < 60) return `${diffMins}m`;
     if (diffHours < 24) return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
@@ -1693,13 +1695,13 @@ export default function DataChatPage() {
   const renderSticker = (packageId?: string, stickerId?: string) => {
     if (!packageId || !stickerId) return null;
     return (
-      <img 
+      <img
         src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/iPhone/sticker.png`}
         alt="Sticker"
-        style={{ 
-          maxWidth: 150, 
-          maxHeight: 150, 
-          width: 'auto', 
+        style={{
+          maxWidth: 150,
+          maxHeight: 150,
+          width: 'auto',
           height: 'auto',
           objectFit: 'contain',
         }}
@@ -1723,15 +1725,15 @@ export default function DataChatPage() {
       'crossed fingers': '🤞', 'rock on': '🤘', 'call me': '🤙', 'pinched fingers': '🤌',
       'folded hands': '🙏', 'raised hands': '🙌', 'open hands': '👐', 'palms up': '🤲',
       'writing hand': '✍️', 'nail polish': '💅', 'selfie': '🤳', 'flexed biceps': '💪',
-      'serious moon': '🌙😐', 'sick moon': '🌙🤒', 'pleading moon': '🌙🥺', 
+      'serious moon': '🌙😐', 'sick moon': '🌙🤒', 'pleading moon': '🌙🥺',
       'heart eyes moon': '🌙😍', 'love moon': '🌙😍', 'happy moon': '🌙😊',
       'crying brown': '🐻😭', 'happy brown': '🐻😊', 'love brown': '🐻😍',
       'crying cony': '🐰😭', 'happy cony': '🐰😊', 'love cony': '🐰😍',
       'crying sally': '🐥😭', 'happy sally': '🐥😊', 'love sally': '🐥😍',
       // More common expressions
       'on fire': '🔥', 'broken heart': '💔', 'sparkling heart': '💖', 'beating heart': '💓',
-      'two hearts': '💕', 'growing heart': '💗', 'revolving hearts': '💞', 
-      'red heart': '❤️', 'orange heart': '🧡', 'yellow heart': '💛', 
+      'two hearts': '💕', 'growing heart': '💗', 'revolving hearts': '💞',
+      'red heart': '❤️', 'orange heart': '🧡', 'yellow heart': '💛',
       'green heart': '💚', 'blue heart': '💙', 'purple heart': '💜',
       'see no evil': '🙈', 'hear no evil': '🙉', 'speak no evil': '🙊',
       'party popper': '🎉', 'confetti ball': '🎊', 'shooting star': '🌠',
@@ -1744,16 +1746,16 @@ export default function DataChatPage() {
       'shock': '😱', 'shocked': '😱', 'surprise': '😲', 'surprised': '😲', 'omg': '😱',
       'sleepy': '😴', 'sleep': '😴', 'tired': '😫', 'bored': '😑', 'shy': '🙈',
       'hello': '👋', 'hi': '👋', 'bye': '👋', 'wave': '👋', 'ok': '👌', 'okay': '👌',
-      'yes': '👍', 'no': '👎', 'clap': '👏', 'pray': '🙏', 'please': '🙏', 
-      'thank': '🙏', 'thanks': '🙏', 'muscle': '💪', 'strong': '💪', 'flex': '💪', 
-      'peace': '✌️', 'victory': '✌️', 'funny': '😄', 'lol': '🤣', 'rofl': '🤣', 
-      'haha': '😂', 'cute': '🥰', 'what': '🤔', 'think': '🤔', 'thinking': '🤔', 
-      'hmm': '🤔', 'wonder': '🤔', 'wow': '🤩', 'amazing': '🤩', 'yay': '🥳', 
-      'party': '🎉', 'celebrate': '🎉', 'fire': '🔥', 'hot': '🔥', 'cold': '🥶', 
-      'sick': '🤒', 'money': '💰', 'rich': '🤑', 'gift': '🎁', 'present': '🎁', 
-      'star': '⭐', 'sparkle': '✨', 'shine': '✨', 'idea': '💡', 'bulb': '💡', 
-      'coffee': '☕', 'tea': '🍵', 'cake': '🎂', 'good': '👍', 'great': '👍', 
-      'nice': '👍', 'bad': '👎', 'work': '💼', 'home': '🏠', 'run': '🏃', 
+      'yes': '👍', 'no': '👎', 'clap': '👏', 'pray': '🙏', 'please': '🙏',
+      'thank': '🙏', 'thanks': '🙏', 'muscle': '💪', 'strong': '💪', 'flex': '💪',
+      'peace': '✌️', 'victory': '✌️', 'funny': '😄', 'lol': '🤣', 'rofl': '🤣',
+      'haha': '😂', 'cute': '🥰', 'what': '🤔', 'think': '🤔', 'thinking': '🤔',
+      'hmm': '🤔', 'wonder': '🤔', 'wow': '🤩', 'amazing': '🤩', 'yay': '🥳',
+      'party': '🎉', 'celebrate': '🎉', 'fire': '🔥', 'hot': '🔥', 'cold': '🥶',
+      'sick': '🤒', 'money': '💰', 'rich': '🤑', 'gift': '🎁', 'present': '🎁',
+      'star': '⭐', 'sparkle': '✨', 'shine': '✨', 'idea': '💡', 'bulb': '💡',
+      'coffee': '☕', 'tea': '🍵', 'cake': '🎂', 'good': '👍', 'great': '👍',
+      'nice': '👍', 'bad': '👎', 'work': '💼', 'home': '🏠', 'run': '🏃',
       'running': '🏃', 'walk': '🚶', 'dance': '💃', 'dancing': '💃',
       'eat': '🍽️', 'eating': '🍽️', 'hungry': '😋', 'yummy': '😋', 'delicious': '😋',
       'sticker': '📦', 'hands': '🙌', 'hand': '✋', 'fist': '✊', 'punch': '👊',
@@ -1777,23 +1779,23 @@ export default function DataChatPage() {
     };
 
     const lowerText = text.toLowerCase().trim();
-    
+
     // Try to match pattern like "(action character)" or "(action)"
     const stickerMatch = lowerText.match(/^\(([^)]+)\)$/);
     if (stickerMatch) {
       const content = stickerMatch[1].toLowerCase().trim();
-      
+
       // First check compound phrases
       if (compoundPhrases[content]) {
         return compoundPhrases[content];
       }
-      
+
       const words = content.split(/\s+/);
-      
+
       // Check if last word is a LINE character
       const lastWord = words[words.length - 1];
       const characterEmoji = lineCharacters[lastWord];
-      
+
       if (characterEmoji && words.length > 1) {
         // It's "(action character)" format
         const action = words.slice(0, -1).join(' ');
@@ -1804,43 +1806,43 @@ export default function DataChatPage() {
         const actionEmoji = emotionEmojis[action] || emotionEmojis[words[0]] || '';
         return characterEmoji + (actionEmoji || '');
       }
-      
+
       // Check if it's just an emotion/action
       const actionEmoji = emotionEmojis[content];
       if (actionEmoji) return actionEmoji;
-      
+
       // Check individual words
       for (const word of words) {
         if (emotionEmojis[word]) {
           return emotionEmojis[word];
         }
       }
-      
+
       // Default: return a generic sticker emoji
       return '📦';
     }
-    
+
     // Handle [sticker:xxx/xxx] format
     if (text.startsWith('[sticker')) {
       const match = text.match(/packageId=(\d+).*?stickerId=(\d+)/);
       if (match) return '📦 Sticker';
       return '📦';
     }
-    
+
     return text;
   };
 
   // Render content with LINE emoji images
   const renderMessageContent = (msg: Message) => {
     const content = msg.content || '';
-    
+
     // If message has LINE emojis, render them as images (check this FIRST)
     if (msg.emojis && msg.emojis.length > 0) {
       const elements: React.ReactNode[] = [];
-      
+
       // Sort emojis by index
       const sortedEmojis = [...msg.emojis].sort((a, b) => a.index - b.index);
-      
+
       let lastIndex = 0;
       sortedEmojis.forEach((emoji, idx) => {
         // Add text before this emoji
@@ -1852,17 +1854,17 @@ export default function DataChatPage() {
             if (line) elements.push(<span key={`text-${idx}-${lineIdx}`}>{line}</span>);
           });
         }
-        
+
         // Add emoji image
         elements.push(
-          <img 
+          <img
             key={`emoji-${idx}`}
             src={emoji.url || `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
             alt="LINE emoji"
-            style={{ 
-              width: 22, 
-              height: 22, 
-              display: 'inline-block', 
+            style={{
+              width: 22,
+              height: 22,
+              display: 'inline-block',
               verticalAlign: 'middle',
               margin: '0 1px',
             }}
@@ -1875,11 +1877,11 @@ export default function DataChatPage() {
             }}
           />
         );
-        
+
         // Move past the emoji placeholder (use length if available, otherwise 1 for $ placeholder)
         lastIndex = emoji.index + (emoji.length || 1);
       });
-      
+
       // Add remaining text after last emoji
       if (lastIndex < content.length) {
         const remainingText = content.substring(lastIndex);
@@ -1888,14 +1890,14 @@ export default function DataChatPage() {
           if (line) elements.push(<span key={`text-end-${lineIdx}`}>{line}</span>);
         });
       }
-      
+
       return (
         <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
           {elements}
         </p>
       );
     }
-    
+
     // Check for sticker message type (NOT text patterns - those should display as text)
     if (msg.messageType === 'sticker' || content.startsWith('[sticker:')) {
       return (
@@ -1904,7 +1906,7 @@ export default function DataChatPage() {
         </p>
       );
     }
-    
+
     // Regular text message
     return (
       <p style={{ fontSize: 14, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
@@ -1993,14 +1995,14 @@ export default function DataChatPage() {
   const [quickReplyEmojiCategory, setQuickReplyEmojiCategory] = useState('brown');
   const [quickReplyPendingEmojis, setQuickReplyPendingEmojis] = useState<Array<{ index: number; productId: string; emojiId: string }>>([]);
   const [quickReplyMessage, setQuickReplyMessage] = useState('');
-  
+
   // Initialize Quick Reply Editor when modal opens
   useEffect(() => {
     if (showQuickReplyModal && quickReplyEditorRef.current) {
       setTimeout(() => {
         const editor = quickReplyEditorRef.current;
         if (!editor) return;
-        
+
         if (editingQuickReply?.emojis && editingQuickReply.emojis.length > 0) {
           let html = '';
           const content = editingQuickReply.label || '';
@@ -2031,7 +2033,7 @@ export default function DataChatPage() {
       }, 50);
     }
   }, [showQuickReplyModal, editingQuickReply]);
-  
+
   // LINE Official Stickers grouped by package (verified working sticker IDs)
   // Reference: https://developers.line.biz/en/docs/messaging-api/sticker-list/
   const stickerPackages = [
@@ -2113,16 +2115,16 @@ export default function DataChatPage() {
     if (!selectedRoom) return;
     setShowEmojiPicker(false);
     setTemplateSearchTerm('');
-    
+
     // Full message with emoji
     const fullMessage = `${emoji} ${messageText}`;
-    
+
     // Insert emoji + text into contentEditable
     if (messageEditorRef.current) {
       messageEditorRef.current.innerText = fullMessage;
       messageEditorRef.current.focus();
     }
-    
+
     // Also update state so Send button works immediately
     setMessage(fullMessage);
   };
@@ -2132,7 +2134,7 @@ export default function DataChatPage() {
     if (!selectedRoom || isSending) return;
     setIsSending(true);
     setShowEmojiPicker(false);
-    
+
     const tempId = `temp-${Date.now()}`;
     const tempMessage: Message = {
       id: tempId,
@@ -2144,31 +2146,31 @@ export default function DataChatPage() {
       status: 'sending',
       createdAt: new Date().toISOString(),
     };
-    
+
     setMessages(prev => [...prev, tempMessage]);
-    
+
     try {
       const response = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          roomId: selectedRoom, 
+        body: JSON.stringify({
+          roomId: selectedRoom,
           content: messageText,
           senderName: currentUser?.name || 'Agent',
         }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         const sentMessage = { ...data.message, status: 'sent' };
         setMessages(prev => prev.map(m => m.id === tempId ? sentMessage : m));
-        
+
         // Update cache
         if (messagesCacheRef.current.has(selectedRoom)) {
           const cached = messagesCacheRef.current.get(selectedRoom)!;
           messagesCacheRef.current.set(selectedRoom, cached.map(m => m.id === tempId ? sentMessage : m));
         }
-        
+
         // Scroll to bottom
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -2210,9 +2212,9 @@ export default function DataChatPage() {
   // RENDER
   // ═══════════════════════════════════════════════════════════════════
   return (
-    <div style={{ 
-      display: 'flex', 
-      height: 'calc(100vh - 118px)', 
+    <div style={{
+      display: 'flex',
+      height: 'calc(100vh - 118px)',
       background: colors.bgPrimary,
       borderRadius: isMobile ? 0 : 12,
       overflow: 'hidden',
@@ -2220,18 +2222,18 @@ export default function DataChatPage() {
       boxShadow: isMobile ? 'none' : colors.shadow,
       position: 'relative',
     }}>
-      
+
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* LEFT SIDEBAR - Chat List */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div style={{ 
+      <div style={{
         width: isMobile ? '100%' : isTablet ? 280 : isSmallDesktop ? 300 : 340,
         minWidth: isMobile ? '100%' : isTablet ? 280 : isSmallDesktop ? 300 : 340,
         maxWidth: isMobile ? '100%' : isTablet ? 280 : isSmallDesktop ? 300 : 340,
         flexShrink: 0,
-        background: colors.bgSecondary, 
+        background: colors.bgSecondary,
         borderRight: isMobile ? 'none' : `1px solid ${colors.border}`,
-        display: isMobile ? (showMobileSidebar ? 'flex' : 'none') : 'flex', 
+        display: isMobile ? (showMobileSidebar ? 'flex' : 'none') : 'flex',
         flexDirection: 'column',
         position: isMobile ? 'absolute' : 'relative',
         top: 0,
@@ -2271,7 +2273,7 @@ export default function DataChatPage() {
                 </div>
               )}
             </button>
-            
+
             {/* Filter Dropdown */}
             <div style={{ position: 'relative' }}>
               <button
@@ -2291,7 +2293,7 @@ export default function DataChatPage() {
                 <span>{filterStatus === 'all' ? t('dataChat.all') : filterStatus === 'unread' ? t('dataChat.unread') : filterStatus === 'pinned' ? t('dataChat.pinned') : filterStatus === 'archived' ? t('dataChat.archived') : t('dataChat.spam')}</span>
                 <ChevronDown size={isMobile ? 12 : 14} style={{ color: colors.textMuted }} />
               </button>
-              
+
               {showFilterDropdown && (
                 <div style={{
                   position: 'absolute', top: '100%', left: 0, marginTop: 4,
@@ -2316,7 +2318,7 @@ export default function DataChatPage() {
                 </div>
               )}
             </div>
-            
+
             {/* Search Input */}
             <div style={{ flex: 1, position: 'relative' }}>
               <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: colors.textMuted }} />
@@ -2337,17 +2339,17 @@ export default function DataChatPage() {
               />
             </div>
           </div>
-          
+
           {/* Stats */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12, color: colors.textMuted, fontWeight: 500 }}>
               {filteredRooms.length} {t('dataChat.conversations')}
             </span>
-            <div style={{ 
+            <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '4px 10px', borderRadius: 12,
-              background: connectionState === 'connected' 
-                ? 'rgba(34, 197, 94, 0.1)' 
+              background: connectionState === 'connected'
+                ? 'rgba(34, 197, 94, 0.1)'
                 : 'rgba(245, 158, 11, 0.1)',
             }}>
               {/* WiFi Signal Icon */}
@@ -2357,7 +2359,7 @@ export default function DataChatPage() {
                   const quality = connectionHealth?.quality || 'offline';
                   const activeBars = quality === 'excellent' ? 4 : quality === 'good' ? 3 : quality === 'fair' ? 2 : quality === 'poor' ? 1 : 0;
                   const isActive = i < activeBars;
-                  const barColor = connectionState === 'connected' 
+                  const barColor = connectionState === 'connected'
                     ? (isActive ? colors.online : `${colors.online}30`)
                     : (isActive ? colors.warning : `${colors.warning}30`);
                   return (
@@ -2377,16 +2379,16 @@ export default function DataChatPage() {
                   );
                 })}
               </div>
-              
+
               {/* Status text with ping */}
-              <span style={{ 
+              <span style={{
                 fontSize: 11, fontWeight: 600,
                 color: connectionState === 'connected' ? colors.online : colors.warning,
                 display: 'flex', alignItems: 'center', gap: 4,
               }}>
                 {connectionState === 'connected' ? (
                   <>
-                    <span style={{ 
+                    <span style={{
                       fontFamily: 'monospace',
                       minWidth: 32,
                       textAlign: 'right',
@@ -2438,14 +2440,14 @@ export default function DataChatPage() {
                 {/* Avatar */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   {room.pictureUrl ? (
-                    <img src={room.pictureUrl} alt="" style={{ 
+                    <img src={room.pictureUrl} alt="" style={{
                       width: 48, height: 48, borderRadius: '50%', objectFit: 'cover',
                       border: `2px solid transparent`,
                     }} />
                   ) : (
                     <div style={{
                       width: 48, height: 48, borderRadius: '50%',
-                      background: room.status === 'spam' 
+                      background: room.status === 'spam'
                         ? `linear-gradient(135deg, ${colors.warning} 0%, #d97706 100%)`
                         : `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -2482,7 +2484,7 @@ export default function DataChatPage() {
                   {/* Row 1: Name + Time */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1 }}>
-                      <span style={{ 
+                      <span style={{
                         fontWeight: room.unreadCount > 0 ? 600 : 500,
                         color: colors.textPrimary, fontSize: 14,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -2491,24 +2493,90 @@ export default function DataChatPage() {
                       </span>
                       {room.isPinned && <Pin size={11} style={{ color: colors.accent, transform: 'rotate(-45deg)', flexShrink: 0 }} />}
                       {room.isMuted && <VolumeX size={11} style={{ color: colors.warning, flexShrink: 0 }} />}
-                      {/* Viewing Eye Indicator - shows when someone else is viewing this room */}
-                      {viewingUsers[room.id]?.length > 0 && (
-                        <div 
-                          className="viewing-eye"
-                          title={`${viewingUsers[room.id].map(v => v.userName).join(', ')} กำลังดูอยู่`}
-                          style={{ 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: 18, height: 18, borderRadius: '50%',
-                            background: colors.accent + '20',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Eye size={11} style={{ color: colors.accent }} />
-                        </div>
-                      )}
+                      {/* Viewing Avatar Stack - shows who is viewing this room */}
+                      {viewingUsers[room.id]?.length > 0 && (() => {
+                        const viewers = viewingUsers[room.id];
+                        const maxVisible = 3;
+                        const visibleViewers = viewers.slice(0, maxVisible);
+                        const overflowCount = viewers.length - maxVisible;
+
+                        // Avatar colors based on name hash
+                        const avatarColors = ['#22c55e', '#3b82f6', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4'];
+                        const getAvatarColor = (name: string) => {
+                          let hash = 0;
+                          for (let i = 0; i < name.length; i++) {
+                            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                          }
+                          return avatarColors[Math.abs(hash) % avatarColors.length];
+                        };
+
+                        return (
+                          <div
+                            className="viewing-avatars"
+                            title={`${viewers.map(v => v.userName).join(', ')} กำลังดูอยู่`}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              flexShrink: 0,
+                              marginLeft: 2,
+                            }}
+                          >
+                            {visibleViewers.map((viewer, idx) => {
+                              const bgColor = getAvatarColor(viewer.userName);
+                              const initial = viewer.userName.charAt(0).toUpperCase();
+                              return (
+                                <div
+                                  key={viewer.userName}
+                                  className="viewing-avatar"
+                                  style={{
+                                    width: 18,
+                                    height: 18,
+                                    borderRadius: '50%',
+                                    background: bgColor,
+                                    color: '#fff',
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginLeft: idx > 0 ? -6 : 0,
+                                    border: `2px solid ${colors.bgSecondary}`,
+                                    zIndex: maxVisible - idx,
+                                    position: 'relative',
+                                    boxShadow: `0 0 0 1px ${bgColor}30`,
+                                  }}
+                                >
+                                  {initial}
+                                </div>
+                              );
+                            })}
+                            {overflowCount > 0 && (
+                              <div
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: '50%',
+                                  background: colors.textMuted,
+                                  color: '#fff',
+                                  fontSize: 9,
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  marginLeft: -6,
+                                  border: `2px solid ${colors.bgSecondary}`,
+                                  zIndex: 0,
+                                }}
+                              >
+                                +{overflowCount}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
-                    <span style={{ 
-                      fontSize: 11, 
+                    <span style={{
+                      fontSize: 11,
                       color: room.unreadCount > 0 ? colors.accent : colors.textMuted,
                       fontWeight: room.unreadCount > 0 ? 600 : 400,
                       flexShrink: 0, marginLeft: 8,
@@ -2516,11 +2584,11 @@ export default function DataChatPage() {
                       {room.lastMessageAt && formatTime(room.lastMessageAt)}
                     </span>
                   </div>
-                  
+
                   {/* Row 2: Message Preview + Tags + Unread Badge */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {/* Message Preview */}
-                    <span style={{ 
+                    <span style={{
                       fontSize: 12, color: colors.textMuted,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       flex: 1, minWidth: 0,
@@ -2545,47 +2613,47 @@ export default function DataChatPage() {
                                     ? '📎 File'
                                     : room.lastMessage?.emojis && room.lastMessage.emojis.length > 0
                                       ? (() => {
-                                          // Render text with embedded emojis
-                                          const content = room.lastMessage.content || '';
-                                          const elements: React.ReactNode[] = [];
-                                          const sortedEmojis = [...room.lastMessage.emojis].sort((a, b) => a.index - b.index);
-                                          let lastIndex = 0;
-                                          sortedEmojis.slice(0, 3).forEach((emoji, idx) => {
-                                            if (emoji.index > lastIndex) {
-                                              const text = content.substring(lastIndex, emoji.index);
-                                              if (text) elements.push(<span key={`t-${idx}`}>{text.substring(0, 15)}</span>);
-                                            }
-                                            elements.push(
-                                              <img 
-                                                key={`e-${idx}`}
-                                                src={emoji.url || `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
-                                                alt="emoji"
-                                                style={{ width: 16, height: 16, verticalAlign: 'middle', marginRight: 2 }}
-                                              />
-                                            );
-                                            lastIndex = emoji.index + (emoji.length || 1);
-                                          });
-                                          // Add remaining text (truncated)
-                                          if (lastIndex < content.length) {
-                                            const remaining = content.substring(lastIndex, lastIndex + 15);
-                                            if (remaining) elements.push(<span key="t-end">{remaining}</span>);
+                                        // Render text with embedded emojis
+                                        const content = room.lastMessage.content || '';
+                                        const elements: React.ReactNode[] = [];
+                                        const sortedEmojis = [...room.lastMessage.emojis].sort((a, b) => a.index - b.index);
+                                        let lastIndex = 0;
+                                        sortedEmojis.slice(0, 3).forEach((emoji, idx) => {
+                                          if (emoji.index > lastIndex) {
+                                            const text = content.substring(lastIndex, emoji.index);
+                                            if (text) elements.push(<span key={`t-${idx}`}>{text.substring(0, 15)}</span>);
                                           }
-                                          return elements;
-                                        })()
-                                      : room.lastMessage?.content 
+                                          elements.push(
+                                            <img
+                                              key={`e-${idx}`}
+                                              src={emoji.url || `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
+                                              alt="emoji"
+                                              style={{ width: 16, height: 16, verticalAlign: 'middle', marginRight: 2 }}
+                                            />
+                                          );
+                                          lastIndex = emoji.index + (emoji.length || 1);
+                                        });
+                                        // Add remaining text (truncated)
+                                        if (lastIndex < content.length) {
+                                          const remaining = content.substring(lastIndex, lastIndex + 15);
+                                          if (remaining) elements.push(<span key="t-end">{remaining}</span>);
+                                        }
+                                        return elements;
+                                      })()
+                                      : room.lastMessage?.content
                                         ? room.lastMessage.content.substring(0, 30)
                                         : 'Start conversation'}
                         </>
                       )}
                     </span>
-                    
+
                     {/* Tags - compact style */}
                     {room.tags && room.tags.length > 0 && (
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {room.tags.slice(0, 1).map((tag, idx) => (
                           <span key={idx} style={{
                             padding: '2px 6px', borderRadius: 4,
-                            background: `${colors.accent}15`, 
+                            background: `${colors.accent}15`,
                             fontSize: 9, fontWeight: 600, color: colors.accent,
                             textTransform: 'uppercase', letterSpacing: 0.3,
                             border: `1px solid ${colors.accent}30`,
@@ -2594,7 +2662,7 @@ export default function DataChatPage() {
                           </span>
                         ))}
                         {room.tags.length > 1 && (
-                          <span style={{ 
+                          <span style={{
                             fontSize: 9, color: colors.textMuted, fontWeight: 500,
                             display: 'flex', alignItems: 'center',
                           }}>
@@ -2730,8 +2798,8 @@ export default function DataChatPage() {
                 onClick={selectAllTokens}
                 style={{
                   flex: 1, padding: '12px 16px', borderRadius: 10,
-                  background: selectedTokenIds.size === lineTokens.length 
-                    ? `linear-gradient(135deg, ${colors.accent}, ${colors.accent}cc)` 
+                  background: selectedTokenIds.size === lineTokens.length
+                    ? `linear-gradient(135deg, ${colors.accent}, ${colors.accent}cc)`
                     : colors.bgTertiary,
                   border: `1px solid ${selectedTokenIds.size === lineTokens.length ? 'transparent' : colors.border}`,
                   color: selectedTokenIds.size === lineTokens.length ? '#fff' : colors.textPrimary,
@@ -2748,8 +2816,8 @@ export default function DataChatPage() {
                 onClick={deselectAllTokens}
                 style={{
                   flex: 1, padding: '12px 16px', borderRadius: 10,
-                  background: selectedTokenIds.size === 0 
-                    ? `linear-gradient(135deg, ${colors.danger}, ${colors.danger}cc)` 
+                  background: selectedTokenIds.size === 0
+                    ? `linear-gradient(135deg, ${colors.danger}, ${colors.danger}cc)`
                     : colors.bgTertiary,
                   border: `1px solid ${selectedTokenIds.size === 0 ? 'transparent' : colors.border}`,
                   color: selectedTokenIds.size === 0 ? '#fff' : colors.textPrimary,
@@ -2773,7 +2841,7 @@ export default function DataChatPage() {
                 const isFullySelected = isWebsiteFullySelected(websiteKey);
                 const isPartiallySelected = isWebsitePartiallySelected(websiteKey);
                 const selectedCount = tokens.filter(t => selectedTokenIds.has(t.id)).length;
-                
+
                 return (
                   <div key={websiteKey} style={{ marginBottom: 12 }}>
                     {/* Website Card Header */}
@@ -2781,8 +2849,8 @@ export default function DataChatPage() {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 14,
                         padding: '14px 18px', borderRadius: 14,
-                        background: isFullySelected 
-                          ? `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}08)` 
+                        background: isFullySelected
+                          ? `linear-gradient(135deg, ${colors.accent}15, ${colors.accent}08)`
                           : colors.bgTertiary,
                         border: `2px solid ${isFullySelected ? colors.accent : isPartiallySelected ? colors.accent + '50' : colors.border}`,
                         cursor: 'pointer',
@@ -2792,16 +2860,16 @@ export default function DataChatPage() {
                     >
                       {/* Animated Checkbox */}
                       <div
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
+                        onClick={(e) => {
+                          e.stopPropagation();
                           toggleWebsiteTokens(websiteKey, !isFullySelected);
                         }}
                         style={{
                           width: 24, height: 24, borderRadius: 8,
-                          background: isFullySelected 
-                            ? `linear-gradient(135deg, ${colors.accent}, ${colors.accent}cc)` 
-                            : isPartiallySelected 
-                              ? colors.accent 
+                          background: isFullySelected
+                            ? `linear-gradient(135deg, ${colors.accent}, ${colors.accent}cc)`
+                            : isPartiallySelected
+                              ? colors.accent
                               : colors.bgSecondary,
                           border: `2px solid ${isFullySelected || isPartiallySelected ? colors.accent : colors.border}`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -2815,17 +2883,17 @@ export default function DataChatPage() {
                           <div style={{ width: 10, height: 3, background: '#fff', borderRadius: 2 }} />
                         )}
                       </div>
-                      
+
                       {/* Website Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ 
+                          <span style={{
                             fontSize: 15, fontWeight: 600, color: colors.textPrimary,
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           }}>
                             {websiteName}
                           </span>
-                          <span style={{ 
+                          <span style={{
                             fontSize: 12, fontWeight: 600,
                             color: isFullySelected ? colors.accent : colors.textMuted,
                             padding: '3px 10px', borderRadius: 20,
@@ -2834,7 +2902,7 @@ export default function DataChatPage() {
                             {selectedCount}/{tokens.length}
                           </span>
                         </div>
-                        <div style={{ 
+                        <div style={{
                           fontSize: 12, color: colors.textMuted, marginTop: 4,
                           display: 'flex', alignItems: 'center', gap: 6,
                         }}>
@@ -2856,7 +2924,7 @@ export default function DataChatPage() {
                           )}
                         </div>
                       </div>
-                      
+
                       {/* Expand Arrow */}
                       <div
                         style={{
@@ -2870,10 +2938,10 @@ export default function DataChatPage() {
                         <ChevronDown size={18} style={{ color: colors.textMuted }} />
                       </div>
                     </div>
-                    
+
                     {/* Expanded Token List */}
                     {isExpanded && (
-                      <div style={{ 
+                      <div style={{
                         marginTop: 8, marginLeft: 20,
                         borderLeft: `3px solid ${colors.accent}30`,
                         paddingLeft: 20,
@@ -2919,17 +2987,17 @@ export default function DataChatPage() {
                               >
                                 {isSelected && <Check size={12} style={{ color: '#fff' }} />}
                               </div>
-                              
+
                               {/* Token Name */}
-                              <span style={{ 
-                                flex: 1, fontSize: 14, 
+                              <span style={{
+                                flex: 1, fontSize: 14,
                                 color: isSelected ? colors.textPrimary : colors.textMuted,
                                 fontWeight: isSelected ? 500 : 400,
                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                               }}>
                                 {token.name}
                               </span>
-                              
+
                               {/* Status Icon */}
                               <div style={{
                                 padding: '6px 10px', borderRadius: 8,
@@ -3012,10 +3080,10 @@ export default function DataChatPage() {
       {/* ═══════════════════════════════════════════════════════════════ */}
       {selectedRoom && selectedRoomData ? (
         <>
-          <div style={{ 
-            flex: 1, 
-            display: isMobile ? (showMobileSidebar ? 'none' : 'flex') : 'flex', 
-            flexDirection: 'column', 
+          <div style={{
+            flex: 1,
+            display: isMobile ? (showMobileSidebar ? 'none' : 'flex') : 'flex',
+            flexDirection: 'column',
             background: colors.bgPrimary,
             minWidth: 0, // Prevent flex item from overflowing
           }}>
@@ -3046,7 +3114,7 @@ export default function DataChatPage() {
                   </button>
                 )}
                 {selectedRoomData.pictureUrl ? (
-                  <img src={selectedRoomData.pictureUrl} alt="" style={{ 
+                  <img src={selectedRoomData.pictureUrl} alt="" style={{
                     width: isMobile ? 36 : 40, height: isMobile ? 36 : 40, borderRadius: '50%', objectFit: 'cover',
                   }} />
                 ) : (
@@ -3065,40 +3133,72 @@ export default function DataChatPage() {
                   </h3>
                   <p style={{ fontSize: isMobile ? 11 : 12, color: colors.online, margin: 0, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
                     ● Online
-                    {selectedRoom && viewingUsers[selectedRoom]?.length > 0 && (
-                      <span style={{ 
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        color: colors.accent, fontStyle: 'italic',
-                        background: colors.accent + '15',
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                      }}>
-                        <span 
-                          className="viewing-eye" 
-                          style={{ 
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            width: 16, height: 16, borderRadius: '50%',
-                            background: colors.accent + '30',
-                          }}
-                        >
-                          <Eye size={10} style={{ color: colors.accent }} />
+                    {selectedRoom && viewingUsers[selectedRoom]?.length > 0 && (() => {
+                      const viewers = viewingUsers[selectedRoom];
+                      const avatarColors = ['#22c55e', '#3b82f6', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4'];
+                      const getAvatarColor = (name: string) => {
+                        let hash = 0;
+                        for (let i = 0; i < name.length; i++) {
+                          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                        }
+                        return avatarColors[Math.abs(hash) % avatarColors.length];
+                      };
+
+                      return (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          color: colors.accent, fontStyle: 'normal',
+                          background: colors.accent + '12',
+                          padding: '3px 10px 3px 4px',
+                          borderRadius: 16,
+                          fontSize: 11,
+                        }}>
+                          <span style={{ display: 'flex', alignItems: 'center' }}>
+                            {viewers.slice(0, 2).map((viewer, idx) => {
+                              const bgColor = getAvatarColor(viewer.userName);
+                              return (
+                                <span
+                                  key={viewer.userName}
+                                  className="viewing-avatar"
+                                  style={{
+                                    width: 18,
+                                    height: 18,
+                                    borderRadius: '50%',
+                                    background: bgColor,
+                                    color: '#fff',
+                                    fontSize: 9,
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginLeft: idx > 0 ? -5 : 0,
+                                    border: `2px solid ${colors.bgSecondary}`,
+                                  }}
+                                >
+                                  {viewer.userName.charAt(0).toUpperCase()}
+                                </span>
+                              );
+                            })}
+                          </span>
+                          <span style={{ fontWeight: 500 }}>
+                            {viewers.map(v => v.userName).join(', ')} กำลังดูอยู่
+                          </span>
                         </span>
-                        {viewingUsers[selectedRoom].map(v => v.userName).join(', ')} กำลังดูอยู่
-                      </span>
-                    )}
+                      );
+                    })()}
                   </p>
                 </div>
               </div>
-              
+
               <div style={{ display: 'flex', gap: isMobile ? 4 : 8 }}>
                 {/* Search Button */}
-                <button 
+                <button
                   onClick={() => setShowChatSearch(!showChatSearch)}
                   style={{
                     padding: isMobile ? 8 : '8px 14px', borderRadius: 6,
-                    background: showChatSearch ? colors.accentLight : colors.bgTertiary, 
+                    background: showChatSearch ? colors.accentLight : colors.bgTertiary,
                     border: `1px solid ${colors.border}`,
-                    color: showChatSearch ? colors.accent : colors.textSecondary, 
+                    color: showChatSearch ? colors.accent : colors.textSecondary,
                     fontSize: 12, fontWeight: 500,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 6,
                     transition: 'all 0.15s ease',
@@ -3113,16 +3213,16 @@ export default function DataChatPage() {
                     onClick={() => setShowRightPanel(!showRightPanel)}
                     style={{
                       width: 36, height: 36, borderRadius: 6,
-                    background: showRightPanel ? colors.accentLight : colors.bgTertiary,
-                    border: `1px solid ${colors.border}`,
-                    color: showRightPanel ? colors.accent : colors.textSecondary,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.15s ease',
-                  }}
-                  title={showRightPanel ? 'Hide panel' : 'Show panel'}
-                >
-                  {showRightPanel ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-                </button>
+                      background: showRightPanel ? colors.accentLight : colors.bgTertiary,
+                      border: `1px solid ${colors.border}`,
+                      color: showRightPanel ? colors.accent : colors.textSecondary,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title={showRightPanel ? 'Hide panel' : 'Show panel'}
+                  >
+                    {showRightPanel ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                  </button>
                 )}
               </div>
             </div>
@@ -3180,158 +3280,158 @@ export default function DataChatPage() {
                   {messages
                     .filter(msg => !chatSearchTerm || msg.content?.toLowerCase().includes(chatSearchTerm.toLowerCase()))
                     .map((msg, idx, filteredMsgs) => {
-                    const isAgent = msg.sender === 'agent';
-                    const showAvatar = !isAgent && (idx === 0 || filteredMsgs[idx - 1]?.sender !== 'user');
-                    const showTime = idx === filteredMsgs.length - 1 || 
-                      filteredMsgs[idx + 1]?.sender !== msg.sender ||
-                      new Date(filteredMsgs[idx + 1]?.createdAt).getTime() - new Date(msg.createdAt).getTime() > 300000;
-                    
-                    return (
-                      <div key={msg.id} style={{ marginBottom: showTime ? 12 : 2 }}>
-                        <div style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: isMobile ? 6 : 8 }}>
-                          {/* User avatar (left side) */}
-                          {!isAgent && (
-                            <div style={{ width: isMobile ? 28 : 32, flexShrink: 0 }}>
-                              {showAvatar && (
-                                selectedRoomData.pictureUrl ? (
-                                  <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
-                                ) : (
-                                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textMuted, fontSize: 12 }}>
-                                    {selectedRoomData.displayName.charAt(0)}
-                                  </div>
-                                )
+                      const isAgent = msg.sender === 'agent';
+                      const showAvatar = !isAgent && (idx === 0 || filteredMsgs[idx - 1]?.sender !== 'user');
+                      const showTime = idx === filteredMsgs.length - 1 ||
+                        filteredMsgs[idx + 1]?.sender !== msg.sender ||
+                        new Date(filteredMsgs[idx + 1]?.createdAt).getTime() - new Date(msg.createdAt).getTime() > 300000;
+
+                      return (
+                        <div key={msg.id} style={{ marginBottom: showTime ? 12 : 2 }}>
+                          <div style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: isMobile ? 6 : 8 }}>
+                            {/* User avatar (left side) */}
+                            {!isAgent && (
+                              <div style={{ width: isMobile ? 28 : 32, flexShrink: 0 }}>
+                                {showAvatar && (
+                                  selectedRoomData.pictureUrl ? (
+                                    <img src={selectedRoomData.pictureUrl} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                                  ) : (
+                                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: colors.bgTertiary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.textMuted, fontSize: 12 }}>
+                                      {selectedRoomData.displayName.charAt(0)}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            )}
+
+                            {/* Time + Sender name BEFORE bubble for Agent (right side messages) */}
+                            {isAgent && showTime && (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', marginRight: 6 }}>
+                                <span style={{ fontSize: 10, color: colors.textMuted }}>
+                                  {msg.senderName || 'Agent'}
+                                </span>
+                                <span style={{ fontSize: 10, color: colors.textMuted }}>
+                                  {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            )}
+
+                            <div style={{ maxWidth: isMobile ? '80%' : '65%' }}>
+                              {msg.stickerId ? (
+                                <div>{renderSticker(msg.packageId || msg.stickerPackageId, msg.stickerId)}</div>
+                              ) : msg.messageType === 'image' && msg.mediaUrl ? (
+                                <div style={{
+                                  borderRadius: 12,
+                                  overflow: 'hidden',
+                                  background: colors.bgTertiary,
+                                  border: `1px solid ${colors.border}`,
+                                }}>
+                                  <img
+                                    src={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl}
+                                    alt="รูปภาพ"
+                                    style={{
+                                      maxWidth: isMobile ? 200 : 240,
+                                      maxHeight: isMobile ? 260 : 320,
+                                      display: 'block',
+                                      objectFit: 'contain',
+                                    }}
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      target.parentElement!.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">ไม่สามารถโหลดรูปภาพได้</div>';
+                                    }}
+                                  />
+                                </div>
+                              ) : msg.messageType === 'video' && msg.mediaUrl ? (
+                                <div style={{
+                                  borderRadius: 12,
+                                  overflow: 'hidden',
+                                  background: colors.bgTertiary,
+                                  border: `1px solid ${colors.border}`,
+                                }}>
+                                  <video
+                                    src={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl}
+                                    controls
+                                    style={{
+                                      maxWidth: isMobile ? 220 : 280,
+                                      maxHeight: isMobile ? 180 : 220,
+                                      display: 'block',
+                                    }}
+                                    onError={(e) => {
+                                      const target = e.target as HTMLVideoElement;
+                                      target.style.display = 'none';
+                                      target.parentElement!.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">ไม่สามารถโหลดวิดีโอได้</div>';
+                                    }}
+                                  />
+                                </div>
+                              ) : msg.messageType === 'audio' && msg.mediaUrl ? (
+                                <div style={{
+                                  borderRadius: 12,
+                                  overflow: 'hidden',
+                                  background: colors.bgTertiary,
+                                  border: `1px solid ${colors.border}`,
+                                  padding: '8px 12px',
+                                }}>
+                                  <audio
+                                    src={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl}
+                                    controls
+                                    style={{
+                                      width: isMobile ? 200 : 250,
+                                      height: 40,
+                                    }}
+                                    onError={(e) => {
+                                      const target = e.target as HTMLAudioElement;
+                                      target.style.display = 'none';
+                                      target.parentElement!.innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 12px;">ไม่สามารถโหลดเสียงได้</div>';
+                                    }}
+                                  />
+                                </div>
+                              ) : msg.messageType === 'file' && msg.mediaUrl ? (
+                                <div style={{
+                                  padding: '12px 16px',
+                                  borderRadius: 12,
+                                  background: colors.bubbleIncoming,
+                                  border: `1px solid ${colors.border}`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 8,
+                                }}>
+                                  <span style={{ fontSize: 24 }}>📎</span>
+                                  <a
+                                    href={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ color: colors.accent, textDecoration: 'none' }}
+                                  >
+                                    ดาวน์โหลดไฟล์
+                                  </a>
+                                </div>
+                              ) : (
+                                <div style={{
+                                  padding: '10px 14px',
+                                  borderRadius: isAgent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                                  background: isAgent ? colors.bubbleOutgoing : colors.bubbleIncoming,
+                                  border: isAgent ? 'none' : `1px solid ${colors.border}`,
+                                  color: isAgent ? '#fff' : colors.textPrimary,
+                                  boxShadow: colors.shadow,
+                                }}>
+                                  {renderMessageContent(msg)}
+                                </div>
                               )}
                             </div>
-                          )}
-                          
-                          {/* Time + Sender name BEFORE bubble for Agent (right side messages) */}
-                          {isAgent && showTime && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', marginRight: 6 }}>
-                              <span style={{ fontSize: 10, color: colors.textMuted }}>
-                                {msg.senderName || 'Agent'}
-                              </span>
-                              <span style={{ fontSize: 10, color: colors.textMuted }}>
-                                {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          )}
-                          
-                          <div style={{ maxWidth: isMobile ? '80%' : '65%' }}>
-                            {msg.stickerId ? (
-                              <div>{renderSticker(msg.packageId || msg.stickerPackageId, msg.stickerId)}</div>
-                            ) : msg.messageType === 'image' && msg.mediaUrl ? (
-                              <div style={{ 
-                                borderRadius: 12, 
-                                overflow: 'hidden',
-                                background: colors.bgTertiary,
-                                border: `1px solid ${colors.border}`,
-                              }}>
-                                <img 
-                                  src={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl} 
-                                  alt="รูปภาพ" 
-                                  style={{ 
-                                    maxWidth: isMobile ? 200 : 240, 
-                                    maxHeight: isMobile ? 260 : 320,
-                                    display: 'block',
-                                    objectFit: 'contain',
-                                  }} 
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    target.parentElement!.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">ไม่สามารถโหลดรูปภาพได้</div>';
-                                  }}
-                                />
-                              </div>
-                            ) : msg.messageType === 'video' && msg.mediaUrl ? (
-                              <div style={{
-                                borderRadius: 12,
-                                overflow: 'hidden',
-                                background: colors.bgTertiary,
-                                border: `1px solid ${colors.border}`,
-                              }}>
-                                <video 
-                                  src={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl}
-                                  controls
-                                  style={{ 
-                                    maxWidth: isMobile ? 220 : 280, 
-                                    maxHeight: isMobile ? 180 : 220,
-                                    display: 'block',
-                                  }}
-                                  onError={(e) => {
-                                    const target = e.target as HTMLVideoElement;
-                                    target.style.display = 'none';
-                                    target.parentElement!.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">ไม่สามารถโหลดวิดีโอได้</div>';
-                                  }}
-                                />
-                              </div>
-                            ) : msg.messageType === 'audio' && msg.mediaUrl ? (
-                              <div style={{
-                                borderRadius: 12,
-                                overflow: 'hidden',
-                                background: colors.bgTertiary,
-                                border: `1px solid ${colors.border}`,
-                                padding: '8px 12px',
-                              }}>
-                                <audio 
-                                  src={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl}
-                                  controls
-                                  style={{ 
-                                    width: isMobile ? 200 : 250,
-                                    height: 40,
-                                  }}
-                                  onError={(e) => {
-                                    const target = e.target as HTMLAudioElement;
-                                    target.style.display = 'none';
-                                    target.parentElement!.innerHTML = '<div style="padding: 10px; text-align: center; color: #888; font-size: 12px;">ไม่สามารถโหลดเสียงได้</div>';
-                                  }}
-                                />
-                              </div>
-                            ) : msg.messageType === 'file' && msg.mediaUrl ? (
-                              <div style={{
-                                padding: '12px 16px',
-                                borderRadius: 12,
-                                background: colors.bubbleIncoming,
-                                border: `1px solid ${colors.border}`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                              }}>
-                                <span style={{ fontSize: 24 }}>📎</span>
-                                <a 
-                                  href={msg.mediaUrl.startsWith('/uploads/') ? msg.mediaUrl.replace('/uploads/', '/api/uploads/') : msg.mediaUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  style={{ color: colors.accent, textDecoration: 'none' }}
-                                >
-                                  ดาวน์โหลดไฟล์
-                                </a>
-                              </div>
-                            ) : (
-                              <div style={{
-                                padding: '10px 14px',
-                                borderRadius: isAgent ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                                background: isAgent ? colors.bubbleOutgoing : colors.bubbleIncoming,
-                                border: isAgent ? 'none' : `1px solid ${colors.border}`,
-                                color: isAgent ? '#fff' : colors.textPrimary,
-                                boxShadow: colors.shadow,
-                              }}>
-                                {renderMessageContent(msg)}
+
+                            {/* Time AFTER bubble for User (left side messages) */}
+                            {!isAgent && showTime && (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-end', marginLeft: 6 }}>
+                                <span style={{ fontSize: 10, color: colors.textMuted }}>
+                                  {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
                               </div>
                             )}
                           </div>
-                          
-                          {/* Time AFTER bubble for User (left side messages) */}
-                          {!isAgent && showTime && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-end', marginLeft: 6 }}>
-                              <span style={{ fontSize: 10, color: colors.textMuted }}>
-                                {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                   {selectedRoom && typingUsers[selectedRoom] && (
                     <TypingIndicator userName={typingUsers[selectedRoom].userName} />
                   )}
@@ -3342,14 +3442,14 @@ export default function DataChatPage() {
 
             {/* Quick Replies - hidden on mobile */}
             {showQuickReplies && !isMobile && (
-              <div style={{ 
+              <div style={{
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                 background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 zIndex: 9999,
               }}
                 onClick={() => { setShowQuickReplies(false); setPreviewQuickReply(null); }}
               >
-                <div 
+                <div
                   style={{
                     background: colors.bgPrimary, borderRadius: 12,
                     width: '90%', maxWidth: 800, height: '80vh', maxHeight: 600,
@@ -3387,7 +3487,7 @@ export default function DataChatPage() {
                           </button>
                         </div>
                       </div>
-                      
+
                       {/* Filters */}
                       <div style={{ padding: '10px 12px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <div style={{ position: 'relative', minWidth: 120 }}>
@@ -3432,22 +3532,22 @@ export default function DataChatPage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* List */}
                       <div style={{ flex: 1, overflowY: 'auto' }}>
                         {filteredQuickReplies.length === 0 ? (
-                          <div style={{ 
-                            padding: '60px 30px', 
-                            textAlign: 'center', 
-                            display: 'flex', 
-                            flexDirection: 'column', 
+                          <div style={{
+                            padding: '60px 30px',
+                            textAlign: 'center',
+                            display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
                             height: '100%',
                           }}>
                             {/* Animated Icon Container */}
-                            <div style={{ 
-                              width: 80, height: 80, 
+                            <div style={{
+                              width: 80, height: 80,
                               borderRadius: '50%',
                               background: `linear-gradient(135deg, ${colors.accent}15 0%, ${colors.accent}08 100%)`,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -3464,20 +3564,20 @@ export default function DataChatPage() {
                                 <MessageSquare size={28} color={colors.accent} />
                               </div>
                             </div>
-                            
+
                             {/* Title */}
-                            <div style={{ 
-                              fontSize: 16, 
-                              fontWeight: 600, 
+                            <div style={{
+                              fontSize: 16,
+                              fontWeight: 600,
                               color: colors.textPrimary,
                               marginBottom: 8,
                             }}>
                               {t('dataChat.noQuickReplies')}
                             </div>
-                            
+
                             {/* Subtitle */}
-                            <div style={{ 
-                              fontSize: 13, 
+                            <div style={{
+                              fontSize: 13,
                               color: colors.textMuted,
                               marginBottom: 24,
                               lineHeight: 1.5,
@@ -3485,11 +3585,11 @@ export default function DataChatPage() {
                             }}>
                               {t('dataChat.noQuickRepliesDesc')}
                             </div>
-                            
+
                             {/* CTA Button */}
-                            <button 
+                            <button
                               onClick={() => { setEditingQuickReply(null); setQuickReplyMessage(''); setQuickReplyPendingEmojis([]); setShowQuickReplyModal(true); }}
-                              style={{ 
+                              style={{
                                 padding: '12px 24px', borderRadius: 10,
                                 background: `linear-gradient(135deg, ${colors.accent} 0%, ${colors.accentHover || colors.accent} 100%)`,
                                 border: 'none',
@@ -3511,7 +3611,7 @@ export default function DataChatPage() {
                               <Plus size={18} />
                               {t('dataChat.addQuickReply')}
                             </button>
-                            
+
                             <style>{`
                               @keyframes pulse {
                                 0%, 100% { transform: scale(1); }
@@ -3533,14 +3633,14 @@ export default function DataChatPage() {
                               }}
                             >
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ 
-                                  fontSize: 14, fontWeight: 600, color: colors.accent, 
-                                  marginBottom: 4, 
+                                <div style={{
+                                  fontSize: 14, fontWeight: 600, color: colors.accent,
+                                  marginBottom: 4,
                                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                                 }}>
                                   {reply.title || 'Untitled'}
                                 </div>
-                                <div style={{ 
+                                <div style={{
                                   fontSize: 12, color: colors.textMuted,
                                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                                   display: 'flex', alignItems: 'center',
@@ -3557,7 +3657,7 @@ export default function DataChatPage() {
                                           if (text) elements.push(<span key={`t-${idx}`}>{text.substring(0, 20)}</span>);
                                         }
                                         elements.push(
-                                          <img 
+                                          <img
                                             key={`e-${idx}`}
                                             src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
                                             alt="emoji"
@@ -3590,7 +3690,7 @@ export default function DataChatPage() {
                           ))
                         )}
                       </div>
-                      
+
                       {/* Create Button */}
                       <div style={{ padding: 12, borderTop: `1px solid ${colors.border}` }}>
                         <button
@@ -3606,7 +3706,7 @@ export default function DataChatPage() {
                         </button>
                       </div>
                     </div>
-                    
+
                     {/* Right Panel - Preview */}
                     <div style={{ width: '50%', display: 'flex', flexDirection: 'column', background: colors.bgTertiary }}>
                       <div style={{ padding: '12px 16px', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -3648,22 +3748,22 @@ export default function DataChatPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Preview Content */}
-                      <div style={{ 
-                        flex: 1, 
+                      <div style={{
+                        flex: 1,
                         background: 'linear-gradient(135deg, #87ceeb 0%, #98d8e8 50%, #b0e0e6 100%)',
                         padding: 20,
                         display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
                       }}>
                         {previewQuickReply ? (
-                          <div style={{ 
+                          <div style={{
                             maxWidth: '80%',
-                            padding: '12px 16px', 
+                            padding: '12px 16px',
                             borderRadius: '16px 16px 4px 16px',
-                            background: colors.bubbleOutgoing, 
+                            background: colors.bubbleOutgoing,
                             color: '#fff',
-                            fontSize: 14, 
+                            fontSize: 14,
                             lineHeight: 1.5,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                           }}>
@@ -3684,7 +3784,7 @@ export default function DataChatPage() {
                                     });
                                   }
                                   elements.push(
-                                    <img 
+                                    <img
                                       key={`e-${idx}`}
                                       src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png`}
                                       alt="emoji"
@@ -3713,8 +3813,8 @@ export default function DataChatPage() {
                             )}
                           </div>
                         ) : (
-                          <div style={{ 
-                            width: '100%', height: '100%', 
+                          <div style={{
+                            width: '100%', height: '100%',
                             display: 'flex', flexDirection: 'column',
                             alignItems: 'center', justifyContent: 'center',
                             padding: 40,
@@ -3737,20 +3837,20 @@ export default function DataChatPage() {
                                 <Eye size={26} color="rgba(255,255,255,0.85)" />
                               </div>
                             </div>
-                            
+
                             {/* Title */}
-                            <div style={{ 
-                              fontSize: 15, 
+                            <div style={{
+                              fontSize: 15,
                               fontWeight: 600,
                               color: 'rgba(255,255,255,0.95)',
                               marginBottom: 8,
                             }}>
                               {t('dataChat.previewMessage')}
                             </div>
-                            
+
                             {/* Subtitle */}
-                            <div style={{ 
-                              fontSize: 13, 
+                            <div style={{
+                              fontSize: 13,
                               color: 'rgba(255,255,255,0.6)',
                               textAlign: 'center',
                               lineHeight: 1.5,
@@ -3758,7 +3858,7 @@ export default function DataChatPage() {
                             }}>
                               {t('dataChat.selectMessagePreview')}
                             </div>
-                            
+
                             {/* Decorative Arrow */}
                             <div style={{
                               marginTop: 24,
@@ -3774,10 +3874,10 @@ export default function DataChatPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Footer */}
-                  <div style={{ 
-                    padding: '12px 20px', 
+                  <div style={{
+                    padding: '12px 20px',
                     borderTop: `1px solid ${colors.border}`,
                     display: 'flex', justifyContent: 'flex-end', gap: 12,
                     background: colors.bgSecondary,
@@ -3799,8 +3899,8 @@ export default function DataChatPage() {
                         padding: '10px 24px', borderRadius: 6,
                         background: previewQuickReply ? colors.accent : colors.bgTertiary,
                         border: 'none',
-                        color: previewQuickReply ? '#fff' : colors.textMuted, 
-                        fontSize: 13, fontWeight: 600, 
+                        color: previewQuickReply ? '#fff' : colors.textMuted,
+                        fontSize: 13, fontWeight: 600,
                         cursor: previewQuickReply ? 'pointer' : 'default',
                       }}
                     >
@@ -3810,7 +3910,7 @@ export default function DataChatPage() {
                 </div>
               </div>
             )}
-            
+
             {/* Quick Reply Create/Edit Modal - Professional Design */}
             {showQuickReplyModal && (
               <div style={{
@@ -3820,10 +3920,10 @@ export default function DataChatPage() {
               }}
                 onClick={() => { setShowQuickReplyModal(false); setEditingQuickReply(null); setQuickReplyPendingEmojis([]); setQuickReplyMessage(''); }}
               >
-                <div 
+                <div
                   style={{
-                    background: colors.bgSecondary, borderRadius: 16, 
-                    width: '90%', maxWidth: 480, 
+                    background: colors.bgSecondary, borderRadius: 16,
+                    width: '90%', maxWidth: 480,
                     boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
                     border: `1px solid ${colors.border}`,
                     overflow: 'hidden',
@@ -3870,7 +3970,7 @@ export default function DataChatPage() {
                   </div>
 
                   {/* Modal Body */}
-                  <form 
+                  <form
                     style={{ padding: 20 }}
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -3888,14 +3988,14 @@ export default function DataChatPage() {
                     {/* Title Field */}
                     <div style={{ marginBottom: 20 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <label style={{ 
+                        <label style={{
                           fontSize: 13, color: colors.textPrimary, fontWeight: 600,
                           display: 'flex', alignItems: 'center', gap: 6,
                         }}>
                           <Tag size={14} color={colors.accent} />
                           {t('dataChat.titleLabel')}
                         </label>
-                        <span style={{ 
+                        <span style={{
                           fontSize: 11, color: colors.textMuted,
                           background: colors.bgTertiary, padding: '2px 8px', borderRadius: 10,
                         }}>
@@ -3926,18 +4026,18 @@ export default function DataChatPage() {
                         💡 {t('dataChat.titleHint')}
                       </p>
                     </div>
-                    
+
                     {/* Messages Field - ContentEditable for inline emoji */}
                     <div style={{ marginBottom: 20 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>        
-                        <label style={{ 
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <label style={{
                           fontSize: 13, color: colors.textPrimary, fontWeight: 600,
                           display: 'flex', alignItems: 'center', gap: 6,
                         }}>
                           <MessageCircle size={14} color={colors.accent} />
                           {t('dataChat.messageContent')}
                         </label>
-                        <span style={{ 
+                        <span style={{
                           fontSize: 11, color: colors.textMuted,
                           background: colors.bgTertiary, padding: '2px 8px', borderRadius: 10,
                         }}>
@@ -3955,7 +4055,7 @@ export default function DataChatPage() {
                           // Extract text content ($ for emojis) and emoji data
                           let text = '';
                           const emojis: Array<{ index: number; productId: string; emojiId: string }> = [];
-                          
+
                           const processNode = (node: ChildNode) => {
                             if (node.nodeType === Node.TEXT_NODE) {
                               text += node.textContent || '';
@@ -3978,9 +4078,9 @@ export default function DataChatPage() {
                               }
                             }
                           };
-                          
+
                           editor.childNodes.forEach(processNode);
-                          
+
                           setQuickReplyMessage(text);
                           setQuickReplyPendingEmojis(emojis);
                         }}
@@ -4002,13 +4102,13 @@ export default function DataChatPage() {
                     </div>
 
                     {/* LINE Emoji Picker with Categories */}
-                    <div style={{ 
+                    <div style={{
                       marginBottom: 20, borderRadius: 12,
                       background: colors.bgPrimary, border: `1px solid ${colors.border}`,
                       overflow: 'hidden',
                     }}>
                       {/* Emoji Header */}
-                      <div style={{ 
+                      <div style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '10px 12px', borderBottom: `1px solid ${colors.border}`,
                         background: colors.bgTertiary,
@@ -4019,7 +4119,7 @@ export default function DataChatPage() {
                             {t('dataChat.lineEmoji')}
                           </span>
                         </div>
-                        <span style={{ 
+                        <span style={{
                           fontSize: 10, color: colors.textMuted,
                           background: colors.bgSecondary, padding: '3px 8px', borderRadius: 6,
                         }}>
@@ -4028,11 +4128,11 @@ export default function DataChatPage() {
                       </div>
 
                       {/* Emoji Grid */}
-                      <div style={{ 
+                      <div style={{
                         display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 4,
                         maxHeight: 140, overflow: 'auto', padding: 10,
                       }}>
-                        {lineEmojiCategories.find(c => c.id === quickReplyEmojiCategory)?.packages.flatMap((pkg) => 
+                        {lineEmojiCategories.find(c => c.id === quickReplyEmojiCategory)?.packages.flatMap((pkg) =>
                           pkg.emojis.map(emojiId => (
                             <button
                               key={`${pkg.productId}-${emojiId}`}
@@ -4041,7 +4141,7 @@ export default function DataChatPage() {
                                 const editor = quickReplyEditorRef.current;
                                 if (editor) {
                                   editor.focus();
-                                  
+
                                   // Create emoji img element
                                   const img = document.createElement('img');
                                   img.src = `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${pkg.productId}/iPhone/${emojiId}.png`;
@@ -4049,14 +4149,14 @@ export default function DataChatPage() {
                                   img.dataset.productId = pkg.productId;
                                   img.dataset.emojiId = emojiId;
                                   img.style.cssText = 'width:20px;height:20px;vertical-align:middle;margin:0 1px;';
-                                  
+
                                   // Insert at cursor position
                                   const selection = window.getSelection();
                                   if (selection && selection.rangeCount > 0) {
                                     const range = selection.getRangeAt(0);
                                     range.deleteContents();
                                     range.insertNode(img);
-                                    
+
                                     // Move cursor after emoji
                                     range.setStartAfter(img);
                                     range.setEndAfter(img);
@@ -4065,7 +4165,7 @@ export default function DataChatPage() {
                                   } else {
                                     editor.appendChild(img);
                                   }
-                                  
+
                                   // Trigger input event to update state
                                   editor.dispatchEvent(new Event('input', { bubbles: true }));
                                 }
@@ -4077,18 +4177,18 @@ export default function DataChatPage() {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 transition: 'all 0.12s ease',
                               }}
-                              onMouseEnter={(e) => { 
-                                e.currentTarget.style.transform = 'scale(1.25)'; 
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'scale(1.25)';
                                 e.currentTarget.style.background = colors.bgHover;
                                 e.currentTarget.style.zIndex = '10';
                               }}
-                              onMouseLeave={(e) => { 
-                                e.currentTarget.style.transform = 'scale(1)'; 
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'scale(1)';
                                 e.currentTarget.style.background = 'transparent';
                                 e.currentTarget.style.zIndex = '1';
                               }}
                             >
-                              <img 
+                              <img
                                 src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${pkg.productId}/iPhone/${emojiId}.png`}
                                 alt={`emoji-${emojiId}`}
                                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -4099,7 +4199,7 @@ export default function DataChatPage() {
                       </div>
 
                       {/* Category Tabs */}
-                      <div style={{ 
+                      <div style={{
                         display: 'flex', gap: 2, padding: '8px 10px',
                         borderTop: `1px solid ${colors.border}`, background: colors.bgTertiary,
                         justifyContent: 'center',
@@ -4117,12 +4217,12 @@ export default function DataChatPage() {
                               fontSize: 16, transition: 'all 0.15s ease',
                               position: 'relative',
                             }}
-                            onMouseEnter={(e) => { 
+                            onMouseEnter={(e) => {
                               if (quickReplyEmojiCategory !== cat.id) {
                                 e.currentTarget.style.background = colors.bgHover;
                               }
                             }}
-                            onMouseLeave={(e) => { 
+                            onMouseLeave={(e) => {
                               if (quickReplyEmojiCategory !== cat.id) {
                                 e.currentTarget.style.background = 'transparent';
                               }
@@ -4140,12 +4240,12 @@ export default function DataChatPage() {
                         ))}
                       </div>
                     </div>
-                    
+
                     {/* LINE Token (hidden) */}
                     <input type="hidden" name="tokenId" value={editingQuickReply?.lineTokenId || quickReplyTokenId || 'all'} />
-                    
+
                     {/* Action Buttons */}
-                    <div style={{ 
+                    <div style={{
                       display: 'flex', gap: 10, justifyContent: 'flex-end',
                       paddingTop: 16, borderTop: `1px solid ${colors.border}`,
                     }}>
@@ -4232,25 +4332,25 @@ export default function DataChatPage() {
                   </div>
                   <button onClick={() => setShowEmojiPicker(false)} style={{ background: 'none', border: 'none', color: colors.textMuted, cursor: 'pointer' }}><X size={14} /></button>
                 </div>
-                
+
                 {/* Emoji Tab - LINE Emoji with Categories */}
                 {emojiPickerTab === 'emoji' && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: 280 }}>
                     {/* Emoji Grid with Scroll */}
-                    <div style={{ 
-                      flex: 1, overflow: 'auto', 
-                      display: 'flex', flexWrap: 'wrap', gap: isMobile ? 6 : 4, 
+                    <div style={{
+                      flex: 1, overflow: 'auto',
+                      display: 'flex', flexWrap: 'wrap', gap: isMobile ? 6 : 4,
                       alignContent: 'flex-start', padding: '4px 0',
                     }}>
-                      {lineEmojiCategories.find(c => c.id === selectedEmojiCategory)?.packages.flatMap((pkg) => 
+                      {lineEmojiCategories.find(c => c.id === selectedEmojiCategory)?.packages.flatMap((pkg) =>
                         pkg.emojis.map((emojiId) => (
-                          <button 
-                            key={`${pkg.productId}-${emojiId}`} 
+                          <button
+                            key={`${pkg.productId}-${emojiId}`}
                             onClick={() => {
                               const editor = messageEditorRef.current;
                               if (editor) {
                                 editor.focus();
-                                
+
                                 // Create emoji img element
                                 const img = document.createElement('img');
                                 img.src = `https://stickershop.line-scdn.net/sticonshop/v1/sticon/${pkg.productId}/iPhone/${emojiId}.png`;
@@ -4258,14 +4358,14 @@ export default function DataChatPage() {
                                 img.dataset.productId = pkg.productId;
                                 img.dataset.emojiId = emojiId;
                                 img.style.cssText = 'width:20px;height:20px;vertical-align:middle;margin:0 1px;';
-                                
+
                                 // Insert at cursor position
                                 const selection = window.getSelection();
                                 if (selection && selection.rangeCount > 0) {
                                   const range = selection.getRangeAt(0);
                                   range.deleteContents();
                                   range.insertNode(img);
-                                  
+
                                   // Move cursor after emoji
                                   range.setStartAfter(img);
                                   range.setEndAfter(img);
@@ -4274,7 +4374,7 @@ export default function DataChatPage() {
                                 } else {
                                   editor.appendChild(img);
                                 }
-                                
+
                                 // Trigger input event to update state
                                 editor.dispatchEvent(new Event('input', { bubbles: true }));
                               }
@@ -4288,7 +4388,7 @@ export default function DataChatPage() {
                             onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.2)'; e.currentTarget.style.background = colors.bgHover; }}
                             onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'transparent'; }}
                           >
-                            <img 
+                            <img
                               src={`https://stickershop.line-scdn.net/sticonshop/v1/sticon/${pkg.productId}/iPhone/${emojiId}.png`}
                               alt={`emoji-${emojiId}`}
                               style={{ width: '100%', height: '100%', objectFit: 'contain' }}
@@ -4299,8 +4399,8 @@ export default function DataChatPage() {
                       )}
                     </div>
                     {/* Category Tabs at Bottom - Like LINE OA Manager */}
-                    <div style={{ 
-                      display: 'flex', gap: 2, borderTop: `1px solid ${colors.border}`, 
+                    <div style={{
+                      display: 'flex', gap: 2, borderTop: `1px solid ${colors.border}`,
                       paddingTop: 8, marginTop: 8, justifyContent: 'center',
                     }}>
                       {lineEmojiCategories.map((cat) => (
@@ -4323,7 +4423,7 @@ export default function DataChatPage() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Sticker Tab */}
                 {emojiPickerTab === 'sticker' && (
                   <div>
@@ -4346,39 +4446,39 @@ export default function DataChatPage() {
                         </button>
                       ))}
                     </div>
-                    
+
                     {/* Stickers Grid */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? 8 : 6, position: 'relative' }}>
                       {stickerPackages
                         .find(pkg => pkg.packageId === selectedStickerPackage)
                         ?.stickers.map((stickerId, i) => (
-                        <button 
-                          key={`${selectedStickerPackage}-${stickerId}`}
-                          onClick={() => sendSticker(selectedStickerPackage, stickerId)}
-                          onMouseEnter={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setHoveredSticker({ stickerId, x: rect.left + rect.width / 2, y: rect.top });
-                          }}
-                          onMouseLeave={() => setHoveredSticker(null)}
-                          className="sticker-btn"
-                          style={{
-                            width: isMobile ? 64 : 56, height: isMobile ? 64 : 56, borderRadius: 8, 
-                            border: `1px solid ${colors.border}`,
-                            background: colors.bgTertiary, cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            padding: 6,
-                          }}
-                        >
-                          <img 
-                            src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/iPhone/sticker.png`}
-                            alt="sticker"
-                            loading="lazy"
-                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                          />
-                        </button>
-                      ))}
+                          <button
+                            key={`${selectedStickerPackage}-${stickerId}`}
+                            onClick={() => sendSticker(selectedStickerPackage, stickerId)}
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setHoveredSticker({ stickerId, x: rect.left + rect.width / 2, y: rect.top });
+                            }}
+                            onMouseLeave={() => setHoveredSticker(null)}
+                            className="sticker-btn"
+                            style={{
+                              width: isMobile ? 64 : 56, height: isMobile ? 64 : 56, borderRadius: 8,
+                              border: `1px solid ${colors.border}`,
+                              background: colors.bgTertiary, cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              padding: 6,
+                            }}
+                          >
+                            <img
+                              src={`https://stickershop.line-scdn.net/stickershop/v1/sticker/${stickerId}/iPhone/sticker.png`}
+                              alt="sticker"
+                              loading="lazy"
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            />
+                          </button>
+                        ))}
                     </div>
-                    
+
                     {/* Sticker Preview Tooltip */}
                     {hoveredSticker && (
                       <div
@@ -4415,14 +4515,14 @@ export default function DataChatPage() {
                 {emojiPickerTab === 'custom' && (
                   <div style={{ maxHeight: 340, overflowY: 'auto' }}>
                     {/* Search Box */}
-                    <div style={{ 
+                    <div style={{
                       position: 'relative',
                       marginBottom: 12,
                     }}>
-                      <Search size={14} style={{ 
-                        position: 'absolute', 
-                        left: 12, 
-                        top: '50%', 
+                      <Search size={14} style={{
+                        position: 'absolute',
+                        left: 12,
+                        top: '50%',
                         transform: 'translateY(-50%)',
                         color: colors.textMuted,
                       }} />
@@ -4461,10 +4561,10 @@ export default function DataChatPage() {
                         </button>
                       )}
                     </div>
-                    
+
                     {/* Category Tabs - Pill Style with Emoji (hide when searching) */}
                     {!templateSearchTerm && (
-                      <div style={{ 
+                      <div style={{
                         display: 'flex', gap: 8, marginBottom: 12,
                         padding: '4px',
                         background: colors.bgTertiary,
@@ -4478,13 +4578,13 @@ export default function DataChatPage() {
                               onClick={() => setSelectedTemplateCategory(category.id)}
                               style={{
                                 flex: 1,
-                                padding: '8px 12px', 
+                                padding: '8px 12px',
                                 borderRadius: 10,
                                 border: 'none',
                                 background: isActive ? category.gradient : 'transparent',
                                 color: isActive ? '#fff' : colors.textMuted,
-                                fontSize: 11, 
-                                fontWeight: 600, 
+                                fontSize: 11,
+                                fontWeight: 600,
                                 cursor: 'pointer',
                                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                 display: 'flex',
@@ -4501,13 +4601,13 @@ export default function DataChatPage() {
                         })}
                       </div>
                     )}
-                    
+
                     {/* Messages Grid */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {(() => {
                         // Get messages based on search or category
                         let messagesToShow: Array<{ id: string; text: string; emoji: string; categoryColor?: string }> = [];
-                        
+
                         if (templateSearchTerm) {
                           // Search across all categories
                           quickMessageTemplates.forEach(cat => {
@@ -4524,11 +4624,11 @@ export default function DataChatPage() {
                             messagesToShow = category.messages.map(msg => ({ ...msg, categoryColor: category.color }));
                           }
                         }
-                        
+
                         if (messagesToShow.length === 0) {
                           return (
-                            <div style={{ 
-                              padding: 20, 
+                            <div style={{
+                              padding: 20,
                               textAlign: 'center',
                               color: colors.textMuted,
                               fontSize: 13,
@@ -4537,19 +4637,19 @@ export default function DataChatPage() {
                             </div>
                           );
                         }
-                        
+
                         return messagesToShow.map((msg) => (
                           <button
                             key={msg.id}
                             onClick={() => insertQuickTemplate(msg.emoji, msg.text)}
                             style={{
-                              padding: '12px 14px', 
+                              padding: '12px 14px',
                               borderRadius: 12,
                               border: `1px solid transparent`,
                               background: colors.bgTertiary,
                               cursor: 'pointer',
-                              display: 'flex', 
-                              alignItems: 'center', 
+                              display: 'flex',
+                              alignItems: 'center',
                               gap: 12,
                               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                               textAlign: 'left',
@@ -4575,10 +4675,10 @@ export default function DataChatPage() {
                             }}>
                               {msg.emoji}
                             </span>
-                            
+
                             {/* Text */}
                             <span style={{
-                              fontSize: 13, 
+                              fontSize: 13,
                               color: colors.textPrimary,
                               lineHeight: 1.5,
                               flex: 1,
@@ -4598,9 +4698,9 @@ export default function DataChatPage() {
             {/* Input Area */}
             <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
               {/* ContentEditable Message Input */}
-              <div style={{ 
+              <div style={{
                 position: 'relative',
-                background: colors.bgPrimary, 
+                background: colors.bgPrimary,
                 borderRadius: 8,
                 minHeight: 80,
               }}>
@@ -4615,7 +4715,7 @@ export default function DataChatPage() {
                     // Extract text content ($ for emojis) and emoji data
                     let text = '';
                     const emojis: Array<{ index: number; productId: string; emojiId: string }> = [];
-                    
+
                     const processNode = (node: ChildNode) => {
                       if (node.nodeType === Node.TEXT_NODE) {
                         text += node.textContent || '';
@@ -4638,29 +4738,29 @@ export default function DataChatPage() {
                         }
                       }
                     };
-                    
+
                     editor.childNodes.forEach(processNode);
-                    
+
                     setMessage(text);
                     setPendingEmojis(emojis);
                   }}
-                  onKeyDown={(e) => { 
-                    if (e.key === 'Enter' && !e.shiftKey) { 
-                      e.preventDefault(); 
-                      sendMessage(message); 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage(message);
                       // Clear editor after send
                       if (messageEditorRef.current) messageEditorRef.current.innerHTML = '';
-                    } 
+                    }
                   }}
                   style={{
-                    width: '100%', 
+                    width: '100%',
                     padding: '12px 14px',
-                    borderRadius: 8, 
+                    borderRadius: 8,
                     border: 'none',
-                    background: 'transparent', 
+                    background: 'transparent',
                     color: colors.textPrimary,
                     caretColor: colors.textPrimary,
-                    fontSize: 14, 
+                    fontSize: 14,
                     outline: 'none',
                     minHeight: 60,
                     maxHeight: 150,
@@ -4679,14 +4779,14 @@ export default function DataChatPage() {
                   }
                 `}</style>
               </div>
-              
+
               {/* Bottom Bar: Actions + Send */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
                 {/* Action Buttons */}
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button 
+                  <button
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    style={{ 
+                    style={{
                       width: 36, height: 36, borderRadius: '50%', border: 'none',
                       background: showEmojiPicker ? colors.accentLight : 'transparent',
                       color: showEmojiPicker ? colors.accent : colors.textMuted,
@@ -4704,14 +4804,14 @@ export default function DataChatPage() {
                     accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
                     style={{ display: 'none' }}
                   />
-                  <button 
+                  <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    style={{ 
-                      width: 36, height: 36, borderRadius: '50%', border: 'none', 
-                      background: isUploading ? colors.accentLight : 'transparent', 
-                      color: isUploading ? colors.accent : colors.textMuted, 
-                      cursor: isUploading ? 'not-allowed' : 'pointer', 
+                    style={{
+                      width: 36, height: 36, borderRadius: '50%', border: 'none',
+                      background: isUploading ? colors.accentLight : 'transparent',
+                      color: isUploading ? colors.accent : colors.textMuted,
+                      cursor: isUploading ? 'not-allowed' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'all 0.15s ease',
                     }}
@@ -4719,9 +4819,9 @@ export default function DataChatPage() {
                   >
                     {isUploading ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <Paperclip size={20} />}
                   </button>
-                  <button 
+                  <button
                     onClick={() => setShowQuickReplies(!showQuickReplies)}
-                    style={{ 
+                    style={{
                       width: 36, height: 36, borderRadius: '50%', border: 'none',
                       background: showQuickReplies ? colors.accentLight : 'transparent',
                       color: showQuickReplies ? colors.accent : colors.textMuted,
@@ -4733,7 +4833,7 @@ export default function DataChatPage() {
                     <Plus size={20} />
                   </button>
                 </div>
-                
+
                 {/* Send Button */}
                 <button
                   onClick={() => {
@@ -4743,17 +4843,17 @@ export default function DataChatPage() {
                   }}
                   disabled={!message.trim() || isSending}
                   style={{
-                    padding: '8px 16px', 
-                    borderRadius: 6, 
+                    padding: '8px 16px',
+                    borderRadius: 6,
                     border: 'none',
                     background: colors.accent,
                     color: '#fff',
-                    fontSize: 13, 
+                    fontSize: 13,
                     fontWeight: 600,
                     cursor: message.trim() && !isSending ? 'pointer' : 'default',
                     opacity: message.trim() && !isSending ? 1 : 0.6,
-                    display: 'flex', 
-                    alignItems: 'center', 
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: 6,
                     transition: 'all 0.15s ease',
                   }}
@@ -4775,21 +4875,21 @@ export default function DataChatPage() {
           {/* RIGHT PANEL - Hidden on mobile/tablet/small desktop */}
           {/* ═══════════════════════════════════════════════════════════════ */}
           {showRightPanel && !isMobile && !isTablet && !isSmallDesktop && (
-            <div style={{ 
-              width: 300, 
+            <div style={{
+              width: 300,
               minWidth: 300,
               maxWidth: 300,
               flexShrink: 0,
-              background: colors.bgSecondary, 
+              background: colors.bgSecondary,
               borderLeft: `1px solid ${colors.border}`,
-              display: 'flex', flexDirection: 'column', 
+              display: 'flex', flexDirection: 'column',
               overflowY: 'auto',
             }}>
               {/* Panel Header with Close Button */}
-              <div style={{ 
-                padding: '14px 20px', 
-                display: 'flex', 
-                alignItems: 'center', 
+              <div style={{
+                padding: '14px 20px',
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'space-between',
                 borderBottom: `1px solid ${colors.border}`,
                 background: colors.bgSecondary,
@@ -4806,9 +4906,9 @@ export default function DataChatPage() {
                     <MessageCircle size={20} color="#fff" />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ 
-                      fontSize: 14, 
-                      fontWeight: 600, 
+                    <span style={{
+                      fontSize: 14,
+                      fontWeight: 600,
                       color: colors.textPrimary,
                       letterSpacing: '0.3px',
                     }}>
@@ -4851,7 +4951,7 @@ export default function DataChatPage() {
               {/* Profile Section */}
               <div style={{ padding: '28px 20px', textAlign: 'center', borderBottom: `1px solid ${colors.border}` }}>
                 {selectedRoomData.pictureUrl ? (
-                  <img src={selectedRoomData.pictureUrl} alt="" style={{ 
+                  <img src={selectedRoomData.pictureUrl} alt="" style={{
                     width: 80, height: 80, borderRadius: '50%', objectFit: 'cover',
                     border: `3px solid ${colors.accent}`, marginBottom: 14,
                   }} />
@@ -4877,11 +4977,11 @@ export default function DataChatPage() {
               <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Tags</span>
-                  <button 
+                  <button
                     onClick={() => setShowTagInput(!showTagInput)}
-                    style={{ 
+                    style={{
                       width: 28, height: 28, borderRadius: 6, border: 'none',
-                      background: showTagInput ? colors.accentLight : colors.bgTertiary, 
+                      background: showTagInput ? colors.accentLight : colors.bgTertiary,
                       color: colors.accent,
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
@@ -4889,7 +4989,7 @@ export default function DataChatPage() {
                     <Plus size={16} />
                   </button>
                 </div>
-                
+
                 {/* Existing Tags */}
                 {selectedRoomData.tags && selectedRoomData.tags.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
@@ -4916,7 +5016,7 @@ export default function DataChatPage() {
                     ))}
                   </div>
                 )}
-                
+
                 {/* Tag Input */}
                 {showTagInput && (
                   <div style={{ marginBottom: 12 }}>
@@ -4971,9 +5071,9 @@ export default function DataChatPage() {
                     </div>
                   </div>
                 )}
-                
+
                 {(!selectedRoomData.tags || selectedRoomData.tags.length === 0) && !showTagInput && (
-                  <div style={{ 
+                  <div style={{
                     padding: 16, borderRadius: 8,
                     border: `1px dashed ${colors.border}`,
                     background: colors.bgPrimary, textAlign: 'center',
@@ -4982,9 +5082,9 @@ export default function DataChatPage() {
                     <p style={{ fontSize: 12, color: colors.textMuted, margin: '0 0 10px 0' }}>
                       Use tags to organize chats
                     </p>
-                    <button 
+                    <button
                       onClick={() => setShowTagInput(true)}
-                      style={{ 
+                      style={{
                         background: colors.accent, border: 'none', color: '#fff',
                         fontSize: 12, fontWeight: 500, cursor: 'pointer',
                         padding: '6px 14px', borderRadius: 6,
@@ -5001,12 +5101,12 @@ export default function DataChatPage() {
               <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Assigned to</span>
-                  <div style={{ 
+                  <div style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '6px 10px', borderRadius: 6,
                     background: colors.bgTertiary,
                   }}>
-                    <div style={{ 
+                    <div style={{
                       width: 28, height: 28, borderRadius: '50%',
                       background: colors.accent,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -5023,11 +5123,11 @@ export default function DataChatPage() {
               <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>{t('dataChat.notes')}</span>
-                  <button 
+                  <button
                     onClick={() => setShowNoteInput(!showNoteInput)}
-                    style={{ 
+                    style={{
                       width: 28, height: 28, borderRadius: 6, border: 'none',
-                      background: showNoteInput ? colors.accentLight : colors.bgTertiary, 
+                      background: showNoteInput ? colors.accentLight : colors.bgTertiary,
                       color: colors.accent,
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
@@ -5035,7 +5135,7 @@ export default function DataChatPage() {
                     <Plus size={16} />
                   </button>
                 </div>
-                
+
                 {/* Add Note Input */}
                 {showNoteInput && (
                   <div style={{ marginBottom: 12 }}>
@@ -5081,12 +5181,12 @@ export default function DataChatPage() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Notes List */}
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                   {roomNotes.length > 0 ? (
                     roomNotes.map((note) => (
-                      <div key={note.id} style={{ 
+                      <div key={note.id} style={{
                         padding: 12, borderRadius: 8, marginBottom: 8,
                         background: colors.bgPrimary, border: `1px solid ${colors.border}`,
                       }}>
@@ -5114,7 +5214,7 @@ export default function DataChatPage() {
                       </div>
                     ))
                   ) : (
-                    <div style={{ 
+                    <div style={{
                       padding: 16, borderRadius: 8,
                       background: colors.bgPrimary, border: `1px solid ${colors.border}`,
                     }}>
@@ -5129,7 +5229,7 @@ export default function DataChatPage() {
                   )}
                 </div>
               </div>
-              
+
               {/* Actions Section */}
               <div style={{ padding: 20, borderTop: `1px solid ${colors.border}` }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary, display: 'block', marginBottom: 12 }}>
@@ -5153,7 +5253,7 @@ export default function DataChatPage() {
                     <Pin size={16} style={{ transform: selectedRoomData.isPinned ? 'rotate(-45deg)' : 'none' }} />
                     {selectedRoomData.isPinned ? t('dataChat.unpinChat') : t('dataChat.pinChat')}
                   </button>
-                  
+
                   <button
                     onClick={() => toggleMuteRoom(selectedRoom)}
                     style={{
@@ -5171,7 +5271,7 @@ export default function DataChatPage() {
                     {selectedRoomData.isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
                     {selectedRoomData.isMuted ? t('dataChat.unmuteNotifications') : t('dataChat.muteNotifications')}
                   </button>
-                  
+
                   <button
                     onClick={() => archiveRoom(selectedRoom)}
                     style={{
@@ -5189,7 +5289,7 @@ export default function DataChatPage() {
                     <Bookmark size={16} />
                     {t('dataChat.archiveChat')}
                   </button>
-                  
+
                   {selectedRoomData.status === 'spam' ? (
                     <button
                       onClick={() => unmarkSpam(selectedRoom)}
@@ -5227,7 +5327,7 @@ export default function DataChatPage() {
                       {t('dataChat.markSpam')}
                     </button>
                   )}
-                  
+
                   <button
                     onClick={() => {
                       if (confirm(t('dataChat.confirmClearMessages'))) {
@@ -5257,8 +5357,8 @@ export default function DataChatPage() {
       ) : (
         /* Empty State - shown when no room selected */
         <div style={{
-          flex: 1, 
-          display: isMobile ? (showMobileSidebar ? 'none' : 'flex') : 'flex', 
+          flex: 1,
+          display: isMobile ? (showMobileSidebar ? 'none' : 'flex') : 'flex',
           flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
           background: colors.bgPrimary,
@@ -5286,30 +5386,30 @@ export default function DataChatPage() {
           <p style={{ fontSize: isMobile ? 12 : 13, color: colors.textMuted, textAlign: 'center', maxWidth: 240, margin: '0 0 20px 0' }}>
             {t('dataChat.selectConversationDesc')}
           </p>
-          
+
           {/* Connection Status with Quality Indicator */}
-          <div style={{ 
+          <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
           }}>
-            <div style={{ 
+            <div style={{
               display: 'flex', alignItems: 'center', gap: 6,
               color: isConnected ? colors.accent : connectionState === 'reconnecting' ? colors.warning : '#ef4444',
             }}>
-              <span style={{ 
-                width: 10, height: 10, borderRadius: '50%', 
+              <span style={{
+                width: 10, height: 10, borderRadius: '50%',
                 background: 'currentColor',
                 animation: connectionState === 'reconnecting' ? 'pulse 1.5s ease-in-out infinite' : 'none',
               }} />
               <span style={{ fontSize: 13, fontWeight: 600 }}>
-                {connectionState === 'connected' ? t('dataChat.connected') : 
-                 connectionState === 'reconnecting' ? t('dataChat.reconnecting') : 
-                 connectionState === 'suspended' ? t('dataChat.suspended') : t('dataChat.disconnected')}
+                {connectionState === 'connected' ? t('dataChat.connected') :
+                  connectionState === 'reconnecting' ? t('dataChat.reconnecting') :
+                    connectionState === 'suspended' ? t('dataChat.suspended') : t('dataChat.disconnected')}
               </span>
             </div>
-            
+
             {/* Connection Quality Bar */}
             {isConnected && connectionHealth && (
-              <div style={{ 
+              <div style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '4px 10px', borderRadius: 12,
                 background: colors.bgTertiary,
@@ -5317,16 +5417,16 @@ export default function DataChatPage() {
               }}>
                 <div style={{ display: 'flex', gap: 2 }}>
                   {['excellent', 'good', 'fair', 'poor'].map((level, i) => (
-                    <div 
+                    <div
                       key={level}
                       style={{
-                        width: 4, 
+                        width: 4,
                         height: 8 + i * 3,
                         borderRadius: 2,
                         background: connectionHealth.quality === 'excellent' ? '#22c55e' :
-                                    connectionHealth.quality === 'good' ? '#84cc16' :
-                                    connectionHealth.quality === 'fair' ? '#eab308' :
-                                    connectionHealth.quality === 'poor' ? '#f97316' : colors.border,
+                          connectionHealth.quality === 'good' ? '#84cc16' :
+                            connectionHealth.quality === 'fair' ? '#eab308' :
+                              connectionHealth.quality === 'poor' ? '#f97316' : colors.border,
                         opacity: ['excellent', 'good', 'fair', 'poor'].indexOf(connectionHealth.quality) >= i ? 1 : 0.2,
                       }}
                     />
@@ -5335,7 +5435,7 @@ export default function DataChatPage() {
                 <span>{connectionHealth.latency}ms</span>
               </div>
             )}
-            
+
             {/* Reconnect Button */}
             {!isConnected && connectionState !== 'reconnecting' && (
               <button
@@ -5353,8 +5453,9 @@ export default function DataChatPage() {
           </div>
         </div>
       )}
-      
-      <style dangerouslySetInnerHTML={{ __html: `
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes typingDot { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -5368,6 +5469,20 @@ export default function DataChatPage() {
         }
         .viewing-eye {
           animation: eyeBlink 3s ease-in-out infinite, eyeGlow 2s ease-in-out infinite;
+        }
+        @keyframes avatarPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.08); }
+        }
+        @keyframes avatarGlow {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.2); }
+        }
+        .viewing-avatar {
+          animation: avatarPulse 2s ease-in-out infinite, avatarGlow 2s ease-in-out infinite;
+        }
+        .viewing-avatars {
+          animation: fadeIn 0.3s ease-out;
         }
         * { scrollbar-width: thin; scrollbar-color: ${colors.border} transparent; }
         *::-webkit-scrollbar { width: 6px; }
