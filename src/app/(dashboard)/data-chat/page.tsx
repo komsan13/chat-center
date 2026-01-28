@@ -604,6 +604,9 @@ export default function DataChatPage() {
             m.id === exists.id ? msg : m
           ));
         }
+      } else {
+        // Initialize cache for this room
+        messagesCacheRef.current.set(msg.roomId, [msg]);
       }
 
       // Update messages if viewing this room
@@ -633,8 +636,44 @@ export default function DataChatPage() {
       // Update rooms list and play sound if needed
       setRooms(prev => {
         const roomIndex = prev.findIndex(r => r.id === msg.roomId);
+
         if (roomIndex === -1) {
-          // Room not in state yet - it should be added by handleNewRoom or handleRoomUpdate
+          // Room not in state yet - play sound immediately for user messages
+          // and trigger a room fetch to add it
+          console.log('[Chat] 🆕 Message from unknown room, fetching room:', msg.roomId);
+
+          // Play sound for user messages from unknown rooms
+          if (msg.sender === 'user') {
+            playSound();
+          }
+
+          // Fetch the room from API to add it
+          fetch(`/api/chat/rooms/${msg.roomId}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(roomData => {
+              if (roomData) {
+                setRooms(current => {
+                  // Check if room was added while we were fetching
+                  if (current.some(r => r.id === roomData.id)) {
+                    // Just update the existing room
+                    return current.map(r => r.id === roomData.id
+                      ? { ...r, lastMessage: msg, lastMessageAt: msg.createdAt, unreadCount: (r.unreadCount || 0) + 1 }
+                      : r
+                    );
+                  }
+                  // Add the new room at the top
+                  const newRoom = {
+                    ...roomData,
+                    lastMessage: msg,
+                    lastMessageAt: msg.createdAt,
+                    unreadCount: msg.sender === 'user' ? 1 : 0,
+                  };
+                  return [newRoom, ...current];
+                });
+              }
+            })
+            .catch(err => console.error('[Chat] Failed to fetch room:', err));
+
           return prev;
         }
 
@@ -2507,93 +2546,94 @@ export default function DataChatPage() {
                       </span>
                       {room.isPinned && <Pin size={11} style={{ color: colors.accent, transform: 'rotate(-45deg)', flexShrink: 0 }} />}
                       {room.isMuted && <VolumeX size={11} style={{ color: colors.warning, flexShrink: 0 }} />}
-                      {/* Viewing Avatar Stack - shows who is viewing this room */}
-                      {viewingUsers[room.id]?.length > 0 && (() => {
-                        const viewers = viewingUsers[room.id];
-                        const maxVisible = 3;
-                        const visibleViewers = viewers.slice(0, maxVisible);
-                        const overflowCount = viewers.length - maxVisible;
+                    </div>
+                    {/* Viewing Avatar Stack - MOVED OUTSIDE the name container to always show */}
+                    {viewingUsers[room.id]?.length > 0 && (() => {
+                      const viewers = viewingUsers[room.id];
+                      const maxVisible = 3;
+                      const visibleViewers = viewers.slice(0, maxVisible);
+                      const overflowCount = viewers.length - maxVisible;
 
-                        // Avatar colors based on name hash
-                        const avatarColors = ['#22c55e', '#3b82f6', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4'];
-                        const getAvatarColor = (name: string) => {
-                          let hash = 0;
-                          for (let i = 0; i < name.length; i++) {
-                            hash = name.charCodeAt(i) + ((hash << 5) - hash);
-                          }
-                          return avatarColors[Math.abs(hash) % avatarColors.length];
-                        };
+                      // Avatar colors based on name hash
+                      const avatarColors = ['#22c55e', '#3b82f6', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4'];
+                      const getAvatarColor = (name: string) => {
+                        let hash = 0;
+                        for (let i = 0; i < name.length; i++) {
+                          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                        }
+                        return avatarColors[Math.abs(hash) % avatarColors.length];
+                      };
 
-                        return (
-                          <div
-                            className="viewing-avatars"
-                            title={`${viewers.map(v => v.userName).join(', ')} กำลังดูอยู่`}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              flexShrink: 0,
-                              marginLeft: 2,
-                            }}
-                          >
-                            {visibleViewers.map((viewer, idx) => {
-                              const bgColor = getAvatarColor(viewer.userName);
-                              const initial = viewer.userName.charAt(0).toUpperCase();
-                              return (
-                                <div
-                                  key={viewer.userName}
-                                  className="viewing-avatar"
-                                  style={{
-                                    width: 18,
-                                    height: 18,
-                                    borderRadius: '50%',
-                                    background: bgColor,
-                                    color: '#fff',
-                                    fontSize: 10,
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginLeft: idx > 0 ? -6 : 0,
-                                    border: `2px solid ${colors.bgSecondary}`,
-                                    zIndex: maxVisible - idx,
-                                    position: 'relative',
-                                    boxShadow: `0 0 0 1px ${bgColor}30`,
-                                  }}
-                                >
-                                  {initial}
-                                </div>
-                              );
-                            })}
-                            {overflowCount > 0 && (
+                      return (
+                        <div
+                          className="viewing-avatars"
+                          title={`${viewers.map(v => v.userName).join(', ')} กำลังดูอยู่`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                            marginLeft: 6,
+                            marginRight: 4,
+                          }}
+                        >
+                          {visibleViewers.map((viewer, idx) => {
+                            const bgColor = getAvatarColor(viewer.userName);
+                            const initial = viewer.userName.charAt(0).toUpperCase();
+                            return (
                               <div
+                                key={viewer.userName}
+                                className="viewing-avatar"
                                 style={{
                                   width: 18,
                                   height: 18,
                                   borderRadius: '50%',
-                                  background: colors.textMuted,
+                                  background: bgColor,
                                   color: '#fff',
-                                  fontSize: 9,
+                                  fontSize: 10,
                                   fontWeight: 600,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  marginLeft: -6,
+                                  marginLeft: idx > 0 ? -6 : 0,
                                   border: `2px solid ${colors.bgSecondary}`,
-                                  zIndex: 0,
+                                  zIndex: maxVisible - idx,
+                                  position: 'relative',
+                                  boxShadow: `0 0 0 1px ${bgColor}30`,
                                 }}
                               >
-                                +{overflowCount}
+                                {initial}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
+                            );
+                          })}
+                          {overflowCount > 0 && (
+                            <div
+                              style={{
+                                width: 18,
+                                height: 18,
+                                borderRadius: '50%',
+                                background: colors.textMuted,
+                                color: '#fff',
+                                fontSize: 9,
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginLeft: -6,
+                                border: `2px solid ${colors.bgSecondary}`,
+                                zIndex: 0,
+                              }}
+                            >
+                              +{overflowCount}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <span style={{
                       fontSize: 11,
                       color: room.unreadCount > 0 ? colors.accent : colors.textMuted,
                       fontWeight: room.unreadCount > 0 ? 600 : 400,
-                      flexShrink: 0, marginLeft: 8,
+                      flexShrink: 0, marginLeft: 'auto', paddingLeft: 4,
                     }}>
                       {room.lastMessageAt && formatTime(room.lastMessageAt)}
                     </span>
