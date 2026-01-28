@@ -7,14 +7,64 @@ import {
   MessageCircle, Settings, Clock,
   Loader2, Paperclip, Image as ImageIcon, FileText,
   Phone, Video, Bookmark, VolumeX, Volume2, Trash2, AlertTriangle,
-  ChevronDown, ChevronLeft, ChevronRight, User, Tag, FileEdit, Bell, BellOff, XCircle,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, User, Tag, FileEdit, Bell, BellOff, XCircle,
   Eye, MessageSquare, Coins, Headphones, MessageCircleHeart, CheckCircle2, Building2,
   Sparkles, BadgeDollarSign, Receipt, HandHeart, Star, ClipboardList, Smartphone,
-  Heart, HeartHandshake, Timer, Wrench, Info, Zap, ArrowRight
+  Heart, HeartHandshake, Timer, Wrench, Info, Zap, ArrowRight, Reply, Download, Copy, MoreHorizontal
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSocket } from '@/hooks/useSocket';
+
+// Skeleton Loading Component
+const Skeleton = ({ width, height, circle = false, style = {} }: { 
+  width?: string | number; 
+  height?: string | number; 
+  circle?: boolean;
+  style?: React.CSSProperties 
+}) => (
+  <div style={{
+    width: width || '100%',
+    height: height || 16,
+    borderRadius: circle ? '50%' : 8,
+    background: 'linear-gradient(90deg, rgba(128,128,128,0.1) 25%, rgba(128,128,128,0.2) 50%, rgba(128,128,128,0.1) 75%)',
+    backgroundSize: '200% 100%',
+    animation: 'shimmer 1.5s infinite',
+    ...style,
+  }} />
+);
+
+// Room Skeleton Component
+const RoomSkeleton = () => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px' }}>
+    <Skeleton width={48} height={48} circle />
+    <div style={{ flex: 1 }}>
+      <Skeleton width="60%" height={14} style={{ marginBottom: 8 }} />
+      <Skeleton width="80%" height={12} />
+    </div>
+    <Skeleton width={40} height={10} />
+  </div>
+);
+
+// Message Skeleton Component
+const MessageSkeleton = ({ isUser = false }: { isUser?: boolean }) => (
+  <div style={{ 
+    display: 'flex', 
+    justifyContent: isUser ? 'flex-end' : 'flex-start',
+    padding: '8px 24px',
+    gap: 10,
+  }}>
+    {!isUser && <Skeleton width={36} height={36} circle />}
+    <div style={{ maxWidth: '60%' }}>
+      <Skeleton 
+        width={isUser ? 180 : 220} 
+        height={isUser ? 44 : 60} 
+        style={{ borderRadius: 16 }} 
+      />
+      <Skeleton width={50} height={10} style={{ marginTop: 4, marginLeft: isUser ? 'auto' : 0 }} />
+    </div>
+  </div>
+);
 
 interface LineEmoji {
   index: number;
@@ -55,6 +105,7 @@ interface ChatRoom {
   isPinned: boolean;
   isMuted: boolean;
   tags: string[];
+  customerLabel?: string;
   status: 'active' | 'archived' | 'blocked' | 'spam';
   createdAt: string;
   updatedAt: string;
@@ -113,6 +164,31 @@ export default function DataChatPage() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [chatSearchTerm, setChatSearchTerm] = useState('');
   const [showChatSearch, setShowChatSearch] = useState(false);
+
+  // Reply/Quote state
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+
+  // Pinned messages state
+  const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
+  const [showPinnedMessages, setShowPinnedMessages] = useState(false);
+
+  // Customer labels state
+  const [showLabelPicker, setShowLabelPicker] = useState(false);
+  const [newMessageIds, setNewMessageIds] = useState<Set<string>>(new Set());
+  const predefinedLabels = [
+    { name: 'VIP', color: '#f59e0b', icon: '⭐' },
+    { name: 'New', color: '#22c55e', icon: '🆕' },
+    { name: 'Important', color: '#ef4444', icon: '🔴' },
+    { name: 'Follow-up', color: '#3b82f6', icon: '📌' },
+    { name: 'Resolved', color: '#10b981', icon: '✅' },
+    { name: 'Pending', color: '#f97316', icon: '⏳' },
+    { name: 'Hot Lead', color: '#ec4899', icon: '🔥' },
+    { name: 'Complaint', color: '#dc2626', icon: '⚠️' },
+  ];
+
+  // Search highlights state
+  const [searchHighlightIndex, setSearchHighlightIndex] = useState(-1);
+  const [searchResults, setSearchResults] = useState<number[]>([]);
 
   // LINE Token selection state
   const [lineTokens, setLineTokens] = useState<LineToken[]>([]);
@@ -622,6 +698,20 @@ export default function DataChatPage() {
               m.packageId === msg.packageId && m.stickerId === msg.stickerId && m.sender === msg.sender)
           );
           if (!exists) {
+            // Add animation tracking for new message
+            setNewMessageIds(ids => {
+              const newIds = new Set(ids);
+              newIds.add(msg.id);
+              // Remove after animation completes
+              setTimeout(() => {
+                setNewMessageIds(prev => {
+                  const updated = new Set(prev);
+                  updated.delete(msg.id);
+                  return updated;
+                });
+              }, 500);
+              return newIds;
+            });
             return [...prev, msg];
           } else if (exists.id?.startsWith('temp-')) {
             // Replace temp message with real one
@@ -1162,6 +1252,7 @@ export default function DataChatPage() {
 
     // Parse LINE emojis from pending array
     const emojisToSend = pendingEmojis.length > 0 ? [...pendingEmojis] : undefined;
+    const replyToMessage = replyingTo;
 
     const tempId = `temp-${Date.now()}`;
     const tempMessage: Message = {
@@ -1174,11 +1265,13 @@ export default function DataChatPage() {
       status: 'sending',
       createdAt: new Date().toISOString(),
       emojis: emojisToSend, // Include emojis data for preview
+      replyToId: replyToMessage?.id,
     };
 
     setMessages(prev => [...prev, tempMessage]);
     setMessage('');
     setPendingEmojis([]); // Clear pending emojis after sending
+    setReplyingTo(null); // Clear reply
     setShowQuickReplies(false);
     setShowEmojiPicker(false);
 
@@ -1196,6 +1289,7 @@ export default function DataChatPage() {
           content: content.trim(),
           senderName: currentUser?.name || 'Agent',
           emojis: emojisToSend,
+          replyToId: replyToMessage?.id,
         }),
       });
 
@@ -1725,6 +1819,199 @@ export default function DataChatPage() {
     const newTags = (room.tags || []).filter(t => t !== tag);
     await updateRoom(selectedRoom, { tags: newTags });
   };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // REPLY/QUOTE MESSAGE
+  // ═══════════════════════════════════════════════════════════════════
+  const handleReplyToMessage = useCallback((msg: Message) => {
+    setReplyingTo(msg);
+    // Focus the message editor
+    if (messageEditorRef.current) {
+      messageEditorRef.current.focus();
+    }
+  }, []);
+
+  const cancelReply = useCallback(() => {
+    setReplyingTo(null);
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PIN MESSAGE IN CHAT
+  // ═══════════════════════════════════════════════════════════════════
+  const pinMessage = useCallback(async (msg: Message) => {
+    if (!selectedRoom) return;
+    try {
+      const response = await fetch(`/api/chat/rooms/${selectedRoom}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pinnedMessages: {
+            action: 'add',
+            message: msg,
+          }
+        }),
+      });
+      if (response.ok) {
+        setPinnedMessages(prev => [...prev, msg]);
+      }
+    } catch (error) {
+      console.error('Failed to pin message:', error);
+    }
+  }, [selectedRoom]);
+
+  const unpinMessage = useCallback(async (msgId: string) => {
+    if (!selectedRoom) return;
+    try {
+      const response = await fetch(`/api/chat/rooms/${selectedRoom}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pinnedMessages: {
+            action: 'remove',
+            messageId: msgId,
+          }
+        }),
+      });
+      if (response.ok) {
+        setPinnedMessages(prev => prev.filter(m => m.id !== msgId));
+      }
+    } catch (error) {
+      console.error('Failed to unpin message:', error);
+    }
+  }, [selectedRoom]);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // SEARCH IN CHAT HISTORY - Navigate results
+  // ═══════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (chatSearchTerm) {
+      const indices: number[] = [];
+      messages.forEach((msg, idx) => {
+        if (msg.content?.toLowerCase().includes(chatSearchTerm.toLowerCase())) {
+          indices.push(idx);
+        }
+      });
+      setSearchResults(indices);
+      setSearchHighlightIndex(indices.length > 0 ? 0 : -1);
+    } else {
+      setSearchResults([]);
+      setSearchHighlightIndex(-1);
+    }
+  }, [chatSearchTerm, messages]);
+
+  const navigateSearchResult = useCallback((direction: 'prev' | 'next') => {
+    if (searchResults.length === 0) return;
+    
+    let newIndex = searchHighlightIndex;
+    if (direction === 'next') {
+      newIndex = (searchHighlightIndex + 1) % searchResults.length;
+    } else {
+      newIndex = searchHighlightIndex <= 0 ? searchResults.length - 1 : searchHighlightIndex - 1;
+    }
+    setSearchHighlightIndex(newIndex);
+    
+    // Scroll to the message
+    const messageIndex = searchResults[newIndex];
+    const messageEl = document.getElementById(`message-${messages[messageIndex]?.id}`);
+    if (messageEl) {
+      messageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [searchResults, searchHighlightIndex, messages]);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // EXPORT CHAT
+  // ═══════════════════════════════════════════════════════════════════
+  const exportChat = useCallback(async (format: 'text' | 'json') => {
+    if (!selectedRoomData || messages.length === 0) return;
+    
+    const roomName = selectedRoomData.displayName;
+    const timestamp = new Date().toISOString().slice(0, 10);
+    
+    if (format === 'text') {
+      let content = `Chat History: ${roomName}\n`;
+      content += `Exported: ${new Date().toLocaleString('th-TH')}\n`;
+      content += `${'═'.repeat(50)}\n\n`;
+      
+      messages.forEach(msg => {
+        const time = new Date(msg.createdAt).toLocaleString('th-TH');
+        const sender = msg.sender === 'agent' ? (msg.senderName || 'Agent') : roomName;
+        content += `[${time}] ${sender}:\n`;
+        content += `${msg.content || (msg.messageType === 'image' ? '[Image]' : msg.messageType === 'sticker' ? '[Sticker]' : '[Media]')}\n\n`;
+      });
+      
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chat_${roomName}_${timestamp}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const data = {
+        room: {
+          id: selectedRoomData.id,
+          displayName: roomName,
+          createdAt: selectedRoomData.createdAt,
+          tags: selectedRoomData.tags,
+        },
+        messages: messages.map(m => ({
+          id: m.id,
+          content: m.content,
+          messageType: m.messageType,
+          sender: m.sender,
+          senderName: m.senderName,
+          createdAt: m.createdAt,
+        })),
+        exportedAt: new Date().toISOString(),
+      };
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chat_${roomName}_${timestamp}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }, [selectedRoomData, messages]);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // KEYBOARD SHORTCUTS
+  // ═══════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape - close modals/popups
+      if (e.key === 'Escape') {
+        if (showQuickReplies) setShowQuickReplies(false);
+        else if (showEmojiPicker) setShowEmojiPicker(false);
+        else if (showQuickReplyModal) setShowQuickReplyModal(false);
+        else if (showChatSearch) { setShowChatSearch(false); setChatSearchTerm(''); }
+        else if (replyingTo) setReplyingTo(null);
+        else if (showChannelModal) setShowChannelModal(false);
+      }
+      
+      // Ctrl/Cmd + F - Search in chat
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && selectedRoom) {
+        e.preventDefault();
+        setShowChatSearch(true);
+      }
+      
+      // Ctrl/Cmd + K - Quick command (open quick replies)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k' && selectedRoom) {
+        e.preventDefault();
+        setShowQuickReplies(true);
+      }
+      
+      // F3 or Ctrl+G - Next search result
+      if ((e.key === 'F3' || ((e.ctrlKey || e.metaKey) && e.key === 'g')) && showChatSearch) {
+        e.preventDefault();
+        navigateSearchResult(e.shiftKey ? 'prev' : 'next');
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showQuickReplies, showEmojiPicker, showQuickReplyModal, showChatSearch, replyingTo, showChannelModal, selectedRoom, navigateSearchResult]);
 
   // ═══════════════════════════════════════════════════════════════════
   // HELPER FUNCTIONS
@@ -2458,8 +2745,8 @@ export default function DataChatPage() {
         {/* Chat List */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {isLoadingRooms ? (
-            <div style={{ padding: 40, textAlign: 'center' }}>
-              <Loader2 size={24} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
+            <div>
+              {[...Array(6)].map((_, i) => <RoomSkeleton key={i} />)}
             </div>
           ) : filteredRooms.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center' }}>
@@ -3204,9 +3491,103 @@ export default function DataChatPage() {
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
                   onMouseLeave={(e) => e.currentTarget.style.background = showChatSearch ? colors.accentLight : colors.bgTertiary}
+                  title="Ctrl+F"
                 >
                   <Search size={14} /> {!isMobile && 'Search'}
                 </button>
+
+                {/* Pin Button */}
+                {pinnedMessages.length > 0 && (
+                  <button
+                    onClick={() => setShowPinnedMessages(!showPinnedMessages)}
+                    style={{
+                      padding: isMobile ? 8 : '8px 14px', borderRadius: 6,
+                      background: showPinnedMessages ? colors.accentLight : colors.bgTertiary,
+                      border: `1px solid ${colors.border}`,
+                      color: showPinnedMessages ? colors.accent : colors.textSecondary,
+                      fontSize: 12, fontWeight: 500,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 6,
+                      transition: 'all 0.15s ease',
+                      position: 'relative',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                    onMouseLeave={(e) => e.currentTarget.style.background = showPinnedMessages ? colors.accentLight : colors.bgTertiary}
+                  >
+                    <Pin size={14} /> {!isMobile && `${pinnedMessages.length}`}
+                  </button>
+                )}
+                
+                {/* Export Button */}
+                {!isMobile && (
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const menu = document.getElementById('export-menu');
+                        if (menu) {
+                          menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+                          menu.style.top = `${rect.bottom + 4}px`;
+                          menu.style.right = `${window.innerWidth - rect.right}px`;
+                        }
+                      }}
+                      style={{
+                        padding: '8px 14px', borderRadius: 6,
+                        background: colors.bgTertiary,
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textSecondary,
+                        fontSize: 12, fontWeight: 500,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                      onMouseLeave={(e) => e.currentTarget.style.background = colors.bgTertiary}
+                    >
+                      <Download size={14} /> Export
+                    </button>
+                    <div
+                      id="export-menu"
+                      style={{
+                        display: 'none',
+                        position: 'fixed',
+                        background: colors.bgSecondary,
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: 8,
+                        boxShadow: colors.shadowMd,
+                        zIndex: 1000,
+                        overflow: 'hidden',
+                        minWidth: 150,
+                      }}
+                    >
+                      <button
+                        onClick={() => { exportChat('text'); document.getElementById('export-menu')!.style.display = 'none'; }}
+                        style={{
+                          width: '100%', padding: '10px 14px', border: 'none',
+                          background: 'transparent', color: colors.textPrimary,
+                          fontSize: 13, textAlign: 'left', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <FileText size={14} /> Export as Text
+                      </button>
+                      <button
+                        onClick={() => { exportChat('json'); document.getElementById('export-menu')!.style.display = 'none'; }}
+                        style={{
+                          width: '100%', padding: '10px 14px', border: 'none',
+                          background: 'transparent', color: colors.textPrimary,
+                          fontSize: 13, textAlign: 'left', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <Download size={14} /> Export as JSON
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 {!isMobile && !isTablet && !isSmallDesktop && (
                   <button
                     onClick={() => setShowRightPanel(!showRightPanel)}
@@ -3245,10 +3626,44 @@ export default function DataChatPage() {
                     flex: 1, border: 'none', background: 'transparent',
                     color: colors.textPrimary, fontSize: 14, outline: 'none',
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      navigateSearchResult(e.shiftKey ? 'prev' : 'next');
+                    }
+                  }}
                 />
-                {chatSearchTerm && (
+                {searchResults.length > 0 && (
+                  <>
+                    <span style={{ fontSize: 12, color: colors.textMuted, whiteSpace: 'nowrap' }}>
+                      {searchHighlightIndex + 1} / {searchResults.length}
+                    </span>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      <button
+                        onClick={() => navigateSearchResult('prev')}
+                        style={{
+                          width: 24, height: 24, borderRadius: 4, border: 'none',
+                          background: colors.bgTertiary, color: colors.textSecondary,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        onClick={() => navigateSearchResult('next')}
+                        style={{
+                          width: 24, height: 24, borderRadius: 4, border: 'none',
+                          background: colors.bgTertiary, color: colors.textSecondary,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                  </>
+                )}
+                {chatSearchTerm && searchResults.length === 0 && (
                   <span style={{ fontSize: 12, color: colors.textMuted }}>
-                    {messages.filter(m => m.content?.toLowerCase().includes(chatSearchTerm.toLowerCase())).length} found
+                    No results
                   </span>
                 )}
                 <button
@@ -3264,11 +3679,101 @@ export default function DataChatPage() {
               </div>
             )}
 
+            {/* Pinned Messages Bar */}
+            {pinnedMessages.length > 0 && (
+              <div style={{
+                padding: '8px 16px',
+                background: `${colors.accent}10`,
+                borderBottom: `1px solid ${colors.border}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Pin size={14} style={{ color: colors.accent }} />
+                  <button
+                    onClick={() => setShowPinnedMessages(!showPinnedMessages)}
+                    style={{
+                      background: 'none', border: 'none', color: colors.accent,
+                      fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 4,
+                    }}
+                  >
+                    {pinnedMessages.length} pinned message{pinnedMessages.length > 1 ? 's' : ''}
+                    <ChevronDown size={14} style={{ 
+                      transform: showPinnedMessages ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.2s'
+                    }} />
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Pinned Messages Dropdown */}
+            {showPinnedMessages && pinnedMessages.length > 0 && (
+              <div style={{
+                maxHeight: 200, overflowY: 'auto',
+                background: colors.bgSecondary,
+                borderBottom: `1px solid ${colors.border}`,
+              }}>
+                {pinnedMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    onClick={() => {
+                      const el = document.getElementById(`message-${msg.id}`);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.style.background = `${colors.accent}20`;
+                        setTimeout(() => { el.style.background = 'transparent'; }, 2000);
+                      }
+                      setShowPinnedMessages(false);
+                    }}
+                    style={{
+                      padding: '10px 16px',
+                      cursor: 'pointer', borderBottom: `1px solid ${colors.border}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = colors.bgHover}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{
+                        fontSize: 13, color: colors.textPrimary, margin: 0,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {msg.content || `[${msg.messageType}]`}
+                      </p>
+                      <p style={{ fontSize: 11, color: colors.textMuted, margin: '4px 0 0 0' }}>
+                        {msg.sender === 'agent' ? 'You' : selectedRoomData.displayName} • {formatTime(msg.createdAt)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        unpinMessage(msg.id);
+                      }}
+                      style={{
+                        width: 24, height: 24, borderRadius: 4, border: 'none',
+                        background: colors.bgTertiary, color: colors.textMuted,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0, marginLeft: 8,
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Messages */}
             <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '20px 24px', background: colors.bgPrimary }}>
               {isLoadingMessages ? (
-                <div style={{ textAlign: 'center', padding: 40 }}>
-                  <Loader2 size={24} style={{ color: colors.accent, animation: 'spin 1s linear infinite' }} />
+                <div>
+                  <MessageSkeleton isUser={false} />
+                  <MessageSkeleton isUser={true} />
+                  <MessageSkeleton isUser={false} />
+                  <MessageSkeleton isUser={true} />
+                  <MessageSkeleton isUser={false} />
                 </div>
               ) : messages.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 40 }}>
@@ -3286,8 +3791,28 @@ export default function DataChatPage() {
                         new Date(filteredMsgs[idx + 1]?.createdAt).getTime() - new Date(msg.createdAt).getTime() > 300000;
 
                       return (
-                        <div key={msg.id} style={{ marginBottom: showTime ? 12 : 2 }}>
-                          <div style={{ display: 'flex', justifyContent: isAgent ? 'flex-end' : 'flex-start', alignItems: 'flex-end', gap: isMobile ? 6 : 8 }}>
+                        <div 
+                          key={msg.id} 
+                          id={`message-${msg.id}`}
+                          className={`message-container ${newMessageIds.has(msg.id) ? 'message-new' : ''}`}
+                          style={{ 
+                            marginBottom: showTime ? 12 : 2,
+                            // Highlight if this is the current search result
+                            background: searchResults.length > 0 && messages[searchResults[searchHighlightIndex]]?.id === msg.id
+                              ? `${colors.accent}15`
+                              : 'transparent',
+                            borderRadius: 8,
+                            padding: searchResults.length > 0 && messages[searchResults[searchHighlightIndex]]?.id === msg.id ? '4px' : 0,
+                            transition: 'background 0.2s ease',
+                          }}
+                        >
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: isAgent ? 'flex-end' : 'flex-start', 
+                            alignItems: 'flex-end', 
+                            gap: isMobile ? 6 : 8,
+                            position: 'relative',
+                          }}>
                             {/* User avatar (left side) */}
                             {!isAgent && (
                               <div style={{ width: isMobile ? 28 : 32, flexShrink: 0 }}>
@@ -3300,6 +3825,37 @@ export default function DataChatPage() {
                                     </div>
                                   )
                                 )}
+                              </div>
+                            )}
+
+                            {/* Message Actions (hover menu) - Before bubble for agent, after for user */}
+                            {!isMobile && isAgent && (
+                              <div className="message-actions" style={{
+                                display: 'flex', gap: 2, opacity: 0,
+                                transition: 'opacity 0.15s ease',
+                                marginRight: 4,
+                              }}>
+                                <button
+                                  onClick={() => handleReplyToMessage(msg)}
+                                  style={{ width: 26, height: 26, borderRadius: 4, border: 'none', background: colors.bgTertiary, color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  title="Reply"
+                                >
+                                  <Reply size={12} />
+                                </button>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(msg.content || '')}
+                                  style={{ width: 26, height: 26, borderRadius: 4, border: 'none', background: colors.bgTertiary, color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  title="Copy"
+                                >
+                                  <Copy size={12} />
+                                </button>
+                                <button
+                                  onClick={() => pinMessage(msg)}
+                                  style={{ width: 26, height: 26, borderRadius: 4, border: 'none', background: colors.bgTertiary, color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  title="Pin"
+                                >
+                                  <Pin size={12} />
+                                </button>
                               </div>
                             )}
 
@@ -3316,6 +3872,32 @@ export default function DataChatPage() {
                             )}
 
                             <div style={{ maxWidth: isMobile ? '80%' : '65%' }}>
+                              {/* Reply preview if this message is replying to another */}
+                              {msg.replyToId && (() => {
+                                const replyTo = messages.find(m => m.id === msg.replyToId);
+                                if (!replyTo) return null;
+                                return (
+                                  <div style={{
+                                    padding: '6px 10px',
+                                    marginBottom: 4,
+                                    borderRadius: '8px 8px 0 0',
+                                    background: isAgent ? 'rgba(255,255,255,0.1)' : colors.bgTertiary,
+                                    borderLeft: `3px solid ${colors.accent}`,
+                                    fontSize: 11,
+                                    color: colors.textMuted,
+                                    maxWidth: '100%',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}>
+                                    <div style={{ fontWeight: 600, marginBottom: 2 }}>
+                                      {replyTo.sender === 'agent' ? (replyTo.senderName || 'Agent') : selectedRoomData?.displayName}
+                                    </div>
+                                    {replyTo.content?.substring(0, 50)}{replyTo.content && replyTo.content.length > 50 ? '...' : ''}
+                                  </div>
+                                );
+                              })()}
+                              
                               {msg.stickerId ? (
                                 <div>{renderSticker(msg.packageId || msg.stickerPackageId, msg.stickerId)}</div>
                               ) : msg.messageType === 'image' && msg.mediaUrl ? (
@@ -3425,6 +4007,37 @@ export default function DataChatPage() {
                                 <span style={{ fontSize: 10, color: colors.textMuted }}>
                                   {new Date(msg.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
+                              </div>
+                            )}
+
+                            {/* Message Actions for user messages (right side) */}
+                            {!isMobile && !isAgent && (
+                              <div className="message-actions" style={{
+                                display: 'flex', gap: 2, opacity: 0,
+                                transition: 'opacity 0.15s ease',
+                                marginLeft: 4,
+                              }}>
+                                <button
+                                  onClick={() => handleReplyToMessage(msg)}
+                                  style={{ width: 26, height: 26, borderRadius: 4, border: 'none', background: colors.bgTertiary, color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  title="Reply"
+                                >
+                                  <Reply size={12} />
+                                </button>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(msg.content || '')}
+                                  style={{ width: 26, height: 26, borderRadius: 4, border: 'none', background: colors.bgTertiary, color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  title="Copy"
+                                >
+                                  <Copy size={12} />
+                                </button>
+                                <button
+                                  onClick={() => pinMessage(msg)}
+                                  style={{ width: 26, height: 26, borderRadius: 4, border: 'none', background: colors.bgTertiary, color: colors.textMuted, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  title="Pin"
+                                >
+                                  <Pin size={12} />
+                                </button>
                               </div>
                             )}
                           </div>
@@ -4694,8 +5307,45 @@ export default function DataChatPage() {
               </div>
             )}
 
+            {/* Reply Preview Bar */}
+            {replyingTo && (
+              <div style={{
+                padding: '10px 16px',
+                background: colors.bgSecondary,
+                borderTop: `1px solid ${colors.border}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}>
+                <div style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  background: colors.bgTertiary,
+                  borderRadius: 8,
+                  borderLeft: `3px solid ${colors.accent}`,
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: colors.accent, marginBottom: 2 }}>
+                    Replying to {replyingTo.sender === 'agent' ? (replyingTo.senderName || 'Agent') : selectedRoomData?.displayName}
+                  </div>
+                  <div style={{ fontSize: 12, color: colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {replyingTo.messageType === 'image' ? '📷 Photo' : replyingTo.messageType === 'sticker' ? '📦 Sticker' : replyingTo.content?.substring(0, 60)}{replyingTo.content && replyingTo.content.length > 60 ? '...' : ''}
+                  </div>
+                </div>
+                <button
+                  onClick={cancelReply}
+                  style={{
+                    width: 32, height: 32, borderRadius: 6, border: 'none',
+                    background: colors.bgTertiary, color: colors.textMuted,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
             {/* Input Area */}
-            <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', background: colors.bgSecondary, borderTop: `1px solid ${colors.border}` }}>
+            <div style={{ padding: isMobile ? '10px 12px' : '12px 16px', background: colors.bgSecondary, borderTop: replyingTo ? 'none' : `1px solid ${colors.border}` }}>
               {/* ContentEditable Message Input */}
               <div style={{
                 position: 'relative',
@@ -4972,6 +5622,66 @@ export default function DataChatPage() {
                 </p>
               </div>
 
+              {/* Customer Stats Section */}
+              <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{
+                    padding: 12, borderRadius: 8,
+                    background: colors.bgTertiary,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: colors.accent, marginBottom: 2 }}>
+                      {messages.length}
+                    </div>
+                    <div style={{ fontSize: 10, color: colors.textMuted, fontWeight: 500 }}>Messages</div>
+                  </div>
+                  <div style={{
+                    padding: 12, borderRadius: 8,
+                    background: colors.bgTertiary,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: colors.info, marginBottom: 2 }}>
+                      {messages.filter(m => m.sender === 'user').length}
+                    </div>
+                    <div style={{ fontSize: 10, color: colors.textMuted, fontWeight: 500 }}>From User</div>
+                  </div>
+                </div>
+                
+                {/* Quick Info */}
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 11, color: colors.textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Clock size={12} /> First Contact
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: colors.textPrimary }}>
+                      {new Date(selectedRoomData.createdAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 11, color: colors.textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <MessageCircle size={12} /> Last Active
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: colors.textPrimary }}>
+                      {selectedRoomData.lastMessageAt 
+                        ? formatTime(selectedRoomData.lastMessageAt)
+                        : 'N/A'
+                      }
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 11, color: colors.textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <User size={12} /> LINE User ID
+                    </span>
+                    <span style={{ 
+                      fontSize: 10, fontWeight: 500, color: colors.textMuted,
+                      maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {selectedRoomData.lineUserId.substring(0, 12)}...
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Tags Section */}
               <div style={{ padding: 20, borderBottom: `1px solid ${colors.border}` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -5092,6 +5802,110 @@ export default function DataChatPage() {
                     >
                       <Plus size={14} /> Add tags
                     </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Customer Labels Section */}
+              <div style={{ padding: '16px 20px', borderBottom: `1px solid ${colors.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>Customer Label</span>
+                  <button
+                    onClick={() => setShowLabelPicker(!showLabelPicker)}
+                    style={{
+                      width: 24, height: 24, borderRadius: 6, border: 'none',
+                      background: showLabelPicker ? colors.accentLight : 'transparent',
+                      color: colors.accent,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <ChevronDown size={14} style={{ transform: showLabelPicker ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  </button>
+                </div>
+
+                {/* Current Label Display */}
+                {selectedRoomData.customerLabel ? (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '6px 12px', borderRadius: 16,
+                    background: predefinedLabels.find(l => l.name === selectedRoomData.customerLabel)?.color || colors.accent,
+                    color: '#fff', fontSize: 12, fontWeight: 500,
+                  }}>
+                    {predefinedLabels.find(l => l.name === selectedRoomData.customerLabel)?.icon || '🏷️'} {selectedRoomData.customerLabel}
+                    <button
+                      onClick={() => {
+                        // Remove label - need to update room
+                        setRooms(rooms => rooms.map(r =>
+                          r.id === selectedRoomData.id ? { ...r, customerLabel: undefined } : r
+                        ));
+                      }}
+                      style={{
+                        width: 16, height: 16, borderRadius: '50%', border: 'none',
+                        background: 'rgba(255,255,255,0.2)', color: '#fff',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        marginLeft: 2,
+                      }}
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    border: `1px dashed ${colors.border}`,
+                    background: colors.bgPrimary, textAlign: 'center',
+                    fontSize: 12, color: colors.textMuted,
+                  }}>
+                    No label assigned
+                  </div>
+                )}
+
+                {/* Label Picker */}
+                {showLabelPicker && (
+                  <div style={{
+                    marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr',
+                    gap: 6,
+                  }}>
+                    {predefinedLabels.map((label) => (
+                      <button
+                        key={label.name}
+                        onClick={() => {
+                          setRooms(rooms => rooms.map(r =>
+                            r.id === selectedRoomData.id ? { ...r, customerLabel: label.name } : r
+                          ));
+                          setShowLabelPicker(false);
+                        }}
+                        style={{
+                          padding: '8px 10px', borderRadius: 8,
+                          border: selectedRoomData.customerLabel === label.name 
+                            ? `2px solid ${label.color}` 
+                            : `1px solid ${colors.border}`,
+                          background: selectedRoomData.customerLabel === label.name 
+                            ? `${label.color}20` 
+                            : colors.bgPrimary,
+                          color: colors.textPrimary, fontSize: 11, fontWeight: 500,
+                          cursor: 'pointer', transition: 'all 0.15s ease',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          justifyContent: 'flex-start',
+                        }}
+                        onMouseEnter={(e) => { 
+                          e.currentTarget.style.background = `${label.color}15`; 
+                          e.currentTarget.style.borderColor = label.color;
+                        }}
+                        onMouseLeave={(e) => { 
+                          e.currentTarget.style.background = selectedRoomData.customerLabel === label.name ? `${label.color}20` : colors.bgPrimary;
+                          e.currentTarget.style.borderColor = selectedRoomData.customerLabel === label.name ? label.color : colors.border;
+                        }}
+                      >
+                        <span style={{ 
+                          width: 10, height: 10, borderRadius: '50%', 
+                          background: label.color,
+                          flexShrink: 0,
+                        }} />
+                        <span style={{ fontSize: 11 }}>{label.icon}</span>
+                        {label.name}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -5523,6 +6337,17 @@ export default function DataChatPage() {
             background: rgba(0, 0, 0, 0.5);
             z-index: 40;
           }
+        }
+        
+        /* Message hover actions */
+        .message-container:hover .message-actions {
+          opacity: 1 !important;
+        }
+        
+        /* Search highlight animation */
+        @keyframes highlightPulse {
+          0%, 100% { background: ${colors.accent}15; }
+          50% { background: ${colors.accent}25; }
         }
       `}} />
     </div>
