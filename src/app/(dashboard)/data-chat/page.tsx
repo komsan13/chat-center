@@ -713,10 +713,11 @@ export default function DataChatPage() {
   const handleViewingEvent = useCallback((data: { roomId: string; userName: string; isViewing: boolean }) => {
     if (!data || !data.roomId || !data.userName) return;
 
-    console.log('[Viewing Event]', data);
+    console.log('[Viewing Event] Received:', data);
 
     setViewingUsers(prev => {
       const roomViewers = prev[data.roomId] || [];
+      console.log('[Viewing Event] Current viewers for room', data.roomId, ':', roomViewers.map(v => v.userName));
 
       if (data.isViewing) {
         // Check if user already exists
@@ -724,10 +725,12 @@ export default function DataChatPage() {
         if (existingIndex >= 0) {
           // Clear old timeout and update
           clearTimeout(roomViewers[existingIndex].timeout);
+          console.log('[Viewing Event] User already exists, updating:', data.userName);
         }
 
         // Set timeout to auto-remove after 30 seconds (in case leave event is missed)
         const timeout = setTimeout(() => {
+          console.log('[Viewing Event] Timeout expired, removing:', data.userName);
           setViewingUsers(p => {
             const viewers = p[data.roomId] || [];
             return {
@@ -742,17 +745,22 @@ export default function DataChatPage() {
         if (existingIndex >= 0) {
           const updated = [...roomViewers];
           updated[existingIndex] = newViewer;
+          console.log('[Viewing Event] Updated state - viewers now:', updated.map(v => v.userName));
           return { ...prev, [data.roomId]: updated };
         } else {
-          return { ...prev, [data.roomId]: [...roomViewers, newViewer] };
+          const newViewers = [...roomViewers, newViewer];
+          console.log('[Viewing Event] Added new viewer - viewers now:', newViewers.map(v => v.userName));
+          return { ...prev, [data.roomId]: newViewers };
         }
       } else {
         // Remove viewer
         const viewer = roomViewers.find(v => v.userName === data.userName);
         if (viewer?.timeout) clearTimeout(viewer.timeout);
+        const filteredViewers = roomViewers.filter(v => v.userName !== data.userName);
+        console.log('[Viewing Event] Removed viewer - viewers now:', filteredViewers.map(v => v.userName));
         return {
           ...prev,
-          [data.roomId]: roomViewers.filter(v => v.userName !== data.userName)
+          [data.roomId]: filteredViewers
         };
       }
     });
