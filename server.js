@@ -236,6 +236,8 @@ app.prepare().then(() => {
       if (roomId && userName) {
         // Store viewing info in socket for cleanup on disconnect
         socket.viewingInfo = { roomId, userName };
+        console.log(`[Socket.IO] 👁️ Viewing start: ${userName} viewing room ${roomId}`);
+        console.log(`[Socket.IO] 📡 Broadcasting user-viewing to all-rooms (${io.sockets.adapter.rooms.get('all-rooms')?.size || 0} clients)`);
         io.to('all-rooms').emit('user-viewing', {
           roomId,
           userName,
@@ -249,6 +251,7 @@ app.prepare().then(() => {
       if (roomId && userName) {
         // Clear viewing info
         socket.viewingInfo = null;
+        console.log(`[Socket.IO] 👁️ Viewing stop: ${userName} left room ${roomId}`);
         io.to('all-rooms').emit('user-viewing', {
           roomId,
           userName,
