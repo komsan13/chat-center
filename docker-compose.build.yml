@@ -33,6 +33,20 @@ services:
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+    networks:
+      - web_proxy
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web_proxy"
+      - "traefik.http.routers.aurix-dashboard.rule=Host(`aurix-center.cloud`)"
+      - "traefik.http.routers.aurix-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.aurix-dashboard.tls.certresolver=myresolver"
+      - "traefik.http.services.aurix-dashboard.loadbalancer.server.port=3001"
 
 volumes:
   postgres_data:
+
+networks:
+  web_proxy:
+    external: true
