@@ -543,7 +543,7 @@ export function useSocket(options: UseSocketOptions = {}) {
   }, []);
 
   const emitRoomRead = useCallback((roomId: string, userName?: string) => {
-    socketRef.current?.emit('room-read', { roomId, userName });
+    socketRef.current?.emit('room-read', { roomId, userName: userName || 'Agent' });
   }, []);
 
   const emitRoomPropertyUpdate = useCallback((roomId: string, updates: RoomPropertyUpdate) => {
