@@ -392,26 +392,22 @@ export function useSocket(options: UseSocketOptions = {}) {
     // ═══════════════════════════════════════════════════════════════════════
 
     socket.on('new-message', (message: ChatMessage) => {
-      console.log(`[Socket] 📨 New message received:`, message.id, message.roomId);
       // Always call the callback - let the page decide what to do
       // This ensures all messages are recorded regardless of channel selection
       optionsRef.current.onNewMessage?.(message);
     });
 
     socket.on('new-room', (room: ChatRoom) => {
-      console.log(`[Socket] 🆕 New room received:`, room.id, room.displayName);
       // Always call the callback - let the page decide what to do
       // This ensures all rooms are recorded regardless of channel selection
       optionsRef.current.onNewRoom?.(room);
     });
 
     socket.on('room-update', (data: RoomUpdate) => {
-      console.log(`[Socket] 📝 Room update received:`, data.id, 'unread:', data.unreadCount);
       optionsRef.current.onRoomUpdate?.(data);
     });
 
     socket.on('messages-read', (data: { roomId: string; messageIds: string[] }) => {
-      console.log(`[Socket] ✅ Messages read:`, data.roomId);
       optionsRef.current.onMessagesRead?.(data);
     });
 
@@ -429,17 +425,14 @@ export function useSocket(options: UseSocketOptions = {}) {
       if (data.senderSocketId && data.senderSocketId === socketIdRef.current) {
         return;
       }
-      console.log(`[Socket] 👁️ User viewing:`, data.userName, data.isViewing ? 'entered' : 'left', data.roomId);
       optionsRef.current.onUserViewing?.(data);
     });
 
     socket.on('room-read-update', (data: { roomId: string; readAt: string; userName?: string }) => {
-      console.log(`[Socket] 📖 Room read update:`, data.roomId, 'by:', data.userName);
       optionsRef.current.onRoomReadUpdate?.(data);
     });
 
     socket.on('room-property-changed', (data: { roomId: string; updates: RoomPropertyUpdate; updatedAt: string }) => {
-      console.log('[Socket] 📥 Received room-property-changed:', data);
       optionsRef.current.onRoomPropertyChanged?.(data);
     });
 
@@ -549,12 +542,11 @@ export function useSocket(options: UseSocketOptions = {}) {
     socketRef.current?.emit('message-read', { roomId, messageIds });
   }, []);
 
-  const emitRoomRead = useCallback((roomId: string) => {
-    socketRef.current?.emit('room-read', { roomId });
+  const emitRoomRead = useCallback((roomId: string, userName?: string) => {
+    socketRef.current?.emit('room-read', { roomId, userName });
   }, []);
 
   const emitRoomPropertyUpdate = useCallback((roomId: string, updates: RoomPropertyUpdate) => {
-    console.log('[Socket] 📤 Emitting room-property-update:', roomId, updates, 'socket connected:', socketRef.current?.connected);
     socketRef.current?.emit('room-property-update', { roomId, updates });
   }, []);
 
@@ -563,7 +555,6 @@ export function useSocket(options: UseSocketOptions = {}) {
   }, []);
 
   const emitViewing = useCallback((roomId: string, userName: string, isViewing: boolean) => {
-    console.log('[Socket] 👁️ Emitting viewing:', isViewing ? 'start' : 'stop', 'room:', roomId, 'user:', userName);
     socketRef.current?.emit(isViewing ? 'viewing-start' : 'viewing-stop', { roomId, userName });
   }, []);
 

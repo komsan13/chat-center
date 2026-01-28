@@ -140,11 +140,10 @@ app.prepare().then(() => {
     });
 
     // Room read status - broadcast when someone opens a room
-    socket.on('room-read', ({ roomId }) => {
+    socket.on('room-read', ({ roomId, userName }) => {
       if (roomId) {
-        console.log(`[Socket.IO] Room read: ${roomId} by ${socket.id}`);
-        // Broadcast to ALL clients that this room has been read
-        io.emit('room-read-update', { roomId, readAt: new Date().toISOString() });
+        // Broadcast to ALL clients that this room has been read (excluding sender)
+        socket.broadcast.emit('room-read-update', { roomId, readAt: new Date().toISOString(), userName: userName || 'Agent' });
       }
     });
 
@@ -172,7 +171,6 @@ app.prepare().then(() => {
     // Each user's typing is shown to other users but not to themselves (any of their tabs)
     socket.on('typing-start', ({ roomId, userName }) => {
       if (roomId && userName) {
-        console.log(`[Socket.IO] Typing start: ${userName} in room ${roomId}`);
         // Store typing user info in socket for cleanup on disconnect
         socket.typingInfo = { roomId, userName };
         // Broadcast to ALL clients, include userName so client can filter
@@ -187,7 +185,6 @@ app.prepare().then(() => {
 
     socket.on('typing-stop', ({ roomId, userName }) => {
       if (roomId && userName) {
-        console.log(`[Socket.IO] Typing stop: ${userName} in room ${roomId}`);
         // Clear typing info
         socket.typingInfo = null;
         io.to('all-rooms').emit('user-typing', { 
@@ -202,7 +199,6 @@ app.prepare().then(() => {
     // Viewing indicators - show who is currently viewing a room
     socket.on('viewing-start', ({ roomId, userName }) => {
       if (roomId && userName) {
-        console.log(`[Socket.IO] 👁️ Viewing start: ${userName} viewing room ${roomId}`);
         // Store viewing info in socket for cleanup on disconnect
         socket.viewingInfo = { roomId, userName };
         io.to('all-rooms').emit('user-viewing', { 
@@ -216,7 +212,6 @@ app.prepare().then(() => {
 
     socket.on('viewing-stop', ({ roomId, userName }) => {
       if (roomId && userName) {
-        console.log(`[Socket.IO] 👁️ Viewing stop: ${userName} left room ${roomId}`);
         // Clear viewing info
         socket.viewingInfo = null;
         io.to('all-rooms').emit('user-viewing', { 

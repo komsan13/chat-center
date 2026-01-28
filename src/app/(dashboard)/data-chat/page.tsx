@@ -158,44 +158,6 @@ export default function DataChatPage() {
     }
   }, [selectedRoom, isMobile]);
   
-  // Initialize Quick Reply Editor when modal opens
-  useEffect(() => {
-    if (showQuickReplyModal && quickReplyEditorRef.current) {
-      setTimeout(() => {
-        const editor = quickReplyEditorRef.current;
-        if (!editor) return;
-        
-        if (editingQuickReply?.emojis && editingQuickReply.emojis.length > 0) {
-          let html = '';
-          const content = editingQuickReply.label || '';
-          const sortedEmojis = [...editingQuickReply.emojis].sort((a, b) => a.index - b.index);
-          let lastIndex = 0;
-          sortedEmojis.forEach((emoji) => {
-            if (emoji.index > lastIndex) {
-              html += content.substring(lastIndex, emoji.index).replace(/\n/g, '<br>');
-            }
-            html += `<img src="https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png" data-product-id="${emoji.productId}" data-emoji-id="${emoji.emojiId}" alt="emoji" style="width:20px;height:20px;vertical-align:middle;margin:0 1px;" />`;
-            lastIndex = emoji.index + 1;
-          });
-          if (lastIndex < content.length) {
-            html += content.substring(lastIndex).replace(/\n/g, '<br>');
-          }
-          editor.innerHTML = html;
-          setQuickReplyMessage(editingQuickReply.label);
-          setQuickReplyPendingEmojis(editingQuickReply.emojis);
-        } else if (editingQuickReply?.label) {
-          editor.innerHTML = editingQuickReply.label.replace(/\n/g, '<br>');
-          setQuickReplyMessage(editingQuickReply.label);
-          setQuickReplyPendingEmojis([]);
-        } else {
-          editor.innerHTML = '';
-          setQuickReplyMessage('');
-          setQuickReplyPendingEmojis([]);
-        }
-      }, 50);
-    }
-  }, [showQuickReplyModal, editingQuickReply]);
-  
   const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
   const seenMessageIdsRef = useRef<Set<string>>(new Set()); // Track seen message IDs for deduplication
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -600,6 +562,8 @@ export default function DataChatPage() {
   // ═══════════════════════════════════════════════════════════════════
   // SOCKET CONNECTION
   // ═══════════════════════════════════════════════════════════════════
+  const isDev = process.env.NODE_ENV === 'development';
+  
   const handleNewMessage = useCallback((msg: Message) => {
     // Validate message data
     if (!msg || !msg.id || !msg.roomId) {
@@ -607,14 +571,11 @@ export default function DataChatPage() {
       return;
     }
     
-    console.log('[Chat] 📨 handleNewMessage called:', msg.id, 'room:', msg.roomId, 'sender:', msg.sender);
-    
     // Skip if this is a temp message (we already have it locally)
     if (msg.id?.startsWith('temp-')) return;
     
     // Global deduplication check - if we've seen this message ID, skip
     if (seenMessageIdsRef.current.has(msg.id)) {
-      console.log('[Chat] Duplicate message detected, skipping:', msg.id);
       return;
     }
     // Mark as seen
@@ -673,12 +634,9 @@ export default function DataChatPage() {
       setRooms(prev => {
         const roomIndex = prev.findIndex(r => r.id === msg.roomId);
         if (roomIndex === -1) {
-          console.log('[Chat] Room not found in state, will be added by new-room event or room-update');
           // Room not in state yet - it should be added by handleNewRoom or handleRoomUpdate
           return prev;
         }
-        
-        console.log('[Chat] Updating room:', msg.roomId, 'current unread:', prev[roomIndex].unreadCount);
         
         const updatedRooms = [...prev];
         const room = { ...updatedRooms[roomIndex] };
@@ -690,7 +648,6 @@ export default function DataChatPage() {
         if (selectedRoomRef.current !== msg.roomId && msg.sender === 'user' && room.status !== 'spam' && !room.isMuted) {
           // Increment locally for immediate UI feedback
           room.unreadCount = (room.unreadCount || 0) + 1;
-          console.log('[Chat] Incremented unread to:', room.unreadCount);
           
           // Play sound if token is selected (or no token filter)
           const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
@@ -802,8 +759,6 @@ export default function DataChatPage() {
   }, []);
 
   const handleRoomReadSync = useCallback((data: { roomId: string; readAt?: string; userName?: string }) => {
-    console.log('[Chat] Room read sync:', data.roomId, 'by:', data.userName);
-    
     // Update message statuses to 'read'
     setMessages(prev => prev.map(m => 
       m.roomId === data.roomId && m.sender === 'agent' ? { ...m, status: 'read' } : m
@@ -823,8 +778,6 @@ export default function DataChatPage() {
 
   // Handle room update from socket - update rooms list when other browsers send messages
   const handleRoomUpdate = useCallback((data: { id: string; lastMessage?: Message; lastMessageAt?: string; unreadCount?: number; displayName?: string; pictureUrl?: string; status?: 'active' | 'spam' | 'archived' | 'blocked'; lineTokenId?: string }) => {
-    console.log('[Chat] 📝 handleRoomUpdate called:', data.id, 'unreadCount:', data.unreadCount, 'lastMessage:', data.lastMessage?.content?.substring(0, 20));
-    
     setRooms(prev => {
       const roomIndex = prev.findIndex(r => r.id === data.id);
       
@@ -850,8 +803,6 @@ export default function DataChatPage() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        
-        console.log('[Chat] Adding new room from room-update:', newRoom.id, newRoom.displayName, 'unread:', newRoom.unreadCount);
         
         // Play sound for new room
         const shouldNotify = selectedTokenIdsRef.current.size === 0 || 
@@ -881,9 +832,7 @@ export default function DataChatPage() {
         if (selectedRoomRef.current !== data.id) {
           // Use server's unread count for cross-browser sync
           // Take the max to handle race conditions
-          const newUnread = Math.max(room.unreadCount || 0, data.unreadCount);
-          console.log('[Chat] Updating unread from', room.unreadCount, 'to', newUnread);
-          room.unreadCount = newUnread;
+          room.unreadCount = Math.max(room.unreadCount || 0, data.unreadCount);
         } else {
           // We're viewing this room, keep unread at 0
           room.unreadCount = 0;
@@ -897,8 +846,6 @@ export default function DataChatPage() {
 
   // Handle new room from socket (when a new customer starts chatting)
   const handleNewRoom = useCallback((room: ChatRoom) => {
-    console.log('[Chat] New room received:', room.id, room.displayName, 'lineTokenId:', room.lineTokenId);
-    
     // Don't add spam rooms to the list immediately
     if (room.status === 'spam') return;
     
@@ -933,14 +880,11 @@ export default function DataChatPage() {
     tags?: string[];
     status?: 'active' | 'archived' | 'blocked' | 'spam';
   }; updatedAt: string }) => {
-    console.log('[Chat] 🔔 Room property changed received:', data.roomId, data.updates, 'at:', data.updatedAt);
-    
     // Check timestamp - only apply if this update is newer than our last local update
     const updateTime = new Date(data.updatedAt).getTime();
     const lastLocalUpdate = roomUpdateTimestampsRef.current.get(data.roomId) || 0;
     
     if (updateTime < lastLocalUpdate) {
-      console.log('[Chat] Ignoring stale room update (received:', updateTime, 'local:', lastLocalUpdate, ')');
       return;
     }
     
@@ -948,7 +892,6 @@ export default function DataChatPage() {
     roomUpdateTimestampsRef.current.set(data.roomId, updateTime);
     
     setRooms(prev => {
-      console.log('[Chat] Updating rooms state with new tags:', data.updates.tags);
       const updatedRooms = prev.map(r => r.id === data.roomId ? { ...r, ...data.updates } : r);
       // Re-sort if isPinned changed
       if (data.updates.isPinned !== undefined) {
@@ -965,7 +908,6 @@ export default function DataChatPage() {
 
   // Handle room deleted from other browsers
   const handleRoomDeleted = useCallback((data: { roomId: string; deletedAt: string }) => {
-    console.log('[Chat] Room deleted:', data.roomId);
     setRooms(prev => prev.filter(r => r.id !== data.roomId));
     // If viewing the deleted room, clear selection
     if (selectedRoomRef.current === data.roomId) {
@@ -992,23 +934,57 @@ export default function DataChatPage() {
     sendTypingRef.current = sendTyping;
   }, [sendTyping]);
 
-  // Join/leave specific room and emit viewing status when selection changes
+  // Store emitViewing and currentUser in refs to avoid dependency issues
+  const emitViewingRef = useRef(emitViewing);
+  const currentUserRef = useRef(currentUser);
+  const previousRoomRef = useRef<string | null>(null);
+  
   useEffect(() => {
-    if (selectedRoom && joinRoom) {
-      joinRoom(selectedRoom);
-      // Emit viewing status
-      if (emitViewing && currentUser) {
-        emitViewing(selectedRoom, currentUser.name, true);
+    emitViewingRef.current = emitViewing;
+  }, [emitViewing]);
+  
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  // Join/leave specific room and emit viewing status when selection changes
+  // Only depends on selectedRoom to prevent duplicate emissions
+  useEffect(() => {
+    const prevRoom = previousRoomRef.current;
+    const newRoom = selectedRoom;
+    
+    // Skip if no change
+    if (prevRoom === newRoom) return;
+    
+    // Emit stop viewing for previous room
+    if (prevRoom && emitViewingRef.current && currentUserRef.current?.name) {
+      emitViewingRef.current(prevRoom, currentUserRef.current.name, false);
+    }
+    
+    // Join and emit start viewing for new room
+    if (newRoom) {
+      if (joinRoom) {
+        joinRoom(newRoom);
+      }
+      if (emitViewingRef.current && currentUserRef.current?.name) {
+        emitViewingRef.current(newRoom, currentUserRef.current.name, true);
       }
     }
     
-    // Cleanup: emit not viewing when leaving room
+    // Update previous room ref
+    previousRoomRef.current = newRoom;
+  }, [selectedRoom, joinRoom]);
+
+  // Cleanup viewing on component unmount
+  useEffect(() => {
     return () => {
-      if (selectedRoom && emitViewing && currentUser) {
-        emitViewing(selectedRoom, currentUser.name, false);
+      const room = previousRoomRef.current;
+      const userName = currentUserRef.current?.name;
+      if (room && emitViewingRef.current && userName) {
+        emitViewingRef.current(room, userName, false);
       }
     };
-  }, [selectedRoom, joinRoom, emitViewing, currentUser]);
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -1034,7 +1010,6 @@ export default function DataChatPage() {
   // Fallback polling when socket is disconnected - poll every 5 seconds
   useEffect(() => {
     if (!isConnected) {
-      console.log('[Chat] Socket disconnected, starting fallback polling');
       const pollInterval = setInterval(() => {
         fetchRooms();
         if (selectedRoomRef.current) {
@@ -1085,15 +1060,17 @@ export default function DataChatPage() {
       // Mark as read locally
       if (markAsRead) markAsRead(selectedRoom, []);
       
-      // Broadcast room read to all clients
-      if (emitRoomRead) emitRoomRead(selectedRoom);
+      // Broadcast room read to all clients (with userName)
+      if (emitRoomRead && currentUser?.name) {
+        emitRoomRead(selectedRoom, currentUser.name);
+      }
       
       // Update local unreadCount immediately
       setRooms(prev => prev.map(room => 
         room.id === selectedRoom ? { ...room, unreadCount: 0 } : room
       ));
     }
-  }, [selectedRoom, fetchMessages, markAsRead, emitRoomRead]);
+  }, [selectedRoom, fetchMessages, markAsRead, emitRoomRead, currentUser?.name]);
 
   // Auto-scroll - instant for initial load
   useEffect(() => {
@@ -2016,6 +1993,44 @@ export default function DataChatPage() {
   const [quickReplyEmojiCategory, setQuickReplyEmojiCategory] = useState('brown');
   const [quickReplyPendingEmojis, setQuickReplyPendingEmojis] = useState<Array<{ index: number; productId: string; emojiId: string }>>([]);
   const [quickReplyMessage, setQuickReplyMessage] = useState('');
+  
+  // Initialize Quick Reply Editor when modal opens
+  useEffect(() => {
+    if (showQuickReplyModal && quickReplyEditorRef.current) {
+      setTimeout(() => {
+        const editor = quickReplyEditorRef.current;
+        if (!editor) return;
+        
+        if (editingQuickReply?.emojis && editingQuickReply.emojis.length > 0) {
+          let html = '';
+          const content = editingQuickReply.label || '';
+          const sortedEmojis = [...editingQuickReply.emojis].sort((a, b) => a.index - b.index);
+          let lastIndex = 0;
+          sortedEmojis.forEach((emoji) => {
+            if (emoji.index > lastIndex) {
+              html += content.substring(lastIndex, emoji.index).replace(/\n/g, '<br>');
+            }
+            html += `<img src="https://stickershop.line-scdn.net/sticonshop/v1/sticon/${emoji.productId}/iPhone/${emoji.emojiId}.png" data-product-id="${emoji.productId}" data-emoji-id="${emoji.emojiId}" alt="emoji" style="width:20px;height:20px;vertical-align:middle;margin:0 1px;" />`;
+            lastIndex = emoji.index + 1;
+          });
+          if (lastIndex < content.length) {
+            html += content.substring(lastIndex).replace(/\n/g, '<br>');
+          }
+          editor.innerHTML = html;
+          setQuickReplyMessage(editingQuickReply.label);
+          setQuickReplyPendingEmojis(editingQuickReply.emojis);
+        } else if (editingQuickReply?.label) {
+          editor.innerHTML = editingQuickReply.label.replace(/\n/g, '<br>');
+          setQuickReplyMessage(editingQuickReply.label);
+          setQuickReplyPendingEmojis([]);
+        } else {
+          editor.innerHTML = '';
+          setQuickReplyMessage('');
+          setQuickReplyPendingEmojis([]);
+        }
+      }, 50);
+    }
+  }, [showQuickReplyModal, editingQuickReply]);
   
   // LINE Official Stickers grouped by package (verified working sticker IDs)
   // Reference: https://developers.line.biz/en/docs/messaging-api/sticker-list/
