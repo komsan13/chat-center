@@ -197,6 +197,7 @@ export default function DataChatPage() {
   }, [showQuickReplyModal, editingQuickReply]);
   
   const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
+  const seenMessageIdsRef = useRef<Set<string>>(new Set()); // Track seen message IDs for deduplication
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const quickReplyEditorRef = useRef<HTMLDivElement>(null);
   const messageEditorRef = useRef<HTMLDivElement>(null);
@@ -611,6 +612,19 @@ export default function DataChatPage() {
     // Skip if this is a temp message (we already have it locally)
     if (msg.id?.startsWith('temp-')) return;
     
+    // Global deduplication check - if we've seen this message ID, skip
+    if (seenMessageIdsRef.current.has(msg.id)) {
+      console.log('[Chat] Duplicate message detected, skipping:', msg.id);
+      return;
+    }
+    // Mark as seen
+    seenMessageIdsRef.current.add(msg.id);
+    // Cleanup old message IDs (keep last 1000 to prevent memory leak)
+    if (seenMessageIdsRef.current.size > 1000) {
+      const arr = Array.from(seenMessageIdsRef.current);
+      seenMessageIdsRef.current = new Set(arr.slice(-500));
+    }
+    
     try {
       // Update cache
       if (messagesCacheRef.current.has(msg.roomId)) {
@@ -910,13 +924,29 @@ export default function DataChatPage() {
   }, [playSound]);
 
   // Handle room property changes from other browsers (pin, mute, tags, status)
+  // With timestamp-based optimistic locking - only apply if newer than local
+  const roomUpdateTimestampsRef = useRef<Map<string, number>>(new Map());
+  
   const handleRoomPropertyChanged = useCallback((data: { roomId: string; updates: {
     isPinned?: boolean;
     isMuted?: boolean;
     tags?: string[];
     status?: 'active' | 'archived' | 'blocked' | 'spam';
   }; updatedAt: string }) => {
-    console.log('[Chat] 🔔 Room property changed received:', data.roomId, data.updates);
+    console.log('[Chat] 🔔 Room property changed received:', data.roomId, data.updates, 'at:', data.updatedAt);
+    
+    // Check timestamp - only apply if this update is newer than our last local update
+    const updateTime = new Date(data.updatedAt).getTime();
+    const lastLocalUpdate = roomUpdateTimestampsRef.current.get(data.roomId) || 0;
+    
+    if (updateTime < lastLocalUpdate) {
+      console.log('[Chat] Ignoring stale room update (received:', updateTime, 'local:', lastLocalUpdate, ')');
+      return;
+    }
+    
+    // Update timestamp
+    roomUpdateTimestampsRef.current.set(data.roomId, updateTime);
+    
     setRooms(prev => {
       console.log('[Chat] Updating rooms state with new tags:', data.updates.tags);
       const updatedRooms = prev.map(r => r.id === data.roomId ? { ...r, ...data.updates } : r);

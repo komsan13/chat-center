@@ -167,15 +167,15 @@ app.prepare().then(() => {
       }
     });
 
-    // Typing indicators - broadcast to ALL clients in all-rooms INCLUDING sender
-    // This ensures all browsers see typing status from other browsers
+    // Typing indicators - broadcast to ALL clients in all-rooms
+    // For same user across multiple browsers: we show typing from OTHER users only
+    // Each user's typing is shown to other users but not to themselves (any of their tabs)
     socket.on('typing-start', ({ roomId, userName }) => {
       if (roomId && userName) {
         console.log(`[Socket.IO] Typing start: ${userName} in room ${roomId}`);
-        // Broadcast to ALL clients (io.emit sends to everyone including sender)
-        // But we need to exclude sender, so use socket.to
-        // Actually, for cross-browser support, sender's OTHER browser tabs need to see it too
-        // So we emit to all-rooms but mark the sender's socketId
+        // Store typing user info in socket for cleanup on disconnect
+        socket.typingInfo = { roomId, userName };
+        // Broadcast to ALL clients, include userName so client can filter
         io.to('all-rooms').emit('user-typing', { 
           roomId, 
           userName, 
@@ -188,6 +188,8 @@ app.prepare().then(() => {
     socket.on('typing-stop', ({ roomId, userName }) => {
       if (roomId && userName) {
         console.log(`[Socket.IO] Typing stop: ${userName} in room ${roomId}`);
+        // Clear typing info
+        socket.typingInfo = null;
         io.to('all-rooms').emit('user-typing', { 
           roomId, 
           userName, 
@@ -201,6 +203,8 @@ app.prepare().then(() => {
     socket.on('viewing-start', ({ roomId, userName }) => {
       if (roomId && userName) {
         console.log(`[Socket.IO] 👁️ Viewing start: ${userName} viewing room ${roomId}`);
+        // Store viewing info in socket for cleanup on disconnect
+        socket.viewingInfo = { roomId, userName };
         io.to('all-rooms').emit('user-viewing', { 
           roomId, 
           userName, 
@@ -213,6 +217,8 @@ app.prepare().then(() => {
     socket.on('viewing-stop', ({ roomId, userName }) => {
       if (roomId && userName) {
         console.log(`[Socket.IO] 👁️ Viewing stop: ${userName} left room ${roomId}`);
+        // Clear viewing info
+        socket.viewingInfo = null;
         io.to('all-rooms').emit('user-viewing', { 
           roomId, 
           userName, 
@@ -235,6 +241,31 @@ app.prepare().then(() => {
 
     socket.on('disconnect', (reason) => {
       totalConnections = Math.max(0, totalConnections - 1);
+      
+      // Cleanup typing status on disconnect
+      if (socket.typingInfo) {
+        const { roomId, userName } = socket.typingInfo;
+        console.log(`[Socket.IO] 🧹 Auto-cleanup typing for ${userName} in ${roomId} on disconnect`);
+        io.to('all-rooms').emit('user-typing', { 
+          roomId, 
+          userName, 
+          isTyping: false,
+          senderSocketId: socket.id 
+        });
+      }
+      
+      // Cleanup viewing status on disconnect
+      if (socket.viewingInfo) {
+        const { roomId, userName } = socket.viewingInfo;
+        console.log(`[Socket.IO] 🧹 Auto-cleanup viewing for ${userName} in ${roomId} on disconnect`);
+        io.to('all-rooms').emit('user-viewing', { 
+          roomId, 
+          userName, 
+          isViewing: false,
+          senderSocketId: socket.id 
+        });
+      }
+      
       global.__connectedClients.delete(socket.id);
       console.log(`[Socket.IO] ❌ Client disconnected: ${socket.id}, reason: ${reason} (Active: ${totalConnections})`);
     });
