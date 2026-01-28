@@ -5,8 +5,11 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
 
-// Database connection URL
-const connectionString = process.env.DATABASE_URL || 'postgresql://aurix:aurix_secret_2026@localhost:5432/aurix_dashboard';
+// Database connection URL - MUST be set via environment variable
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
 
 // Create postgres connection
 // Important: max 1 connection for Drizzle ORM (for serverless/edge)

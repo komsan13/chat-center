@@ -7,7 +7,7 @@ services:
     container_name: aurix-db
     environment:
       POSTGRES_USER: aurix
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-aurix_secret_2026}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       POSTGRES_DB: aurix_dashboard
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -30,7 +30,8 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - COOKIE_SECURE=true
-      - DATABASE_URL=postgresql://aurix:${DB_PASSWORD:-aurix_secret_2026}@db:5432/aurix_dashboard
+      - DATABASE_URL=postgresql://aurix:${DB_PASSWORD}@db:5432/aurix_dashboard
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
     depends_on:
       db:
         condition: service_healthy

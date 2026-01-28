@@ -14,9 +14,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@line/bot-sdk": "^10.6.0",
     "bcryptjs": "^3.0.3",
-    "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.1",
     "html2canvas": "^1.4.1",
     "jose": "^6.1.3",

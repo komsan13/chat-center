@@ -2,7 +2,6 @@
 // Migrated from Prisma schema
 
 import { pgTable, text, timestamp, integer, real, boolean, uniqueIndex } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
 
 // Helper for generating IDs
 export function generateId(prefix?: string) {
@@ -25,87 +24,6 @@ export const users = pgTable('users', {
   employeeId: text('employee_id'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export const usersRelations = relations(users, ({ many }) => ({
-  orders: many(orders),
-}));
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// PRODUCTS & ORDERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export const products = pgTable('products', {
-  id: text('id').primaryKey().$defaultFn(generateId),
-  name: text('name').notNull(),
-  category: text('category').notNull(),
-  price: real('price').notNull(),
-  stock: integer('stock').notNull().default(0),
-  image: text('image'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export const productsRelations = relations(products, ({ many }) => ({
-  orderItems: many(orderItems),
-}));
-
-export const orders = pgTable('orders', {
-  id: text('id').primaryKey().$defaultFn(generateId),
-  orderNo: text('order_no').notNull().unique(),
-  userId: text('user_id').notNull(),
-  amount: real('amount').notNull(),
-  status: text('status').notNull().default('Pending'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export const ordersRelations = relations(orders, ({ one, many }) => ({
-  customer: one(users, {
-    fields: [orders.userId],
-    references: [users.id],
-  }),
-  items: many(orderItems),
-}));
-
-export const orderItems = pgTable('order_items', {
-  id: text('id').primaryKey().$defaultFn(generateId),
-  orderId: text('order_id').notNull(),
-  productId: text('product_id').notNull(),
-  quantity: integer('quantity').notNull(),
-  price: real('price').notNull(),
-});
-
-export const orderItemsRelations = relations(orderItems, ({ one }) => ({
-  product: one(products, {
-    fields: [orderItems.productId],
-    references: [products.id],
-  }),
-  order: one(orders, {
-    fields: [orderItems.orderId],
-    references: [orders.id],
-  }),
-}));
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// ANALYTICS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export const revenue = pgTable('revenue', {
-  id: text('id').primaryKey().$defaultFn(generateId),
-  date: timestamp('date').notNull(),
-  revenue: real('revenue').notNull(),
-  profit: real('profit').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-});
-
-export const dailySales = pgTable('daily_sales', {
-  id: text('id').primaryKey().$defaultFn(generateId),
-  date: timestamp('date').notNull(),
-  dayName: text('day_name').notNull(),
-  sales: real('sales').notNull(),
-  orders: integer('orders').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -360,12 +278,6 @@ export const chatNotes = pgTable('chat_notes', {
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-
-export type Product = typeof products.$inferSelect;
-export type NewProduct = typeof products.$inferInsert;
-
-export type Order = typeof orders.$inferSelect;
-export type NewOrder = typeof orders.$inferInsert;
 
 export type Role = typeof roles.$inferSelect;
 export type NewRole = typeof roles.$inferInsert;

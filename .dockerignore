@@ -5,6 +5,7 @@ node_modules
 npm-debug.log
 Dockerfile
 docker-compose.yml
+docker-compose.build.yml
 .env
 .env.local
 .env.development
@@ -12,3 +13,14 @@ docker-compose.yml
 README.md
 *.md
 .vscode
+# Additional cache folders
+.turbo
+.cache
+*.log
+coverage
+.nyc_output
+# Large data files
+data/
+uploads/
+*.zip
+*.tar.gz

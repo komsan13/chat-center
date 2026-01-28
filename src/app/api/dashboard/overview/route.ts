@@ -398,11 +398,12 @@ export async function GET(request: NextRequest) {
       });
     } catch (e) {}
     
-    // Calculate changes (mock for now, would need historical data)
-    const depositChange = 8.5;
-    const withdrawalChange = -3.2;
-    const profitChange = 12.4;
-    const balanceChange = 5.1;
+    // Note: Change percentages require historical comparison data
+    // These will show 0 until we implement month-over-month comparison
+    const depositChange = 0;
+    const withdrawalChange = 0;
+    const profitChange = 0;
+    const balanceChange = 0;
     
     return NextResponse.json({
       success: true,

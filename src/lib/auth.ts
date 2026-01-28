@@ -1,9 +1,13 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-const secretKey = process.env.JWT_SECRET || 'aurix-dashboard-secret-key-2026';
+// JWT Secret - MUST be set via environment variable in production
+const secretKey = process.env.JWT_SECRET;
+if (!secretKey && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET environment variable is required in production');
+}
+const key = new TextEncoder().encode(secretKey || 'dev-only-secret-key');
 const secureCookie = process.env.COOKIE_SECURE === 'true';
-const key = new TextEncoder().encode(secretKey);
 
 export interface SessionPayload {
   userId: string;
