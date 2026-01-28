@@ -2530,6 +2530,33 @@ export default function DataChatPage() {
                       border: `2px solid ${colors.bgSecondary}`,
                     }} />
                   )}
+                  {/* VIEWING INDICATOR - Eye icon on avatar when someone is viewing this room */}
+                  {viewingUsers[room.id]?.length > 0 && (
+                    <div
+                      title={`${viewingUsers[room.id].map(v => v.userName).join(', ')} กำลังดูอยู่`}
+                      style={{
+                        position: 'absolute',
+                        top: -4,
+                        left: -4,
+                        minWidth: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        background: '#3b82f6',
+                        border: `2px solid ${colors.bgSecondary}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 2,
+                        padding: '0 5px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      <Eye size={10} style={{ color: '#fff' }} />
+                      <span style={{ color: '#fff', fontSize: 9, fontWeight: 700 }}>
+                        {viewingUsers[room.id].length}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}
@@ -2547,88 +2574,6 @@ export default function DataChatPage() {
                       {room.isPinned && <Pin size={11} style={{ color: colors.accent, transform: 'rotate(-45deg)', flexShrink: 0 }} />}
                       {room.isMuted && <VolumeX size={11} style={{ color: colors.warning, flexShrink: 0 }} />}
                     </div>
-                    {/* Viewing Avatar Stack - MOVED OUTSIDE the name container to always show */}
-                    {viewingUsers[room.id]?.length > 0 && (() => {
-                      const viewers = viewingUsers[room.id];
-                      const maxVisible = 3;
-                      const visibleViewers = viewers.slice(0, maxVisible);
-                      const overflowCount = viewers.length - maxVisible;
-
-                      // Avatar colors based on name hash
-                      const avatarColors = ['#22c55e', '#3b82f6', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4'];
-                      const getAvatarColor = (name: string) => {
-                        let hash = 0;
-                        for (let i = 0; i < name.length; i++) {
-                          hash = name.charCodeAt(i) + ((hash << 5) - hash);
-                        }
-                        return avatarColors[Math.abs(hash) % avatarColors.length];
-                      };
-
-                      return (
-                        <div
-                          className="viewing-avatars"
-                          title={`${viewers.map(v => v.userName).join(', ')} กำลังดูอยู่`}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            flexShrink: 0,
-                            marginLeft: 6,
-                            marginRight: 4,
-                          }}
-                        >
-                          {visibleViewers.map((viewer, idx) => {
-                            const bgColor = getAvatarColor(viewer.userName);
-                            const initial = viewer.userName.charAt(0).toUpperCase();
-                            return (
-                              <div
-                                key={viewer.userName}
-                                className="viewing-avatar"
-                                style={{
-                                  width: 18,
-                                  height: 18,
-                                  borderRadius: '50%',
-                                  background: bgColor,
-                                  color: '#fff',
-                                  fontSize: 10,
-                                  fontWeight: 600,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  marginLeft: idx > 0 ? -6 : 0,
-                                  border: `2px solid ${colors.bgSecondary}`,
-                                  zIndex: maxVisible - idx,
-                                  position: 'relative',
-                                  boxShadow: `0 0 0 1px ${bgColor}30`,
-                                }}
-                              >
-                                {initial}
-                              </div>
-                            );
-                          })}
-                          {overflowCount > 0 && (
-                            <div
-                              style={{
-                                width: 18,
-                                height: 18,
-                                borderRadius: '50%',
-                                background: colors.textMuted,
-                                color: '#fff',
-                                fontSize: 9,
-                                fontWeight: 600,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                marginLeft: -6,
-                                border: `2px solid ${colors.bgSecondary}`,
-                                zIndex: 0,
-                              }}
-                            >
-                              +{overflowCount}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
                     <span style={{
                       fontSize: 11,
                       color: room.unreadCount > 0 ? colors.accent : colors.textMuted,
