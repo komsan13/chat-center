@@ -153,7 +153,7 @@ export function useSocket(options: UseSocketOptions = {}) {
   const reconnectAttemptsRef = useRef<number>(0);
   const isPageVisibleRef = useRef<boolean>(true);
   const isOnlineRef = useRef<boolean>(true);
-  
+
   // Audio refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -170,15 +170,15 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     audioRef.current = new Audio('/notification.mp3');
     audioRef.current.volume = 0.7;
     audioRef.current.preload = 'auto';
-    
+
     const unlockAudio = () => {
       soundUnlockedRef.current = true;
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || 
+        audioContextRef.current = new (window.AudioContext ||
           (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       }
       if (audioContextRef.current.state === 'suspended') {
@@ -190,14 +190,14 @@ export function useSocket(options: UseSocketOptions = {}) {
           audioRef.current!.pause();
           audioRef.current!.currentTime = 0;
           audioRef.current!.volume = 0.7;
-        }).catch(() => {});
+        }).catch(() => { });
       }
     };
-    
+
     ['click', 'keydown', 'touchstart', 'mousedown'].forEach(event => {
       document.addEventListener(event, unlockAudio, { once: true, passive: true });
     });
-    
+
     return () => {
       ['click', 'keydown', 'touchstart', 'mousedown'].forEach(event => {
         document.removeEventListener(event, unlockAudio);
@@ -227,10 +227,10 @@ export function useSocket(options: UseSocketOptions = {}) {
   const updateConnectionHealth = useCallback((latency: number) => {
     latencyHistoryRef.current.push(latency);
     if (latencyHistoryRef.current.length > 10) latencyHistoryRef.current.shift();
-    
+
     const avgLatency = latencyHistoryRef.current.reduce((a, b) => a + b, 0) / latencyHistoryRef.current.length;
     const quality = getConnectionQuality(avgLatency);
-    
+
     setConnectionHealth({
       latency: Math.round(avgLatency),
       quality,
@@ -248,10 +248,10 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   const initWorker = useCallback(() => {
     if (typeof window === 'undefined' || workerRef.current) return;
-    
+
     try {
       workerRef.current = new Worker('/socket-worker.js');
-      
+
       workerRef.current.onmessage = (e) => {
         // Only check connection status, don't send custom ping
         // Socket.IO built-in ping handles keep-alive
@@ -262,11 +262,11 @@ export function useSocket(options: UseSocketOptions = {}) {
           }
         }
       };
-      
+
       workerRef.current.onerror = (err) => {
         console.error('[Socket] Worker error:', err);
       };
-      
+
       console.log('[Socket] 🔧 Web Worker initialized (reconnect only)');
     } catch (err) {
       console.warn('[Socket] Web Worker not available:', err);
@@ -292,12 +292,12 @@ export function useSocket(options: UseSocketOptions = {}) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     setConnectionState('connecting');
     initWorker();
-    
+
     const socketUrl = window.location.origin;
-    
+
     // Initialize socket with AGGRESSIVE keep-alive settings
     const socket = io(socketUrl, {
       path: '/socket.io',
@@ -331,10 +331,10 @@ export function useSocket(options: UseSocketOptions = {}) {
       setReconnectAttempts(0);
       lastPongTimeRef.current = Date.now();
       latencyHistoryRef.current = [];
-      
+
       socket.emit('join-all-rooms');
       startWorkerHeartbeat();
-      
+
       optionsRef.current.onConnect?.();
       optionsRef.current.onConnectionChange?.(true);
     });
@@ -344,10 +344,10 @@ export function useSocket(options: UseSocketOptions = {}) {
       setIsConnected(false);
       setConnectionState('disconnected');
       stopWorkerHeartbeat();
-      
+
       optionsRef.current.onDisconnect?.();
       optionsRef.current.onConnectionChange?.(false);
-      
+
       // Force reconnect immediately for certain reasons
       if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
         console.log('[Socket] 🔄 Force reconnecting...');
@@ -429,6 +429,7 @@ export function useSocket(options: UseSocketOptions = {}) {
     });
 
     socket.on('room-read-update', (data: { roomId: string; readAt: string; userName?: string }) => {
+      console.log('[Socket] 📖 Room read update received:', data.roomId, 'by:', data.userName);
       optionsRef.current.onRoomReadUpdate?.(data);
     });
 
@@ -447,15 +448,15 @@ export function useSocket(options: UseSocketOptions = {}) {
     const handleVisibilityChange = () => {
       const isVisible = document.visibilityState === 'visible';
       isPageVisibleRef.current = isVisible;
-      
+
       if (isVisible) {
         console.log('[Socket] 👁️ Tab visible - checking connection');
-        
+
         // Resume audio context
         if (audioContextRef.current?.state === 'suspended') {
           audioContextRef.current.resume();
         }
-        
+
         // AGGRESSIVE reconnect check when tab becomes visible
         if (!socket.connected) {
           console.log('[Socket] 🔄 Tab visible but disconnected - reconnecting NOW');
@@ -465,7 +466,7 @@ export function useSocket(options: UseSocketOptions = {}) {
           pingStartTimeRef.current = Date.now();
           socket.emit('ping-server');
         }
-        
+
         setConnectionState(socket.connected ? 'connected' : 'reconnecting');
       } else {
         console.log('[Socket] 🙈 Tab hidden');
@@ -509,13 +510,13 @@ export function useSocket(options: UseSocketOptions = {}) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('focus', handleFocus);
-      
+
       stopWorkerHeartbeat();
       if (workerRef.current) {
         workerRef.current.terminate();
         workerRef.current = null;
       }
-      
+
       socket.removeAllListeners();
       socket.disconnect();
       socketRef.current = null;
@@ -543,7 +544,9 @@ export function useSocket(options: UseSocketOptions = {}) {
   }, []);
 
   const emitRoomRead = useCallback((roomId: string, userName?: string) => {
-    socketRef.current?.emit('room-read', { roomId, userName: userName || 'Agent' });
+    const resolvedUserName = userName || 'Agent';
+    console.log('[Socket] 📤 Emitting room-read to server:', { roomId, userName: resolvedUserName });
+    socketRef.current?.emit('room-read', { roomId, userName: resolvedUserName });
   }, []);
 
   const emitRoomPropertyUpdate = useCallback((roomId: string, updates: RoomPropertyUpdate) => {

@@ -759,6 +759,7 @@ export default function DataChatPage() {
   }, []);
 
   const handleRoomReadSync = useCallback((data: { roomId: string; readAt?: string; userName?: string }) => {
+    console.log('[Chat] 📥 Room read sync received:', data.roomId, 'by:', data.userName);
     // Update message statuses to 'read'
     setMessages(prev => prev.map(m =>
       m.roomId === data.roomId && m.sender === 'agent' ? { ...m, status: 'read' } : m
@@ -1064,7 +1065,10 @@ export default function DataChatPage() {
 
       // Broadcast room read to all clients (with userName)
       if (emitRoomRead && currentUser?.name) {
+        console.log('[Chat] 📤 Emitting room-read:', selectedRoom, 'userName:', currentUser.name);
         emitRoomRead(selectedRoom, currentUser.name);
+      } else {
+        console.log('[Chat] ⚠️ Cannot emit room-read - emitRoomRead:', !!emitRoomRead, 'currentUser.name:', currentUser?.name);
       }
 
       // Update local unreadCount immediately

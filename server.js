@@ -73,7 +73,7 @@ app.prepare().then(() => {
   setInterval(() => {
     const now = Date.now();
     let cleanedUp = 0;
-    
+
     global.__connectedClients.forEach((client, socketId) => {
       // Check if socket is still connected
       const socket = io.sockets.sockets.get(socketId);
@@ -82,7 +82,7 @@ app.prepare().then(() => {
         cleanedUp++;
       }
     });
-    
+
     if (cleanedUp > 0) {
       console.log(`[Socket.IO] 🧹 Cleaned up ${cleanedUp} stale connections`);
     }
@@ -91,7 +91,7 @@ app.prepare().then(() => {
   io.on('connection', (socket) => {
     totalConnections++;
     peakConnections = Math.max(peakConnections, totalConnections);
-    
+
     const clientInfo = {
       id: socket.id,
       connectedAt: new Date().toISOString(),
@@ -100,7 +100,7 @@ app.prepare().then(() => {
       userAgent: socket.handshake.headers['user-agent'] || 'unknown',
     };
     global.__connectedClients.set(socket.id, clientInfo);
-    
+
     console.log(`[Socket.IO] ✅ Client connected: ${socket.id} (Active: ${totalConnections}, Peak: ${peakConnections})`);
 
     // Auto join all-rooms for broadcast
@@ -142,8 +142,14 @@ app.prepare().then(() => {
     // Room read status - broadcast when someone opens a room
     socket.on('room-read', ({ roomId, userName }) => {
       if (roomId) {
+        const resolvedUserName = userName || 'Agent';
+        console.log(`[Socket.IO] 📖 Room read received - roomId: ${roomId}, userName: ${userName}, resolved: ${resolvedUserName}`);
         // Broadcast to ALL clients that this room has been read (excluding sender)
-        socket.broadcast.emit('room-read-update', { roomId, readAt: new Date().toISOString(), userName: userName || 'Agent' });
+        socket.broadcast.emit('room-read-update', {
+          roomId,
+          readAt: new Date().toISOString(),
+          userName: resolvedUserName
+        });
       }
     });
 
@@ -174,11 +180,11 @@ app.prepare().then(() => {
         // Store typing user info in socket for cleanup on disconnect
         socket.typingInfo = { roomId, userName };
         // Broadcast to ALL clients, include userName so client can filter
-        io.to('all-rooms').emit('user-typing', { 
-          roomId, 
-          userName, 
+        io.to('all-rooms').emit('user-typing', {
+          roomId,
+          userName,
           isTyping: true,
-          senderSocketId: socket.id 
+          senderSocketId: socket.id
         });
       }
     });
@@ -187,11 +193,11 @@ app.prepare().then(() => {
       if (roomId && userName) {
         // Clear typing info
         socket.typingInfo = null;
-        io.to('all-rooms').emit('user-typing', { 
-          roomId, 
-          userName, 
+        io.to('all-rooms').emit('user-typing', {
+          roomId,
+          userName,
           isTyping: false,
-          senderSocketId: socket.id 
+          senderSocketId: socket.id
         });
       }
     });
@@ -201,11 +207,11 @@ app.prepare().then(() => {
       if (roomId && userName) {
         // Store viewing info in socket for cleanup on disconnect
         socket.viewingInfo = { roomId, userName };
-        io.to('all-rooms').emit('user-viewing', { 
-          roomId, 
-          userName, 
+        io.to('all-rooms').emit('user-viewing', {
+          roomId,
+          userName,
           isViewing: true,
-          senderSocketId: socket.id 
+          senderSocketId: socket.id
         });
       }
     });
@@ -214,11 +220,11 @@ app.prepare().then(() => {
       if (roomId && userName) {
         // Clear viewing info
         socket.viewingInfo = null;
-        io.to('all-rooms').emit('user-viewing', { 
-          roomId, 
-          userName, 
+        io.to('all-rooms').emit('user-viewing', {
+          roomId,
+          userName,
           isViewing: false,
-          senderSocketId: socket.id 
+          senderSocketId: socket.id
         });
       }
     });
@@ -236,31 +242,31 @@ app.prepare().then(() => {
 
     socket.on('disconnect', (reason) => {
       totalConnections = Math.max(0, totalConnections - 1);
-      
+
       // Cleanup typing status on disconnect
       if (socket.typingInfo) {
         const { roomId, userName } = socket.typingInfo;
         console.log(`[Socket.IO] 🧹 Auto-cleanup typing for ${userName} in ${roomId} on disconnect`);
-        io.to('all-rooms').emit('user-typing', { 
-          roomId, 
-          userName, 
+        io.to('all-rooms').emit('user-typing', {
+          roomId,
+          userName,
           isTyping: false,
-          senderSocketId: socket.id 
+          senderSocketId: socket.id
         });
       }
-      
+
       // Cleanup viewing status on disconnect
       if (socket.viewingInfo) {
         const { roomId, userName } = socket.viewingInfo;
         console.log(`[Socket.IO] 🧹 Auto-cleanup viewing for ${userName} in ${roomId} on disconnect`);
-        io.to('all-rooms').emit('user-viewing', { 
-          roomId, 
-          userName, 
+        io.to('all-rooms').emit('user-viewing', {
+          roomId,
+          userName,
           isViewing: false,
-          senderSocketId: socket.id 
+          senderSocketId: socket.id
         });
       }
-      
+
       global.__connectedClients.delete(socket.id);
       console.log(`[Socket.IO] ❌ Client disconnected: ${socket.id}, reason: ${reason} (Active: ${totalConnections})`);
     });
@@ -270,10 +276,10 @@ app.prepare().then(() => {
     });
 
     // Send initial connection success
-    socket.emit('connection-success', { 
-      socketId: socket.id, 
+    socket.emit('connection-success', {
+      socketId: socket.id,
       serverTime: new Date().toISOString(),
-      totalClients: totalConnections 
+      totalClients: totalConnections
     });
   });
 
